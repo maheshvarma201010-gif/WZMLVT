@@ -92,13 +92,82 @@ Deploy with Docker and provide the required configuration values. The container 
 ## Deployment
 
 <details open>
-   <summary>VPS / Dedicated Server (Recommended)</summary>
+   <summary>VPS Deployment via deploy.vps (One-Command Setup)</summary>
+
+   Deploying on a VPS is streamlined with the automated `deploy.vps` script:
+
+   1. **Connect to your VPS:**
+      ```bash
+      ssh root@your_vps_ip
+      ```
+
+   2. **Clone the repository:**
+      ```bash
+      git clone https://github.com/SilentDemonSD/WZML-X.git
+      ```
+
+   3. **Enter the project directory:**
+      ```bash
+      cd WZML-X
+      ```
+
+   4. **Give execute permission to `deploy.vps`:**
+      ```bash
+      chmod +x deploy.vps
+      ```
+
+   5. **Run `deploy.vps`:**
+      ```bash
+      ./deploy.vps
+      ```
+
+   6. **What the script installs and configures:**
+      - System dependencies (`python3`, `pip`, `venv`, `ffmpeg`, `7z`, `aria2`, `rclone`, `qbittorrent-nox`, `git`, `curl`, `wget`, `lsof`, `procps`).
+      - Sets up a Python virtual environment (`venv`) and installs project dependencies from `requirements.txt`.
+      - Prepares required runtime directories (`downloads`, `thumbnails`, `tokens`, `rclone`, `cookies`, `Images`).
+      - Configures and enables a systemd service (`wzml_bot.service`) so the bot runs continuously.
+      - Uses existing repository configuration without prompting to edit `config.py`.
+
+   7. **Check if the bot is running:**
+      ```bash
+      systemctl status wzml_bot
+      ```
+
+   8. **View logs:**
+      ```bash
+      journalctl -u wzml_bot -f
+      ```
+
+   9. **Restart the bot:**
+      ```bash
+      systemctl restart wzml_bot
+      ```
+
+   10. **Stop the bot:**
+       ```bash
+       systemctl stop wzml_bot
+       ```
+
+   11. **Update and redeploy the project:**
+       ```bash
+       git pull
+       ./deploy.vps
+       ```
+
+   12. **System Requirements:**
+       - OS: Ubuntu 20.04/22.04 or Debian 11/12 recommended (Linux with `systemd`).
+       - Privileges: `root` or `sudo` user.
+       - Recommended Spec: Minimum 1 GB RAM (2 GB+ recommended for heavy FFmpeg operations).
+</details>
+
+<details>
+   <summary>Docker & Docker Compose Deployment</summary>
 
    ```bash
    git clone https://github.com/SilentDemonSD/WZML-X.git
    cd WZML-X
    cp config_sample.py config.py
-   # Edit config.py with your values
+   # Edit config.py with your values if needed
    docker buildx compose up -d
    ```
 

@@ -112,6 +112,7 @@ class TaskConfig:
         self.folder_name = ""
         self.split_size = 0
         self.max_split_size = 0
+        self.split_mode = "part"
         self.multi = 0
         self.size = 0
         self.subsize = 0
@@ -140,6 +141,7 @@ class TaskConfig:
         self.join = False
         self.private_link = False
         self.stop_duplicate = False
+        self.auto_merge = False
         self.sample_video = False
         self.convert_audio = False
         self.convert_video = False
@@ -641,6 +643,17 @@ class TaskConfig:
                     else ""
                 )
             )
+
+            self.split_mode = (
+                self.user_dict.get("SPLIT_MODE")
+                or getattr(Config, "SPLIT_MODE", "part")
+            )
+
+            if not self.auto_merge:
+                self.auto_merge = self.user_dict.get("AUTO_MERGE", False) or (
+                    "AUTO_MERGE" not in self.user_dict
+                    and getattr(Config, "AUTO_MERGE", False)
+                )
 
             if self.thumb and self.thumb != "none":
                 if is_telegram_link(self.thumb):
@@ -1240,6 +1253,70 @@ class TaskConfig:
         async with task_dict_lock:
             task_dict[self.mid] = SevenZStatus(self, sevenz, gid, "Zip")
         return await sevenz.zip(dl_path, up_path, pswd)
+
+    async def proceed_merge(self, dl_path, gid, custom_name=""):
+        v_files = []
+        if self.is_file:
+            if (await get_document_type(dl_path))[0]:
+                v_files.append(dl_path)
+        else:
+            for dirpath, _, files in await sync_to_async(walk, dl_path, topdown=False):
+                for file_ in files:
+                    f_path = ospath.join(dirpath, file_)
+                    if (await get_document_type(f_path))[0]:
+                        v_files.append(f_path)
+
+        if len(v_files) < 2:
+            LOGGER.info("Merge skipped: Less than 2 video files found.")
+            return dl_path
+
+        def natural_key(text):
+            return [
+                int(c) if c.isdigit() else c.lower()
+                for c in re.split(r"(\d+)", text)
+            ]
+
+        v_files.sort(key=lambda x: natural_key(ospath.basename(x)))
+
+        ext = ospath.splitext(v_files[0])[1] or ".mkv"
+        if custom_name:
+            out_filename = custom_name if custom_name.endswith(ext) else f"{custom_name}{ext}"
+        else:
+            out_filename = f"Merged_Video{ext}"
+
+        if self.is_file:
+            work_dir = ospath.dirname(dl_path)
+        else:
+            work_dir = dl_path
+
+        output_file = ospath.join(work_dir, out_filename)
+
+        ffmpeg = FFMpeg(self)
+        async with task_dict_lock:
+            task_dict[self.mid] = FFmpegStatus(self, ffmpeg, gid, "Merge")
+
+        LOGGER.info(f"Merging {len(v_files)} files into {output_file}")
+        self.progress = True
+        res = await ffmpeg.merge_videos(v_files, output_file, gid)
+
+        if res and await aiopath.exists(output_file):
+            for vf in v_files:
+                if vf != output_file:
+                    with suppress(Exception):
+                        await remove(vf)
+
+            if work_dir != dl_path:
+                for root, dirs, files in await sync_to_async(walk, work_dir, topdown=False):
+                    for d in dirs:
+                        dp = ospath.join(root, d)
+                        if not await listdir(dp):
+                            with suppress(Exception):
+                                await rmtree(dp)
+
+            self.is_file = True
+            return output_file
+
+        return dl_path
 
     async def proceed_split(self, dl_path, gid):
         self.files_to_proceed = {}

@@ -274,17 +274,24 @@ async def join_files(opath):
 
 
 async def split_file(f_path, split_size, listener):
-    out_path = f"{f_path}."
     if listener.is_cancelled:
         return False
-    # pread parallel split
+    f_size = await get_path_size(f_path)
+    parts = -(-f_size // split_size)
+    digits = max(2, len(str(parts)))
+    split_mode = getattr(listener, "split_mode", "part")
+    dir_path, file_name = ospath.split(f_path)
+    base_name, extension = ospath.splitext(file_name)
+    prefix = f"{base_name}.part" if split_mode == "part" else f"{base_name}."
+    out_prefix = ospath.join(dir_path, prefix)
+
     listener.subproc = await create_subprocess_exec(
         "split",
         "--numeric-suffixes=1",
-        "--suffix-length=3",
+        f"--suffix-length={digits}",
         f"--bytes={split_size}",
         f_path,
-        out_path,
+        out_prefix,
         stderr=PIPE,
     )
     _, stderr = await listener.subproc.communicate()
@@ -300,6 +307,15 @@ async def split_file(f_path, split_size, listener):
         except Exception:
             stderr = "Unable to decode the error!"
         LOGGER.error(f"{stderr}. Split Document: {f_path}")
+        return False
+
+    if extension:
+        for item in await listdir(dir_path):
+            if item.startswith(prefix) and not item.endswith(extension):
+                old_p = ospath.join(dir_path, item)
+                new_p = f"{old_p}{extension}"
+                await move(old_p, new_p)
+
     return True
 
 

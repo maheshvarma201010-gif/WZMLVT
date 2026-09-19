@@ -359,6 +359,7 @@ async def get_user_settings(from_user, stype="main"):
         )
         buttons.data_button("Mirror Settings", f"userset {user_id} mirror")
         buttons.data_button("Leech Settings", f"userset {user_id} leech")
+        buttons.data_button("Video Tools", f"userset {user_id} vtools")
         buttons.data_button("Uphoster Settings", f"userset {user_id} uphoster")
         buttons.data_button("FF Media Settings", f"userset {user_id} ffset")
         buttons.data_button(
@@ -376,6 +377,8 @@ async def get_user_settings(from_user, stype="main"):
                 "MEDIA_GROUP",
                 "STOP_DUPLICATE",
                 "DEFAULT_UPLOAD",
+                "AUTO_MERGE",
+                "SPLIT_MODE",
             ]
         ):
             buttons.data_button(
@@ -545,6 +548,13 @@ async def get_user_settings(from_user, stype="main"):
         else:
             thumb_layout = "None"
 
+        split_mode = user_dict.get("SPLIT_MODE", "part")
+        next_split_mode = "number" if split_mode == "part" else "part"
+        buttons.data_button(
+            f"Split Mode: {split_mode.capitalize()}",
+            f"userset {user_id} split_mode {next_split_mode}",
+        )
+
         buttons.data_button("Back", f"userset {user_id} back", "footer")
         buttons.data_button(
             "Close", f"userset {user_id} close", "footer", style=ButtonStyle.DANGER
@@ -564,7 +574,35 @@ async def get_user_settings(from_user, stype="main"):
 ┠ Leech Caption → <code>{escape(lcap)}</code>
 ┠ Leech Destination → <code>{leech_dest}</code>
 ┠ Thumbnail Layout → <b>{thumb_layout}</b>
+┠ Split Mode → <b>{split_mode.capitalize()}</b>
 ┖ Auto Thumbnail → <b>{auto_thumb}</b>
+"""
+
+    elif stype == "vtools":
+        auto_merge = user_dict.get("AUTO_MERGE", False) or (
+            "AUTO_MERGE" not in user_dict and getattr(Config, "AUTO_MERGE", False)
+        )
+        if auto_merge:
+            buttons.data_button(
+                "Disable Auto Merge", f"userset {user_id} tog AUTO_MERGE f"
+            )
+            auto_merge_status = "Enabled"
+        else:
+            buttons.data_button(
+                "Enable Auto Merge", f"userset {user_id} tog AUTO_MERGE t"
+            )
+            auto_merge_status = "Disabled"
+
+        buttons.data_button("Back", f"userset {user_id} back", "footer")
+        buttons.data_button(
+            "Close", f"userset {user_id} close", "footer", style=ButtonStyle.DANGER
+        )
+        btns = buttons.build_menu(1)
+
+        text = f"""⌬ <b>Video Tools :</b>
+┟ <b>Name</b> → {user_name}
+┃
+┖ <b>Auto Merge</b> → <b>{auto_merge_status}</b>
 """
 
     elif stype == "uphoster":
@@ -1598,6 +1636,7 @@ async def edit_user_settings(client, query):
         "general",
         "mirror",
         "leech",
+        "vtools",
         "uphoster",
         "gofile",
         "buzzheavier",
@@ -1717,6 +1756,8 @@ async def edit_user_settings(client, query):
             back_to = "gofile"
         elif data[3] == "SEEDR_DELETE_FOLDER":
             back_to = "seedr"
+        elif data[3] == "AUTO_MERGE":
+            back_to = "vtools"
         else:
             back_to = "leech"
         await update_user_settings(query, stype=back_to)
@@ -1827,6 +1868,11 @@ async def edit_user_settings(client, query):
     elif data[2] == "view":
         await query.answer()
         await send_file(message, thumb_path, name)
+    elif data[2] == "split_mode":
+        await query.answer()
+        update_user_ldata(user_id, "SPLIT_MODE", data[3])
+        await update_user_settings(query, stype="leech")
+        await database.update_user_data(user_id)
     elif data[2] in ["gd", "rc"]:
         await query.answer()
         du = "rc" if data[2] == "gd" else "gd"

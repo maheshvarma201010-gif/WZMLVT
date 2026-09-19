@@ -246,6 +246,17 @@ class TaskListener(TaskConfig):
             self.clear()
             await remove_excluded_files(up_dir, self.excluded_extensions)
 
+            if getattr(self, "auto_merge", False) or getattr(self, "manual_merge", False):
+                up_path = await self.proceed_merge(
+                    up_path, gid, getattr(self, "merge_custom_name", "")
+                )
+                if self.is_cancelled:
+                    return
+                self.is_file = await aiopath.isfile(up_path)
+                self.name = up_path.replace(f"{up_dir}/", "").split("/", 1)[0]
+                self.size = await get_path_size(up_dir)
+                self.clear()
+
         if self.ffmpeg_cmds:
             up_path = await self.proceed_ffmpeg(
                 up_path,

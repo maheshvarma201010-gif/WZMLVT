@@ -101,6 +101,13 @@ async def add_handlers():
     )
     TgClient.bot.add_handler(
         MessageHandler(
+            merge_command,
+            filters=command(BotCommands.MergeCommand, case_sensitive=True)
+            & CustomFilters.authorized,
+        )
+    )
+    TgClient.bot.add_handler(
+        MessageHandler(
             cancel_all_buttons,
             filters=command(BotCommands.CancelAllCommand, case_sensitive=True)
             & CustomFilters.authorized,
@@ -395,6 +402,9 @@ async def add_handlers():
     )
     TgClient.bot.add_handler(
         CallbackQueryHandler(edit_user_settings, filters=regex("^userset"))
+    )
+    TgClient.bot.add_handler(
+        CallbackQueryHandler(ht_merge_callback, filters=regex("^htmerge"))
     )
     TgClient.bot.add_handler(
         MessageHandler(

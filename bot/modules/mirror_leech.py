@@ -76,6 +76,9 @@ from ..helper.telegram_helper.message_utils import (
     send_message,
 )
 
+ht_tasks = {}
+ht_lock = bot_loop.create_task if False else None  # Dict for ht prompt tasks
+
 
 class Mirror(TaskListener):
     def __init__(
@@ -155,6 +158,7 @@ class Mirror(TaskListener):
             "-ad": False,
             "-yt": False,
             "-seedr": False,
+            "-ht": False,
             "-i": 0,
             "-sp": 0,
             "link": "",
@@ -231,6 +235,7 @@ class Mirror(TaskListener):
         self.is_alldebrid = args["-ad"]
         self.is_seedr = args["-seedr"] or self.is_seedr
         self.is_yt = args["-yt"]
+        self.ht_flag = args["-ht"]
 
         if self.is_seedr and not await seedr_guard(self.message, self.user_id):
             return
@@ -326,6 +331,30 @@ class Mirror(TaskListener):
         await self.run_multi(input_list, Mirror)
 
         await self.get_tag(text)
+
+        if self.ht_flag:
+            user_id = self.user_id
+            event_done = bot_loop.create_future()
+            ht_tasks[self.mid] = {
+                "merge": False,
+                "user_id": user_id,
+                "future": event_done,
+            }
+            buttons = ButtonMaker()
+            buttons.data_button("Merge: OFF", f"htmerge merge {self.mid}")
+            buttons.data_button("Done", f"htmerge done {self.mid}")
+            prompt_msg = await send_message(
+                self.message,
+                f"<b>Task Received with -ht flag.</b>\nChoose whether to merge files before uploading:",
+                buttons.build_menu(2),
+            )
+            try:
+                await event_done
+            except Exception:
+                pass
+            self.manual_merge = ht_tasks.get(self.mid, {}).get("merge", False)
+            ht_tasks.pop(self.mid, None)
+            await delete_message(prompt_msg)
 
         path = f"{DOWNLOAD_DIR}{self.mid}{self.folder_name}"
 
@@ -558,6 +587,31 @@ class Mirror(TaskListener):
             await add_aria2_download(self, path, headers, ratio, seed_time)
 
 
+@new_task
+async def ht_merge_callback(_, query):
+    data = query.data.split()
+    mid = int(data[2])
+    task_info = ht_tasks.get(mid)
+    if not task_info:
+        return await query.answer("Task expired or already started!", show_alert=True)
+    if query.from_user.id != task_info["user_id"]:
+        return await query.answer("Not Yours!", show_alert=True)
+
+    if data[1] == "merge":
+        task_info["merge"] = not task_info["merge"]
+        state_str = "ON" if task_info["merge"] else "OFF"
+        await query.answer(f"Merge turned {state_str}")
+        buttons = ButtonMaker()
+        buttons.data_button(f"Merge: {state_str}", f"htmerge merge {mid}")
+        buttons.data_button("Done", f"htmerge done {mid}")
+        await edit_message(query.message, query.message.text.html, buttons.build_menu(2))
+    elif data[1] == "done":
+        await query.answer("Starting task...")
+        fut = task_info.get("future")
+        if fut and not fut.done():
+            fut.set_result(True)
+
+
 async def mirror(client, message):
     bot_loop.create_task(Mirror(client, message).new_event())
 
@@ -625,6 +679,104 @@ async def nzb_leech(client, message):
     if nzb_id:
         mirror_task.nzb_id = nzb_id
     bot_loop.create_task(mirror_task.new_event())
+
+
+@new_task
+async def merge_command(client, message):
+    reply_to = message.reply_to_message
+    if not reply_to:
+        await send_message(
+            message,
+            "Reply to the first Telegram file or video in the sequence to merge!",
+        )
+        return
+
+    file_ = reply_to.video or reply_to.document
+    if file_ is None:
+        await send_message(
+            message,
+            "Unsupported media! Reply to the first Telegram file or video in the sequence.",
+        )
+        return
+
+    text = message.text.split("\n")
+    input_list = text[0].split(" ")
+    args = {
+        "-i": 0,
+        "-n": "",
+        "-up": "",
+        "-sp": 0,
+        "-doc": False,
+        "-med": False,
+    }
+    arg_parser(input_list[1:], args)
+
+    count = int(args["-i"]) if str(args["-i"]).isdigit() else 0
+    if count <= 0:
+        await send_message(
+            message,
+            "Please specify file count using -i {count}. Usage: <code>/merge -i {count} -n {custom_name}</code>",
+        )
+        return
+
+    custom_name = args["-n"]
+    if not custom_name:
+        await send_message(
+            message,
+            "Please specify custom name using -n {custom_name}. Usage: <code>/merge -i {count} -n {custom_name}</code>",
+        )
+        return
+
+    mirror_task = Mirror(client, message, is_leech=not bool(args["-up"]))
+    mirror_task.name = custom_name
+    mirror_task.up_dest = args["-up"]
+    mirror_task.split_size = args["-sp"]
+    mirror_task.as_doc = args["-doc"]
+    mirror_task.as_med = args["-med"]
+    mirror_task.manual_merge = True
+    mirror_task.merge_custom_name = custom_name
+
+    try:
+        await mirror_task.before_start()
+    except Exception as e:
+        await send_message(message, str(e))
+        return
+
+    mirror_task._set_mode_engine()
+    path = f"{DOWNLOAD_DIR}{mirror_task.mid}"
+    await makedirs(path, exist_ok=True)
+
+    start_id = reply_to.id
+    chat_id = message.chat.id
+
+    msg = await send_message(message, f"Fetching {count} files for merge task...")
+
+    for i in range(count):
+        curr_id = start_id + i
+        try:
+            curr_msg = await client.get_messages(chat_id, curr_id)
+        except Exception as e:
+            await edit_message(msg, f"Error fetching message #{curr_id}: {e}")
+            await clean_download(path)
+            return
+
+        curr_file = curr_msg.video or curr_msg.document if curr_msg else None
+        if not curr_file:
+            await edit_message(
+                msg,
+                f"Message #{curr_id} is not a valid video or document! Sequence aborted.",
+            )
+            await clean_download(path)
+            return
+
+        idx_prefix = f"{i+1:04d}_"
+        dl_helper = TelegramDownloadHelper(mirror_task)
+        mirror_task.name = f"{idx_prefix}{curr_file.file_name or 'video.mkv'}"
+        await dl_helper.add_download(curr_msg, f"{path}/", session="")
+
+    await delete_message(msg)
+    mirror_task.name = custom_name
+    await mirror_task.on_download_complete()
 
 
 async def uphoster(client, message):

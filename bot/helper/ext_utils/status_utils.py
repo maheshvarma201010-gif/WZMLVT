@@ -34,6 +34,7 @@ class MirrorStatus:
     STATUS_SEED = "Seed"
     STATUS_SAMVID = "SamVid"
     STATUS_CONVERT = "Convert"
+    STATUS_MERGE = "Merge"
     STATUS_FFMPEG = "FFmpeg"
     STATUS_YT = "YouTube"
     STATUS_METADATA = "Metadata"
@@ -75,6 +76,7 @@ STATUSES = {
     "CM": MirrorStatus.STATUS_CONVERT,
     "SP": MirrorStatus.STATUS_SPLIT,
     "SV": MirrorStatus.STATUS_SAMVID,
+    "MG": MirrorStatus.STATUS_MERGE,
     "FF": MirrorStatus.STATUS_FFMPEG,
     "PA": MirrorStatus.STATUS_PAUSED,
     "CK": MirrorStatus.STATUS_CHECK,

@@ -834,8 +834,12 @@ class FFMpeg:
         split_size -= 3000000
         start_time = 0
         i = 1
+        split_mode = getattr(self._listener, "split_mode", "part")
+        digits = max(2, len(str(parts)))
         while i <= parts or start_time < duration - 4:
-            out_path = f_path.replace(file_, f"{base_name}.part{i:03}{extension}")
+            suffix = f"part{i:0{digits}d}" if split_mode == "part" else f"{i:0{digits}d}"
+            out_name = f"{base_name}.{suffix}{extension}"
+            out_path = ospath.join(ospath.dirname(f_path), out_name)
             cmd = [
                 "taskset",
                 "-c",
@@ -927,3 +931,77 @@ class FFMpeg:
             start_time += lpd - 3
             i += 1
         return True
+
+    async def merge_videos(self, video_files, output_file, gid):
+        cores, threads = ffmpeg_layout()
+        self.clear()
+
+        total_dur = 0
+        for vf in video_files:
+            dur = (await get_media_info(vf))[0]
+            total_dur += dur
+        self._total_time = total_dur
+
+        list_file_path = f"{output_file}.txt"
+        async with aiopen(list_file_path, "w") as f:
+            for vf in video_files:
+                escaped_vf = vf.replace("'", r"'\''")
+                line_to_write = f"file '{escaped_vf}'\n"
+                await f.write(line_to_write)
+
+        cmd = [
+            "taskset",
+            "-c",
+            f"{cores}",
+            BinConfig.FFMPEG_NAME,
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            "-progress",
+            "pipe:1",
+            "-f",
+            "concat",
+            "-safe",
+            "0",
+            "-i",
+            list_file_path,
+            "-c",
+            "copy",
+            "-threads",
+            f"{threads}",
+            output_file,
+        ]
+
+        if self._listener.is_cancelled:
+            with suppress(Exception):
+                await remove(list_file_path)
+            return False
+
+        self._listener.subproc = await create_subprocess_exec(
+            *cmd, stdout=PIPE, stderr=PIPE
+        )
+        await self._ffmpeg_progress()
+        _, stderr = await self._listener.subproc.communicate()
+        code = self._listener.subproc.returncode
+
+        with suppress(Exception):
+            await remove(list_file_path)
+
+        if self._listener.is_cancelled:
+            return False
+        if code == 0:
+            return output_file
+        elif code == -9:
+            self._listener.is_cancelled = True
+            return False
+        else:
+            if await aiopath.exists(output_file):
+                await remove(output_file)
+            try:
+                stderr = stderr.decode().strip()
+            except Exception:
+                stderr = "Unable to decode the error!"
+            LOGGER.error(
+                f"{stderr}. Something went wrong while merging videos. Output: {output_file}"
+            )
+            return False
