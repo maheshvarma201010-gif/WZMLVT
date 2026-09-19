@@ -3,10 +3,9 @@ from ...core.plugin_manager import get_plugin_manager
 
 
 class BotCommands:
-    StartCommand = "start"
-    LoginCommand = "login"
-
     _static_commands = {
+        "Start": "start",
+        "Login": "login",
         "Mirror": ["mirror", "m"],
         "QbMirror": ["qbmirror", "qm"],
         "JdMirror": ["jdmirror", "jm"],
