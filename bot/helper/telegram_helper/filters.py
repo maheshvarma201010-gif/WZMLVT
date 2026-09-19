@@ -66,13 +66,14 @@ class CustomFilters:
     authorized = create(authorized_user)
 
     async def authorized_usetting(self, _, update):
+        chat = getattr(_source_message(update), "chat", None)
+        if chat and chat.type == ChatType.PRIVATE:
+            return True
         uid = (update.from_user or update.sender_chat).id
         is_exists = False
         if await CustomFilters.authorized("", update):
             is_exists = True
-        elif (chat := getattr(_source_message(update), "chat", None)) and (
-            chat.type == ChatType.PRIVATE
-        ):
+        elif chat:
             for channel_id in user_data:
                 if not (
                     user_data[channel_id].get("is_auth")

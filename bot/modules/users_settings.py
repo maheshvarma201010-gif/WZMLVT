@@ -4,9 +4,12 @@ from pyrogram.enums import ButtonStyle
 from functools import partial
 from html import escape
 from io import BytesIO
+import json
+import os
 from os import getcwd
 from re import sub
 from time import time
+import zipfile
 
 from aiofiles.os import makedirs, remove
 from aiofiles.os import path as aiopath
@@ -62,6 +65,7 @@ rclone_options = ["RCLONE_CONFIG", "RCLONE_PATH", "RCLONE_FLAGS"]
 gdrive_options = ["TOKEN_PICKLE", "GDRIVE_ID", "INDEX_URL", "DRIVE_CAT"]
 ffset_options = [
     "FFMPEG_CMDS",
+    "SET_ALL_METADATA",
     "METADATA",
     "AUDIO_METADATA",
     "VIDEO_METADATA",
@@ -217,6 +221,23 @@ Here I will explain how to use mltb.* which is reference to files you want to wo
 
 ⏱ <b>Time Left:</b> <code>60 sec</code>""",
     ),
+    "SET_ALL_METADATA": (
+        "🏷 Set All Metadata (key=value|key=value)",
+        "Apply the same metadata to all metadata fields (Global, Audio, Video, Subtitle).",
+        """<i>📝 Send metadata as</i> <code>key=value|key2=value2</code>
+
+<b>🔧 Dynamic Variables:</b>
+• <code>{filename}</code> - Original filename
+• <code>{basename}</code> - Name without extension
+• <code>{audiolang}</code> - Audio language
+• <code>{sublang}</code> - Subtitle language
+• <code>{year}</code> - Year from filename
+
+<b>📋 Example:</b>
+<code>title={basename}|artist={audiolang} Version</code>
+
+⏱ <b>Time Left:</b> <code>60 sec</code>""",
+    ),
     "AUDIO_METADATA": (
         "🎵 Audio Stream Metadata",
         "Metadata applied to each audio track separately.",
@@ -365,6 +386,9 @@ async def get_user_settings(from_user, stype="main"):
         buttons.data_button(
             "Misc Settings", f"userset {user_id} advanced", position="l_body"
         )
+
+        buttons.data_button("Export Settings", f"userset {user_id} export_settings", position="footer")
+        buttons.data_button("Import Settings", f"userset {user_id} import_settings", position="footer")
 
         if user_dict and any(
             key in user_dict
@@ -1052,7 +1076,30 @@ async def get_user_settings(from_user, stype="main"):
                 ]
             )
 
-        buttons.data_button("Metadata", f"userset {user_id} menu METADATA")
+        set_all_enabled = user_dict.get("SET_ALL_METADATA_ENABLE", False)
+
+        buttons.data_button("Set All Metadata", f"userset {user_id} menu SET_ALL_METADATA")
+        buttons.data_button(
+            f"Set All Metadata: {'ON' if set_all_enabled else 'OFF'}",
+            f"userset {user_id} tog SET_ALL_METADATA_ENABLE {'f' if set_all_enabled else 't'}",
+        )
+
+        set_all_meta_setting = user_dict.get("SET_ALL_METADATA")
+        display_set_all_meta = "<b>Not Set</b>"
+        if isinstance(set_all_meta_setting, dict) and set_all_meta_setting:
+            display_set_all_meta = ", ".join(
+                f"{k}={escape(str(v))}" for k, v in set_all_meta_setting.items()
+            )
+            display_set_all_meta = f"<code>{display_set_all_meta}</code>"
+
+        if not set_all_enabled:
+            buttons.data_button("Metadata", f"userset {user_id} menu METADATA")
+            buttons.data_button("Audio Metadata", f"userset {user_id} menu AUDIO_METADATA")
+            buttons.data_button("Video Metadata", f"userset {user_id} menu VIDEO_METADATA")
+            buttons.data_button(
+                "Subtitle Metadata", f"userset {user_id} menu SUBTITLE_METADATA"
+            )
+
         metadata_setting = user_dict.get("METADATA")
         display_meta_val = "<b>Not Set</b>"
         if isinstance(metadata_setting, dict) and metadata_setting:
@@ -1065,7 +1112,6 @@ async def get_user_settings(from_user, stype="main"):
                 f"<code>{escape(metadata_setting)}</code> [<i>Legacy, needs re-set</i>]"
             )
 
-        buttons.data_button("Audio Metadata", f"userset {user_id} menu AUDIO_METADATA")
         audio_meta_setting = user_dict.get("AUDIO_METADATA")
         display_audio_meta = "<b>Not Set</b>"
         if isinstance(audio_meta_setting, dict) and audio_meta_setting:
@@ -1074,7 +1120,6 @@ async def get_user_settings(from_user, stype="main"):
             )
             display_audio_meta = f"<code>{display_audio_meta}</code>"
 
-        buttons.data_button("Video Metadata", f"userset {user_id} menu VIDEO_METADATA")
         video_meta_setting = user_dict.get("VIDEO_METADATA")
         display_video_meta = "<b>Not Set</b>"
         if isinstance(video_meta_setting, dict) and video_meta_setting:
@@ -1083,9 +1128,6 @@ async def get_user_settings(from_user, stype="main"):
             )
             display_video_meta = f"<code>{display_video_meta}</code>"
 
-        buttons.data_button(
-            "Subtitle Metadata", f"userset {user_id} menu SUBTITLE_METADATA"
-        )
         subtitle_meta_setting = user_dict.get("SUBTITLE_METADATA")
         display_subtitle_meta = "<b>Not Set</b>"
         if isinstance(subtitle_meta_setting, dict) and subtitle_meta_setting:
@@ -1100,15 +1142,19 @@ async def get_user_settings(from_user, stype="main"):
         )
         btns = buttons.build_menu(2)
 
+        set_all_status = "Enabled" if set_all_enabled else "Disabled"
         text = f"""⌬ <b>FF Settings :</b>
 ┟ <b>Name</b> → {user_name}
 ┃
 ┠ <b>FFmpeg CLI Commands</b> → {ffc}
 ┃
-┠ <b>Default Metadata</b> → {display_meta_val}
-┠ <b>Audio Metadata</b> → {display_audio_meta}
-┠ <b>Video Metadata</b> → {display_video_meta}
-┖ <b>Subtitle Metadata</b> → {display_subtitle_meta}"""
+┠ <b>Set All Metadata Status</b> → <b>{set_all_status}</b>
+┠ <b>Set All Metadata</b> → {display_set_all_meta}
+┃
+┠ <b>Default Metadata</b> → {display_meta_val if not set_all_enabled else '<i>(Disabled - Set All Active)</i>'}
+┠ <b>Audio Metadata</b> → {display_audio_meta if not set_all_enabled else '<i>(Disabled - Set All Active)</i>'}
+┠ <b>Video Metadata</b> → {display_video_meta if not set_all_enabled else '<i>(Disabled - Set All Active)</i>'}
+┖ <b>Subtitle Metadata</b> → {display_subtitle_meta if not set_all_enabled else '<i>(Disabled - Set All Active)</i>'}"""
 
     elif stype == "advanced":
         buttons.data_button(
@@ -1368,6 +1414,7 @@ async def set_option(_, message, option, rfunc):
             return
         value = value.lower()
     elif option in [
+        "SET_ALL_METADATA",
         "METADATA",
         "AUDIO_METADATA",
         "VIDEO_METADATA",
@@ -1436,6 +1483,8 @@ async def set_option(_, message, option, rfunc):
             await send_message(message, "It must be dict!")
             return
     update_user_ldata(user_id, option, value)
+    if option == "SET_ALL_METADATA":
+        update_user_ldata(user_id, "SET_ALL_METADATA_ENABLE", True)
     await delete_message(message)
     await rfunc()
     await database.update_user_data(user_id)
@@ -1507,7 +1556,7 @@ async def get_menu(option, message, user_id):
         val = "<b>Exists</b>"
     elif option == "LEECH_SPLIT_SIZE":
         val = get_readable_file_size(val)
-    elif option == "METADATA":
+    elif option in ["SET_ALL_METADATA", "METADATA", "AUDIO_METADATA", "VIDEO_METADATA", "SUBTITLE_METADATA"]:
         current_meta_val = user_dict.get(option)
         if isinstance(current_meta_val, dict) and current_meta_val:
             val = ", ".join(
@@ -1758,6 +1807,8 @@ async def edit_user_settings(client, query):
             back_to = "seedr"
         elif data[3] == "AUTO_MERGE":
             back_to = "vtools"
+        elif data[3] == "SET_ALL_METADATA_ENABLE":
+            back_to = "ffset"
         else:
             back_to = "leech"
         await update_user_settings(query, stype=back_to)
@@ -1868,6 +1919,142 @@ async def edit_user_settings(client, query):
     elif data[2] == "view":
         await query.answer()
         await send_file(message, thumb_path, name)
+    elif data[2] == "export_settings":
+        await query.answer("Exporting User Settings...", show_alert=False)
+        zip_path = f"US{user_id}.zip"
+        try:
+            with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zipf:
+                excluded_keys = (
+                    "THUMBNAIL",
+                    "RCLONE_CONFIG",
+                    "TOKEN_PICKLE",
+                    "USER_COOKIE_FILE",
+                    "SUDO",
+                    "AUTH",
+                    "is_sudo",
+                    "is_auth",
+                    "VERIFY_TOKEN",
+                    "VERIFY_TIME",
+                    "BLACKLIST",
+                )
+                user_dict_copy = {
+                    k: v for k, v in user_dict.items() if k not in excluded_keys
+                }
+                zipf.writestr("settings.json", json.dumps(user_dict_copy, indent=4))
+
+                files_to_check = {
+                    f"thumbnails/{user_id}.jpg": "thumbnail.jpg",
+                    f"rclone/{user_id}.conf": "rclone.conf",
+                    f"tokens/{user_id}.pickle": "token.pickle",
+                    f"cookies/{user_id}/cookies.txt": "cookies.txt",
+                }
+                for src, arc in files_to_check.items():
+                    if os.path.exists(src):
+                        zipf.write(src, arc)
+
+            await TgClient.bot.send_document(
+                chat_id=user_id,
+                document=zip_path,
+                caption=f"Here is your exported User Settings archive: <code>{zip_path}</code>",
+            )
+            await query.answer("Exported settings sent to your DM!", show_alert=True)
+        except Exception as e:
+            await query.answer(f"Export failed: {e}"[:180], show_alert=True)
+        finally:
+            if os.path.exists(zip_path):
+                os.remove(zip_path)
+    elif data[2] == "import_settings":
+        await query.answer()
+        buttons = ButtonMaker()
+        buttons.data_button("Stop", f"userset {user_id} back main")
+        buttons.data_button("Back", f"userset {user_id} back main", "footer")
+        buttons.data_button(
+            "Close", f"userset {user_id} close", "footer", style=ButtonStyle.DANGER
+        )
+        prompt_text = f"⌬ <b>Import User Settings</b>\n\n<i>Send your <code>US{user_id}.zip</code> file to import and apply your settings.</i>\n\n┖ <b>Time Left :</b> <code>60 sec</code>"
+        await edit_message(message, prompt_text, buttons.build_menu(1))
+
+        @new_task
+        async def import_file_handler(_, msg):
+            handler_dict[user_id] = False
+            doc = msg.document
+            if not doc or not doc.file_name.endswith(".zip"):
+                await send_message(msg, "Invalid file! Please send a valid ZIP file.")
+                return
+            temp_zip = f"import_{user_id}.zip"
+            try:
+                await msg.download(file_name=temp_zip)
+                with zipfile.ZipFile(temp_zip, "r") as zipf:
+                    namelist = zipf.namelist()
+                    if "settings.json" in namelist:
+                        settings_data = json.loads(zipf.read("settings.json").decode("utf-8"))
+                        if isinstance(settings_data, dict):
+                            forbidden_keys = (
+                                "SUDO",
+                                "AUTH",
+                                "is_sudo",
+                                "is_auth",
+                                "VERIFY_TOKEN",
+                                "VERIFY_TIME",
+                                "BLACKLIST",
+                                "THUMBNAIL",
+                                "RCLONE_CONFIG",
+                                "TOKEN_PICKLE",
+                                "USER_COOKIE_FILE",
+                            )
+                            for k, v in settings_data.items():
+                                if k not in forbidden_keys:
+                                    update_user_ldata(user_id, k, v)
+
+                    for member in namelist:
+                        if member == "settings.json" or member.endswith("/"):
+                            continue
+                        norm_member = os.path.normpath(member).replace("\\", "/")
+                        if norm_member.startswith("..") or norm_member.startswith("/"):
+                            continue
+
+                        data_bytes = zipf.read(member)
+                        if norm_member == "thumbnail.jpg" or norm_member.startswith("thumbnails/"):
+                            dest = f"thumbnails/{user_id}.jpg"
+                            await makedirs("thumbnails", exist_ok=True)
+                            with open(dest, "wb") as f:
+                                f.write(data_bytes)
+                            update_user_ldata(user_id, "THUMBNAIL", dest)
+                            await database.update_user_doc(user_id, "THUMBNAIL", dest)
+                        elif norm_member == "rclone.conf" or norm_member.startswith("rclone/"):
+                            dest = f"rclone/{user_id}.conf"
+                            await makedirs("rclone", exist_ok=True)
+                            with open(dest, "wb") as f:
+                                f.write(data_bytes)
+                            update_user_ldata(user_id, "RCLONE_CONFIG", dest)
+                            await database.update_user_doc(user_id, "RCLONE_CONFIG", dest)
+                        elif norm_member == "token.pickle" or norm_member.startswith("tokens/"):
+                            dest = f"tokens/{user_id}.pickle"
+                            await makedirs("tokens", exist_ok=True)
+                            with open(dest, "wb") as f:
+                                f.write(data_bytes)
+                            update_user_ldata(user_id, "TOKEN_PICKLE", dest)
+                            await database.update_user_doc(user_id, "TOKEN_PICKLE", dest)
+                        elif norm_member == "cookies.txt" or norm_member.startswith("cookies/"):
+                            dest = f"cookies/{user_id}/cookies.txt"
+                            await makedirs(f"cookies/{user_id}", exist_ok=True)
+                            with open(dest, "wb") as f:
+                                f.write(data_bytes)
+                            update_user_ldata(user_id, "USER_COOKIE_FILE", dest)
+                            await database.update_user_doc(user_id, "USER_COOKIE_FILE", dest)
+
+                await database.update_user_data(user_id)
+                await send_message(msg, "Settings successfully imported!")
+            except Exception as e:
+                await send_message(msg, f"Failed to import settings: {e}")
+            finally:
+                if os.path.exists(temp_zip):
+                    os.remove(temp_zip)
+                await delete_message(msg)
+                await update_user_settings(query, stype="main")
+
+        rfunc = partial(update_user_settings, query, stype="main")
+        await event_handler(client, query, import_file_handler, rfunc, document=True)
     elif data[2] == "split_mode":
         await query.answer()
         update_user_ldata(user_id, "SPLIT_MODE", data[3])

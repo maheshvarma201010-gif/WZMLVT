@@ -79,18 +79,27 @@ class TaskConfig:
         self.user_id = self.user.id
         self.user_dict = user_data.get(self.user_id, {})
         self.metadata_processor = MetadataProcessor()
-        for k in ("METADATA", "AUDIO_METADATA", "VIDEO_METADATA", "SUBTITLE_METADATA"):
-            v = self.user_dict.get(k, {})
-            if k == "METADATA":
-                k = "default_metadata"
-            if isinstance(v, dict):
-                setattr(self, f"{k.lower()}_dict", v)
-            elif isinstance(v, str):
-                setattr(
-                    self, f"{k.lower()}_dict", self.metadata_processor.parse_string(v)
-                )
-            else:
-                setattr(self, f"{k.lower()}_dict", {})
+        set_all_meta = self.user_dict.get("SET_ALL_METADATA_ENABLE", False) and self.user_dict.get("SET_ALL_METADATA")
+        if set_all_meta:
+            v = self.user_dict.get("SET_ALL_METADATA")
+            parsed_v = v if isinstance(v, dict) else (self.metadata_processor.parse_string(v) if isinstance(v, str) else {})
+            self.default_metadata_dict = parsed_v
+            self.audio_metadata_dict = parsed_v
+            self.video_metadata_dict = parsed_v
+            self.subtitle_metadata_dict = parsed_v
+        else:
+            for k in ("METADATA", "AUDIO_METADATA", "VIDEO_METADATA", "SUBTITLE_METADATA"):
+                v = self.user_dict.get(k, {})
+                if k == "METADATA":
+                    k = "default_metadata"
+                if isinstance(v, dict):
+                    setattr(self, f"{k.lower()}_dict", v)
+                elif isinstance(v, str):
+                    setattr(
+                        self, f"{k.lower()}_dict", self.metadata_processor.parse_string(v)
+                    )
+                else:
+                    setattr(self, f"{k.lower()}_dict", {})
         self.dir = f"{DOWNLOAD_DIR}{self.mid}"
         self.up_dir = ""
         self.link = ""
