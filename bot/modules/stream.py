@@ -32,8 +32,7 @@ _MAX_BUTTONS = 20
 _LABEL = 22
 _TOKEN_OK = re_compile(r"^[A-Za-z0-9_-]{4,32}$")
 _OFF = (
-    "<b>Streaming is disabled.</b>\n\n<i>The bot owner turned it off in "
-    "Module Settings.</i>"
+    "<blockquote><b>Streaming disabled!</b> The bot owner turned off streaming in Module Settings.</blockquote>"
 )
 
 
@@ -188,62 +187,48 @@ def _ready():
         return _OFF
     if not (TgClient.stream_bots or TgClient.helper_bots):
         return (
-            "<b>No streaming clients are running.</b>\n\n<i>Add STREAM_TOKENS or "
-            "HELPER_TOKENS in bot settings, then restart.</i>"
+            "<blockquote><b>No streaming clients active!</b> Add STREAM_TOKENS or HELPER_TOKENS in bot settings and restart.</blockquote>"
         )
     if not Config.BASE_URL:
         return (
-            "<b>BASE_URL is not configured.</b>\n\n<i>Set it in bot settings to "
-            "generate stream links.</i>"
+            "<blockquote><b>BASE_URL is not configured!</b> Set BASE_URL in bot settings to generate stream links.</blockquote>"
         )
     return None
 
 
 def _usage():
     one, two = BotCommands.StreamCommand[0], BotCommands.StreamCommand[1]
-    return f"""
-<b>By replying to media:</b>
-<code>/{one} or /{two} [media]</code>
+    return f"""<b>🎬 Stream Link Generation Usage</b>
 
-<b>By reply/sending telegram link:</b>
-<code>/{one} or /{two} [link]</code>
-
-<b>By sending a batch range:</b>
-<code>/{one} or /{two} [link]-[last id]</code>
-
-<b>As one playlist page:</b>
-<code>/{one} -pl [name] [link range]</code>
-
-<b>With cover art:</b>
-<code>/{one} -t [photo link] [link]</code>
-
-<b>Self expiring links:</b>
-<code>/{one} -ttl [1d2h3m] [link]</code>
-
-<b>Delete a link (owner or sudo):</b>
-<code>/{one} [stream or playlist link] -d</code>
-"""
+<blockquote><b>How to generate stream links:</b>
+• <b>Reply to Media:</b> <code>/{one}</code>
+• <b>Telegram Link:</b> <code>/{one} [tg_link]</code>
+• <b>Batch Range:</b> <code>/{one} [tg_link]-[last_id]</code>
+• <b>Playlist Page:</b> <code>/{one} -pl Name [tg_link]</code>
+• <b>Cover Photo:</b> <code>/{one} -t [photo_link] [tg_link]</code>
+• <b>Expiring Link:</b> <code>/{one} -ttl 1d2h [tg_link]</code>
+• <b>Delete Link:</b> <code>/{one} [stream_link] -d</code></blockquote>"""
 
 
 def _head(title, rows, tag):
-    msg = f"<b><i>{escape(title)}</i></b>\n│"
-    for i, (label, value) in enumerate(rows):
-        edge = "┟" if i == 0 else "┠"
-        msg += f"\n{edge} <b>{label}</b> → {value}"
-    msg += f"\n┖ <b>Task By</b> → {tag}\n\n"
+    msg = f"<b>🎬 {escape(title)}</b>\n\n"
+    body = []
+    for label, value in rows:
+        body.append(f"• <b>{label}:</b> {value}")
+    body.append(f"• <b>User:</b> {tag}")
+    msg += f"<blockquote>{'<br>'.join(body)}</blockquote>\n\n"
     return msg
 
 
 def _done(line):
-    return "〶 <b><u>Action Performed :</u></b>\n" + f"⋗ <i>{line}</i>\n"
+    return f"<b>✅ Action Performed:</b>\n<blockquote>{line}</blockquote>\n"
 
 
 async def _delete_link(message, args):
     if not await CustomFilters.sudo("", message):
         await send_message(
             message,
-            "<b>Not allowed.</b>\n\n<i>Only the owner or a sudo user can "
-            "delete stream links.</i>",
+            "<blockquote>Only the owner or sudo users can delete stream links.</blockquote>",
         )
         await delete_links(message)
         return
@@ -261,15 +246,14 @@ async def _delete_link(message, args):
     if not target:
         await send_message(
             message,
-            "<b>Pass the link to delete</b>\n\n"
-            f"<code>/{BotCommands.StreamCommand[0]} [stream or playlist link] -d</code>",
+            f"<blockquote>Pass the stream link to delete:\n<code>/{BotCommands.StreamCommand[0]} [link] -d</code></blockquote>",
         )
         await delete_links(message)
         return
 
     from ..core.stream_server import forget
 
-    tag = message.from_user.mention if message.from_user else "N/A"
+    tag = message.from_user.mention(style="html") if message.from_user else "N/A"
     listing = await database.get_playlist(target)
     if listing:
         for tok in listing["items"]:
@@ -282,7 +266,7 @@ async def _delete_link(message, args):
             ("Links Removed", str(len(listing["items"]))),
         ]
         msg = _head(listing["name"] or target, rows, tag)
-        msg += _done("Playlist and every link inside it are gone")
+        msg += _done("Playlist and associated links removed!")
         await send_message(message, msg)
         await delete_links(message)
         return
@@ -292,10 +276,10 @@ async def _delete_link(message, args):
     forget(target)
     if found:
         msg = _head(target, [("Type", "Stream link")], tag)
-        msg += _done("Link is gone, it will no longer play")
+        msg += _done("Stream link deleted successfully!")
     else:
         msg = _head(target, [("Type", "Nothing found")], tag)
-        msg += _done("No such link, it may already be deleted or expired")
+        msg += _done("Link not found or already deleted/expired.")
     await send_message(message, msg)
     await delete_links(message)
 
@@ -322,7 +306,7 @@ async def stream_links(_, message):
         await delete_links(message)
         return
 
-    status = await send_message(message, "<i>Generating links...</i>")
+    status = await send_message(message, "<b>Generating stream links...</b>")
 
     try:
         if args["link"]:
@@ -331,7 +315,7 @@ async def stream_links(_, message):
             sources, asked = [reply], 1
     except Exception as e:
         LOGGER.error(f"stream link resolution failed: {e}")
-        await edit_message(status, f"<b>Could not read that link.</b>\n\n<i>{e}</i>")
+        await edit_message(status, f"<blockquote>Could not resolve link: {e}</blockquote>")
         return
 
     picked = []
@@ -342,7 +326,7 @@ async def stream_links(_, message):
             continue
 
     if not picked:
-        await edit_message(status, "<b>No playable media found in that link.</b>")
+        await edit_message(status, "<blockquote>No playable media found in that link!</blockquote>")
         return
 
     poster = None
@@ -365,7 +349,7 @@ async def stream_links(_, message):
         pl_token = await _reserve_playlist()
         if not pl_token:
             await edit_message(
-                status, "<b>Could not allocate a playlist. Try again.</b>"
+                status, "<blockquote>Could not allocate playlist token. Please try again.</blockquote>"
             )
             return
 
@@ -377,15 +361,15 @@ async def stream_links(_, message):
                 minted.append((token, media))
     except Exception as e:
         LOGGER.error(f"stream link generation failed: {e}")
-        await edit_message(status, f"<b>Failed to generate links.</b>\n\n<i>{e}</i>")
+        await edit_message(status, f"<blockquote>Failed to generate links: {e}</blockquote>")
         return
 
     if not minted:
-        await edit_message(status, "<b>Could not allocate links. Try again.</b>")
+        await edit_message(status, "<blockquote>Could not allocate stream links. Please try again.</blockquote>")
         return
 
     base = Config.BASE_URL.rstrip("/")
-    tag = message.from_user.mention if message.from_user else "N/A"
+    tag = message.from_user.mention(style="html") if message.from_user else "N/A"
     total = sum(getattr(m, "file_size", 0) or 0 for _t, m in minted)
     buttons = ButtonMaker()
 
@@ -403,7 +387,7 @@ async def stream_links(_, message):
         if ttl:
             rows.append(("Expires In", get_readable_time(ttl)))
         page = f"{base}/playlist/{pl_token}"
-        msg = _head(title, rows, tag) + _done("Playlist page is ready")
+        msg = _head(title, rows, tag) + _done("Playlist page generated!")
         buttons.url_button("▶️ Open Playlist", page, style=ButtonStyle.PRIMARY)
         buttons.url_button("🔗 Share", f"https://t.me/share/url?url={page}")
         await edit_message(status, msg, buttons.build_menu(2))
@@ -418,16 +402,16 @@ async def stream_links(_, message):
         direct = f"{base}/dl/{token}"
         rows = [
             ("Task Size", get_readable_file_size(total)),
-            ("Type", escape(mime)),
+            ("Mime Type", escape(mime)),
         ]
         if ttl:
             rows.append(("Expires In", get_readable_time(ttl)))
         msg = _head(name, rows, tag)
         if _playable(media):
-            msg += _done("Stream and download links are ready")
+            msg += _done("Stream and download links ready!")
             buttons.url_button("▶️ Stream", watch, style=ButtonStyle.PRIMARY)
         else:
-            msg += _done("Browsers cannot play this type, use download")
+            msg += _done("Media non-streamable in web browser, use direct download.")
         buttons.url_button("⬇️ Download", direct, style=ButtonStyle.SUCCESS)
         buttons.url_button(
             "🔗 Share",
@@ -447,9 +431,9 @@ async def stream_links(_, message):
     title = getattr(minted[0][1], "file_name", "") or "Stream Links"
     msg = _head(title, rows, tag)
     if len(minted) > len(shown):
-        msg += _done(f"Showing the first {len(shown)}, use -pl for one page")
+        msg += _done(f"Showing first {len(shown)} items. Use <code>-pl</code> flag for single playlist page.")
     else:
-        msg += _done("Stream and download links are ready")
+        msg += _done("Stream and download links ready!")
 
     for token, media in shown:
         label = _short(getattr(media, "file_name", ""))

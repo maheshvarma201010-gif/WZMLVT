@@ -84,284 +84,226 @@ seedr_options = ["SEEDR_EMAIL", "SEEDR_PASSWORD", "SEEDR_DELETE_FOLDER"]
 
 user_settings_text = {
     "THUMBNAIL": (
-        "Photo or Doc",
-        "Custom Thumbnail is used as the thumbnail for the files you upload to telegram in media or document mode.",
-        "<i>Send a photo to save it as custom thumbnail.</i> \n┖ <b>Time Left :</b> <code>60 sec</code>",
+        "Photo or Document",
+        "Custom thumbnail used when uploading files to Telegram in Media or Document mode.",
+        "<blockquote>Send a photo to set as custom thumbnail.\n⏱️ <b>Time Left:</b> <code>60 sec</code></blockquote>",
     ),
     "RCLONE_CONFIG": (
-        "",
-        "",
-        "<i>Send your <code>rclone.conf</code> file to use as your Upload Dest to RClone.</i> \n┖ <b>Time Left :</b> <code>60 sec</code>",
+        "File",
+        "Your rclone.conf file for Rclone cloud storage uploads.",
+        "<blockquote>Send your <code>rclone.conf</code> file.\n⏱️ <b>Time Left:</b> <code>60 sec</code></blockquote>",
     ),
     "TOKEN_PICKLE": (
-        "",
-        "",
-        "<i>Send your <code>token.pickle</code> to use as your Upload Dest to GDrive</i> \n┖ <b>Time Left :</b> <code>60 sec</code>",
+        "File",
+        "Your token.pickle file for Google Drive API uploads.",
+        "<blockquote>Send your <code>token.pickle</code> file.\n⏱️ <b>Time Left:</b> <code>60 sec</code></blockquote>",
     ),
     "LEECH_SPLIT_SIZE": (
-        "",
-        "",
-        f"Send Leech split size in bytes or use gb or mb. Example: 40000000 or 2.5gb or 1000mb. PREMIUM_USER: {TgClient.IS_PREMIUM_USER}.</i> \n┖ <b>Time Left :</b> <code>60 sec</code>",
+        "Number / Size String",
+        "Maximum file split size limit for Telegram uploads.",
+        f"<blockquote>Send split size (e.g. 2gb, 500mb, or bytes).\n⏱️ <b>Time Left:</b> <code>60 sec</code></blockquote>",
     ),
     "LEECH_DUMP_CHAT": (
-        "",
-        "",
-        """Send leech destination ID/USERNAME/PM. 
-* b:id/@username/pm (b: means leech by bot) (id or username of the chat or write pm means private message so bot will send the files in private to you) when you should use b:(leech by bot)? When your default settings is leech by user and you want to leech by bot for specific task.
-* u:id/@username(u: means leech by user) This in case OWNER added USER_STRING_SESSION.
-* h:id/@username(hybrid leech) h: to upload files by bot and user based on file size.
-* id/@username|topic_id(leech in specific chat and topic) add | without space and write topic id after chat id or username.
-┖ <b>Time Left :</b> <code>60 sec</code>""",
+        "Chat ID / Username / PM",
+        "Destination chat ID or username for Telegram uploads.",
+        """<blockquote>Send destination chat ID, @username, or pm.
+• b:id/@username (Leech via Bot)
+• u:id/@username (Leech via User session)
+• h:id/@username (Hybrid size upload)
+• id/@username|topic_id (Specific topic)
+⏱️ <b>Time Left:</b> <code>60 sec</code></blockquote>""",
     ),
     "LEECH_PREFIX": (
-        "",
-        "",
-        "Send Leech Filename Prefix. You can add HTML tags. Example: <code>@mychannel</code>.</i> \n┖ <b>Time Left :</b> <code>60 sec</code>",
+        "Text",
+        "Prefix added to beginning of leeched filenames.",
+        "<blockquote>Send Filename Prefix text.\n⏱️ <b>Time Left:</b> <code>60 sec</code></blockquote>",
     ),
     "LEECH_SUFFIX": (
-        "",
-        "",
-        "Send Leech Filename Suffix. You can add HTML tags. Example: <code>@mychannel</code>.</i> \n┖ <b>Time Left :</b> <code>60 sec</code>",
+        "Text",
+        "Suffix added to end of leeched filenames.",
+        "<blockquote>Send Filename Suffix text.\n⏱️ <b>Time Left:</b> <code>60 sec</code></blockquote>",
     ),
     "LEECH_CAPTION": (
-        "",
-        "",
-        "Send Leech Caption. You can add HTML tags. Example: <code>@mychannel</code>.</i> \n┖ <b>Time Left :</b> <code>60 sec</code>",
+        "Text",
+        "Custom caption added to uploaded Telegram files.",
+        "<blockquote>Send custom caption text.\n⏱️ <b>Time Left:</b> <code>60 sec</code></blockquote>",
     ),
     "THUMBNAIL_LAYOUT": (
-        "",
-        "",
-        "Send thumbnail layout (widthxheight, 2x2, 3x3, 2x4, 4x4, ...). Example: 3x3.</i> \n┖ <b>Time Left :</b> <code>60 sec</code>",
+        "Dimensions (WxH)",
+        "Grid layout format for video thumbnail screenshots.",
+        "<blockquote>Send thumbnail grid layout (e.g. 3x3, 2x2).\n⏱️ <b>Time Left:</b> <code>60 sec</code></blockquote>",
     ),
     "RCLONE_PATH": (
-        "",
-        "",
-        "Send Rclone Path. If you want to use your rclone config edit using owner/user config from usetting or add mrcc: before rclone path. Example mrcc:remote:folder. </i> \n┖ <b>Time Left :</b> <code>60 sec</code>",
+        "Remote Path",
+        "Default Rclone upload path (e.g. remote:folder).",
+        "<blockquote>Send default Rclone path.\n⏱️ <b>Time Left:</b> <code>60 sec</code></blockquote>",
     ),
     "RCLONE_FLAGS": (
-        "",
-        "",
-        "key:value|key|key|key:value . Check here all <a href='https://rclone.org/flags/'>RcloneFlags</a>\nEx: --buffer-size:8M|--drive-starred-only",
+        "Key-Value Flags",
+        "Custom flags appended to Rclone execution.",
+        "<blockquote>Send rclone flags (e.g. --buffer-size:8M|--drive-starred-only).\n⏱️ <b>Time Left:</b> <code>60 sec</code></blockquote>",
     ),
     "GDRIVE_ID": (
-        "",
-        "",
-        "Send Gdrive ID. If you want to use your token.pickle edit using owner/user token from usetting or add mtp: before the id. Example: mtp:F435RGGRDXXXXXX . </i> \n┖ <b>Time Left :</b> <code>60 sec</code>",
+        "Drive ID",
+        "Default Google Drive folder ID for uploads.",
+        "<blockquote>Send Google Drive folder ID.\n⏱️ <b>Time Left:</b> <code>60 sec</code></blockquote>",
     ),
     "INDEX_URL": (
-        "",
-        "",
-        "Send Index URL for your gdrive option. </i> \n┖ <b>Time Left :</b> <code>60 sec</code>",
+        "URL",
+        "Google Drive Index mirror URL.",
+        "<blockquote>Send Index mirror URL.\n⏱️ <b>Time Left:</b> <code>60 sec</code></blockquote>",
     ),
     "UPLOAD_PATHS": (
-        "",
-        "",
-        "Send Dict of keys that have path values. Example: {'path 1': 'remote:rclonefolder', 'path 2': 'gdrive1 id', 'path 3': 'tg chat id', 'path 4': 'mrcc:remote:', 'path 5': b:@username} . </i> \n┖ <b>Time Left :</b> <code>60 sec</code>",
+        "Dict",
+        "Predefined dictionary of upload paths.",
+        "<blockquote>Send dictionary of path shortcuts.\n⏱️ <b>Time Left:</b> <code>60 sec</code></blockquote>",
     ),
     "EXCLUDED_EXTENSIONS": (
-        "",
-        "",
-        "Send excluded extensions separated by space without dot at beginning. </i> \n┖ <b>Time Left :</b> <code>60 sec</code>",
+        "Extensions",
+        "Space-separated file extensions to exclude from upload.",
+        "<blockquote>Send excluded extensions separated by space (e.g. txt iso zip).\n⏱️ <b>Time Left:</b> <code>60 sec</code></blockquote>",
     ),
     "NAME_SWAP": (
-        "",
-        "",
-        """<i>Send your Name Swap. You can add pattern instead of normal text according to the format.</i>
-<b>Full Documentation Guide</b> <a href="https://t.me/WZML_X/77">Click Here</a>
-┖ <b>Time Left :</b> <code>60 sec</code>
-""",
+        "Pattern Rules",
+        "Filename text substitution rules.",
+        "<blockquote>Send substitution rules in format: <code>word1/word2/s</code>\n⏱️ <b>Time Left:</b> <code>60 sec</code></blockquote>",
     ),
     "YT_DLP_OPTIONS": (
-        "",
-        "",
-        """Format: {key: value, key: value, key: value}.
-Example: {"format": "bv*+mergeall[vcodec=none]", "nocheckcertificate": True, "playliststart": 10, "fragment_retries": float("inf"), "matchtitle": "S13", "writesubtitles": True, "live_from_start": True, "postprocessor_args": {"ffmpeg": ["-threads", "4"]}, "wait_for_video": (5, 100), "download_ranges": [{"start_time": 0, "end_time": 10}]}
-Check all yt-dlp api options from this <a href='https://github.com/yt-dlp/yt-dlp/blob/master/yt_dlp/YoutubeDL.py#L184'>FILE</a> or use this <a href='https://t.me/mltb_official_channel/177'>script</a> to convert cli arguments to api options.
-
-<i>Send dict of YT-DLP Options according to format.</i> \n┖ <b>Time Left :</b> <code>60 sec</code>""",
+        "Dict",
+        "Custom yt-dlp option dictionary.",
+        "<blockquote>Send yt-dlp options dictionary.\n⏱️ <b>Time Left:</b> <code>60 sec</code></blockquote>",
     ),
     "FFMPEG_CMDS": (
-        "",
-        "",
-        """Dict of list values of ffmpeg commands. You can set multiple ffmpeg commands for all files before upload. Don't write ffmpeg at beginning, start directly with the arguments.
-Examples: {"subtitle": ["-i mltb.mkv -c copy -c:s srt mltb.mkv", "-i mltb.video -c copy -c:s srt mltb"], "convert": ["-i mltb.m4a -c:a libmp3lame -q:a 2 mltb.mp3", "-i mltb.audio -c:a libmp3lame -q:a 2 mltb.mp3"], extract: ["-i mltb -map 0:a -c copy mltb.mka -map 0:s -c copy mltb.srt"]}
-Notes:
-- Add `-del` to the list which you want from the bot to delete the original files after command run complete!
-- To execute one of those lists in bot for example, you must use -ff subtitle (list key) or -ff convert (list key)
-Here I will explain how to use mltb.* which is reference to files you want to work on.
-1. First cmd: the input is mltb.mkv so this cmd will work only on mkv videos and the output is mltb.mkv also so all outputs are mkv. -del will delete the original media after complete run of the cmd.
-2. Second cmd: the input is mltb.video so this cmd will work on all videos and the output is only mltb so the extension is the same as input files.
-3. Third cmd: the input is mltb.m4a so this cmd will work only on m4a audios and the output is mltb.mp3 so the output extension is mp3.
-4. Fourth cmd: the input is mltb.audio so this cmd will work on all audios and the output is mltb.mp3 so the output extension is mp3.
-
-<i>Send dict of FFMPEG_CMDS Options according to format.</i> \n┖ <b>Time Left :</b> <code>60 sec</code>
-""",
+        "Dict of commands",
+        "Pre-processing FFmpeg commands dictionary.",
+        "<blockquote>Send FFmpeg commands dictionary.\n⏱️ <b>Time Left:</b> <code>60 sec</code></blockquote>",
     ),
     "METADATA_CMDS": (
-        "",
-        "",
-        """<i>Send your Meta data. You can set it according to the format title="Join @WZML_X".</i>
-<b>Full Documentation Guide</b> <a href="https://t.me/WZML_X/">Click Here</a>
-┖ <b>Time Left :</b> <code>60 sec</code>
-""",
+        "Text",
+        "Metadata tagging configuration.",
+        "<blockquote>Send metadata configuration parameters.\n⏱️ <b>Time Left:</b> <code>60 sec</code></blockquote>",
     ),
     "METADATA": (
-        "🏷 Global Metadata (key=value|key=value)",
-        "Apply metadata to all media files with dynamic variables.",
-        """<i>📝 Send metadata as</i> <code>key=value|key2=value2</code>
-
-<b>🔧 Dynamic Variables:</b>
-• <code>{filename}</code> - Original filename
-• <code>{basename}</code> - Name without extension
-• <code>{audiolang}</code> - Audio language (English/Hindi etc.)
-• <code>{year}</code> - Year from filename
-
-<b>📋 Example:</b>
-<code>title={basename}|artist={audiolang} Version|year={year}</code>
-
-⏱ <b>Time Left:</b> <code>60 sec</code>""",
+        "Key-Value string",
+        "Apply metadata to all media files.",
+        """<blockquote>Send metadata string format: <code>key=value|key2=value2</code>
+⏱️ <b>Time Left:</b> <code>60 sec</code></blockquote>""",
     ),
     "SET_ALL_METADATA": (
-        "🏷 Set All Metadata",
-        "Apply the same metadata configuration to all stream fields.",
-        """<blockquote><b>📝 Send metadata in format:</b> <code>key=value|key2=value2</code></blockquote>
-
-<b>🔧 Dynamic Variables:</b>
-• <code>{filename}</code> — Original file name
-• <code>{basename}</code> — Name without file extension
-• <code>{audiolang}</code> — Audio track language
-• <code>{sublang}</code> — Subtitle track language
-• <code>{year}</code> — Release year from file name
-
-<b>📋 Example:</b>
-<code>title={basename}|artist={audiolang} Version</code>
-
-⏱ <b>Time Left:</b> <code>60 sec</code>""",
+        "Key-Value string",
+        "Global stream metadata override.",
+        """<blockquote>Send global metadata format: <code>key=value|key2=value2</code>
+⏱️ <b>Time Left:</b> <code>60 sec</code></blockquote>""",
     ),
     "AUDIO_METADATA": (
-        "🎵 Audio Stream Metadata",
-        "Metadata applied to each audio track separately.",
-        """<i>🎧 Audio stream metadata with per-track language support</i>
-
-<b>📋 Example:</b>
-<code>language={audiolang}|title=Audio - {audiolang}</code>
-
-⏱ <b>Time Left:</b> <code>60 sec</code>""",
+        "Key-Value string",
+        "Audio stream metadata.",
+        "<blockquote>Send audio metadata format: <code>key=value</code>\n⏱️ <b>Time Left:</b> <code>60 sec</code></blockquote>",
     ),
     "VIDEO_METADATA": (
-        "🎥 Video Stream Metadata",
-        "Metadata applied to video streams.",
-        """<i>📹 Video stream metadata for visual tracks</i>
-
-<b>📋 Example:</b>
-<code>title={basename}|comment=HD Video</code>
-
-⏱ <b>Time Left:</b> <code>60 sec</code>""",
+        "Key-Value string",
+        "Video stream metadata.",
+        "<blockquote>Send video metadata format: <code>key=value</code>\n⏱️ <b>Time Left:</b> <code>60 sec</code></blockquote>",
     ),
     "SUBTITLE_METADATA": (
-        "💬 Subtitle Stream Metadata",
-        "Metadata applied to each subtitle track separately.",
-        """<i>📄 Subtitle stream metadata with per-track language support</i>
-
-<b>📋 Example:</b>
-<code>language={sublang}|title=Subtitles - {sublang}</code>
-
-⏱ <b>Time Left:</b> <code>60 sec</code>""",
+        "Key-Value string",
+        "Subtitle stream metadata.",
+        "<blockquote>Send subtitle metadata format: <code>key=value</code>\n⏱️ <b>Time Left:</b> <code>60 sec</code></blockquote>",
     ),
     "YT_DESP": (
         "String",
-        "Custom description for YouTube uploads. Default is used if not set.",
-        "<i>Send your custom YouTube description.</i> \nTime Left : <code>60 sec</code>",
+        "Custom YouTube upload description.",
+        "<blockquote>Send custom YouTube description.\n⏱️ <b>Time Left:</b> <code>60 sec</code></blockquote>",
     ),
     "YT_TAGS": (
-        "Comma-separated strings",
-        "Custom tags for YouTube uploads (e.g., tag1,tag2,tag3). Default is used if not set.",
-        "<i>Send your custom YouTube tags as a comma-separated list.</i> \nTime Left : <code>60 sec</code>",
+        "Comma-separated list",
+        "Custom tags for YouTube uploads.",
+        "<blockquote>Send comma-separated YouTube tags.\n⏱️ <b>Time Left:</b> <code>60 sec</code></blockquote>",
     ),
     "YT_CATEGORY_ID": (
         "Number",
-        "Custom category ID for YouTube uploads. Default is used if not set.",
-        "<i>Send your custom YouTube category ID (e.g., 22).</i> \nTime Left : <code>60 sec</code>",
+        "YouTube category ID.",
+        "<blockquote>Send YouTube category ID number.\n⏱️ <b>Time Left:</b> <code>60 sec</code></blockquote>",
     ),
     "YT_PRIVACY_STATUS": (
-        "public, private, or unlisted",
-        "Custom privacy status for YouTube uploads. Default is used if not set.",
-        "<i>Send your custom YouTube privacy status (public, private, or unlisted).</i> \nTime Left : <code>60 sec</code>",
+        "public / private / unlisted",
+        "Privacy status for YouTube videos.",
+        "<blockquote>Send privacy status: public, private, or unlisted.\n⏱️ <b>Time Left:</b> <code>60 sec</code></blockquote>",
     ),
     "USER_COOKIE_FILE": (
         "File",
-        "User's YT-DLP Cookie File to authenticate access to websites and youtube.",
-        "<i>Send your cookie file (e.g., cookies.txt or abc.txt).</i> \n┖ <b>Time Left :</b> <code>60 sec</code>",
+        "Cookies file for yt-dlp authentication.",
+        "<blockquote>Send cookie file (cookies.txt).\n⏱️ <b>Time Left:</b> <code>60 sec</code></blockquote>",
     ),
     "GOFILE_TOKEN": (
         "String",
         "Gofile API Token",
-        "<i>Send your Gofile API Token.</i> \n┖ <b>Time Left :</b> <code>60 sec</code>",
+        "<blockquote>Send Gofile API Token.\n⏱️ <b>Time Left:</b> <code>60 sec</code></blockquote>",
     ),
     "GOFILE_FOLDER_ID": (
         "String",
         "Gofile Folder ID",
-        "<i>Send your Gofile Folder ID. If empty, uploads to Root.</i> \n┖ <b>Time Left :</b> <code>60 sec</code>",
+        "<blockquote>Send Gofile Folder ID.\n⏱️ <b>Time Left:</b> <code>60 sec</code></blockquote>",
     ),
     "BUZZHEAVIER_TOKEN": (
         "String",
         "BuzzHeavier API Token",
-        "<i>Send your BuzzHeavier API Token (Account ID).</i> \n┖ <b>Time Left :</b> <code>60 sec</code>",
+        "<blockquote>Send BuzzHeavier API Token.\n⏱️ <b>Time Left:</b> <code>60 sec</code></blockquote>",
     ),
     "BUZZHEAVIER_FOLDER_ID": (
         "String",
         "BuzzHeavier Folder ID",
-        "<i>Send your BuzzHeavier Folder ID.</i> \n┖ <b>Time Left :</b> <code>60 sec</code>",
+        "<blockquote>Send BuzzHeavier Folder ID.\n⏱️ <b>Time Left:</b> <code>60 sec</code></blockquote>",
     ),
     "PIXELDRAIN_KEY": (
         "String",
         "PixelDrain API Key",
-        "<i>Send your PixelDrain API Key.</i> \n┖ <b>Time Left :</b> <code>60 sec</code>",
+        "<blockquote>Send PixelDrain API Key.\n⏱️ <b>Time Left:</b> <code>60 sec</code></blockquote>",
     ),
     "DEVUPLOADS_KEY": (
         "String",
         "DevUploads API Key",
-        "<i>Send your DevUploads API Key.</i> \n┖ <b>Time Left :</b> <code>60 sec</code>",
+        "<blockquote>Send DevUploads API Key.\n⏱️ <b>Time Left:</b> <code>60 sec</code></blockquote>",
     ),
     "DEVUPLOADS_FOLDER": (
         "String",
         "DevUploads Folder ID",
-        "<i>Send your DevUploads Folder ID. Leave empty to upload to root.</i> \n┖ <b>Time Left :</b> <code>60 sec</code>",
+        "<blockquote>Send DevUploads Folder ID.\n⏱️ <b>Time Left:</b> <code>60 sec</code></blockquote>",
     ),
     "VIKINGFILE_HASH": (
         "String",
-        "VikingFile Hash",
-        "<i>Send your VikingFile User Hash.</i> \n┖ <b>Time Left :</b> <code>60 sec</code>",
+        "VikingFile User Hash",
+        "<blockquote>Send VikingFile Hash.\n⏱️ <b>Time Left:</b> <code>60 sec</code></blockquote>",
     ),
     "VIKINGFILE_FOLDER": (
         "String",
-        "VikingFile folder name/path. Leave empty to upload to root.",
-        "<i>Send your VikingFile folder name/path. Leave empty to upload to root.</i> \n┖ <b>Time Left :</b> <code>60 sec</code>",
+        "VikingFile Folder Name",
+        "<blockquote>Send VikingFile folder name.\n⏱️ <b>Time Left:</b> <code>60 sec</code></blockquote>",
     ),
     "MEGA_EMAIL": (
         "String",
-        "Your Mega.nz account email for per-user Mega downloads & uploads.",
-        "<i>Send your Mega.nz email address.</i> \n┖ <b>Time Left :</b> <code>60 sec</code>",
+        "Mega.nz account email address.",
+        "<blockquote>Send Mega.nz email address.\n⏱️ <b>Time Left:</b> <code>60 sec</code></blockquote>",
     ),
     "MEGA_PASSWORD": (
         "String",
-        "Your Mega.nz account password for per-user Mega downloads & uploads.",
-        "<i>Send your Mega.nz account password.</i> \n┖ <b>Time Left :</b> <code>60 sec</code>",
+        "Mega.nz account password.",
+        "<blockquote>Send Mega.nz account password.\n⏱️ <b>Time Left:</b> <code>60 sec</code></blockquote>",
     ),
     "SEEDR_EMAIL": (
         "String",
-        "Your Seedr.cc account email for per-user Seedr cloud downloads.",
-        "<i>Send your Seedr.cc email address.</i> \n┖ <b>Time Left :</b> <code>60 sec</code>",
+        "Seedr.cc account email address.",
+        "<blockquote>Send Seedr.cc email address.\n⏱️ <b>Time Left:</b> <code>60 sec</code></blockquote>",
     ),
     "SEEDR_PASSWORD": (
         "String",
-        "Your Seedr.cc account password for per-user Seedr cloud downloads.",
-        "<i>Send your Seedr.cc account password.</i> \n┖ <b>Time Left :</b> <code>60 sec</code>",
+        "Seedr.cc account password.",
+        "<blockquote>Send Seedr.cc account password.\n⏱️ <b>Time Left:</b> <code>60 sec</code></blockquote>",
     ),
     "DRIVE_CAT": (
         "Dict",
-        'User-defined GDrive categories (name → drive_id). Format: {"name": "drive_id|index_link"}.',
-        '<i>Send dict of user drive categories.\nExample: {"Movies": "0Bxxxxxxxx", "TV": "1Ayyyyyyy|https://index.tv"}\nEach value: drive_id or drive_id|index_link</i> \n┖ <b>Time Left :</b> <code>60 sec</code>',
+        "User-defined GDrive categories dictionary.",
+        "<blockquote>Send drive category dictionary.\n⏱️ <b>Time Left:</b> <code>60 sec</code></blockquote>",
     ),
 }
 
@@ -376,19 +318,19 @@ async def get_user_settings(from_user, stype="main"):
 
     if stype == "main":
         buttons.data_button(
-            "General Settings", f"userset {user_id} general", position="header"
+            "⚙️ General Settings", f"userset {user_id} general", position="header"
         )
-        buttons.data_button("Mirror Settings", f"userset {user_id} mirror")
-        buttons.data_button("Leech Settings", f"userset {user_id} leech")
-        buttons.data_button("Video Tools", f"userset {user_id} vtools")
-        buttons.data_button("Uphoster Settings", f"userset {user_id} uphoster")
-        buttons.data_button("FF Media Settings", f"userset {user_id} ffset")
+        buttons.data_button("☁️ Mirror Settings", f"userset {user_id} mirror")
+        buttons.data_button("📦 Leech Settings", f"userset {user_id} leech")
+        buttons.data_button("🎬 Video Tools", f"userset {user_id} vtools")
+        buttons.data_button("🌐 Uphoster Settings", f"userset {user_id} uphoster")
+        buttons.data_button("🎞️ FF Media Settings", f"userset {user_id} ffset")
         buttons.data_button(
-            "Misc Settings", f"userset {user_id} advanced", position="l_body"
+            "🛠️ Misc Settings", f"userset {user_id} advanced", position="l_body"
         )
 
-        buttons.data_button("Export Settings", f"userset {user_id} export_settings", position="footer")
-        buttons.data_button("Import Settings", f"userset {user_id} import_settings", position="footer")
+        buttons.data_button("📤 Export Settings", f"userset {user_id} export_settings", position="footer")
+        buttons.data_button("📥 Import Settings", f"userset {user_id} import_settings", position="footer")
 
         if user_dict and any(
             key in user_dict
@@ -406,22 +348,22 @@ async def get_user_settings(from_user, stype="main"):
             ]
         ):
             buttons.data_button(
-                "Reset All", f"userset {user_id} confirm_reset_all", position="footer"
+                "♻️ Reset All", f"userset {user_id} confirm_reset_all", position="footer"
             )
         buttons.data_button(
-            "Close",
+            "❌ Close",
             f"userset {user_id} close",
             position="footer",
             style=ButtonStyle.DANGER,
         )
 
-        text = f"""⌬ <b>User Settings :</b>
-│
-┟ <b>Name</b> → {user_name}
-┠ <b>UserID</b> → #ID{user_id}
-┠ <b>Username</b> → @{from_user.username}
-┠ <b>Telegram DC</b> → {from_user.dc_id}
-┖ <b>Telegram Lang</b> → {Language.get(lc).display_name() if (lc := from_user.language_code) else "N/A"}"""
+        text = f"""<b>👤 User Personal Settings</b>
+
+<blockquote>• <b>Name:</b> {user_name}
+• <b>User ID:</b> <code>#ID{user_id}</code>
+• <b>Username:</b> @{from_user.username or 'N/A'}
+• <b>Telegram DC:</b> {from_user.dc_id or 'N/A'}
+• <b>Language:</b> {Language.get(lc).display_name() if (lc := from_user.language_code) else "N/A"}</blockquote>"""
 
         btns = buttons.build_menu(2)
 
@@ -444,9 +386,9 @@ async def get_user_settings(from_user, stype="main"):
             f"userset {user_id} tog USER_TOKENS {'f' if user_tokens else 't'}",
         )
 
-        buttons.data_button("Back", f"userset {user_id} back", "footer")
+        buttons.data_button("◀️ Back", f"userset {user_id} back", "footer")
         buttons.data_button(
-            "Close", f"userset {user_id} close", "footer", style=ButtonStyle.DANGER
+            "❌ Close", f"userset {user_id} close", "footer", style=ButtonStyle.DANGER
         )
 
         def_cookies = user_dict.get("USE_DEFAULT_COOKIE", False)
@@ -457,13 +399,12 @@ async def get_user_settings(from_user, stype="main"):
         )
         btns = buttons.build_menu(2)
 
-        text = f"""⌬ <b>General Settings :</b>
-┟ <b>Name</b> → {user_name}
-┃
-┠ <b>Default Upload Package</b> → <b>{du}</b>
-┠ <b>Default Usage Mode</b> → <b>{tr}'s</b> token/config
-┖ <b>YT Cookies Mode</b> → <b>{cookie_mode}</b>
-"""
+        text = f"""<b>⚙️ General User Settings</b>
+
+<blockquote>• <b>Name:</b> {user_name}
+• <b>Default Upload Engine:</b> <b>{du}</b>
+• <b>Token Credentials Mode:</b> <b>{tr}'s</b> token/config
+• <b>YT Cookie Source:</b> <b>{cookie_mode}</b></blockquote>"""
 
     elif stype == "leech":
         thumbpath = f"thumbnails/{user_id}.jpg"
@@ -579,28 +520,27 @@ async def get_user_settings(from_user, stype="main"):
             f"userset {user_id} split_mode {next_split_mode}",
         )
 
-        buttons.data_button("Back", f"userset {user_id} back", "footer")
+        buttons.data_button("◀️ Back", f"userset {user_id} back", "footer")
         buttons.data_button(
-            "Close", f"userset {user_id} close", "footer", style=ButtonStyle.DANGER
+            "❌ Close", f"userset {user_id} close", "footer", style=ButtonStyle.DANGER
         )
         btns = buttons.build_menu(2)
 
-        text = f"""⌬ <b>Leech Settings :</b>
-┟ <b>Name</b> → {user_name}
-┃
-┠ Leech Type → <b>{ltype}</b>
-┠ Leech Thumbnail → <b>{thumbmsg}</b>
-┠ Leech Split Size → <b>{get_readable_file_size(split_size)}</b>
-┠ Equal Splits → <b>{equal_splits}</b>
-┠ Media Group → <b>{media_group}</b>
-┠ Leech Prefix → <code>{escape(lprefix)}</code>
-┠ Leech Suffix → <code>{escape(lsuffix)}</code>
-┠ Leech Caption → <code>{escape(lcap)}</code>
-┠ Leech Destination → <code>{leech_dest}</code>
-┠ Thumbnail Layout → <b>{thumb_layout}</b>
-┠ Split Mode → <b>{split_mode.capitalize()}</b>
-┖ Auto Thumbnail → <b>{auto_thumb}</b>
-"""
+        text = f"""<b>📦 Leech Settings</b>
+
+<blockquote>• <b>User:</b> {user_name}
+• <b>Upload Format:</b> <b>{ltype}</b>
+• <b>Thumbnail Status:</b> <b>{thumbmsg}</b>
+• <b>Split Size Limit:</b> <b>{get_readable_file_size(split_size)}</b>
+• <b>Equal Splits:</b> <b>{equal_splits}</b>
+• <b>Media Group:</b> <b>{media_group}</b>
+• <b>Filename Prefix:</b> <code>{escape(lprefix)}</code>
+• <b>Filename Suffix:</b> <code>{escape(lsuffix)}</code>
+• <b>Caption Text:</b> <code>{escape(lcap)}</code>
+• <b>Destination Chat:</b> <code>{leech_dest}</code>
+• <b>Grid Layout:</b> <b>{thumb_layout}</b>
+• <b>Split Mode:</b> <b>{split_mode.capitalize()}</b>
+• <b>Auto Thumbnail:</b> <b>{auto_thumb}</b></blockquote>"""
 
     elif stype == "vtools":
         auto_merge = user_dict.get("AUTO_MERGE", False) or (
@@ -617,17 +557,16 @@ async def get_user_settings(from_user, stype="main"):
             )
             auto_merge_status = "Disabled"
 
-        buttons.data_button("Back", f"userset {user_id} back", "footer")
+        buttons.data_button("◀️ Back", f"userset {user_id} back", "footer")
         buttons.data_button(
-            "Close", f"userset {user_id} close", "footer", style=ButtonStyle.DANGER
+            "❌ Close", f"userset {user_id} close", "footer", style=ButtonStyle.DANGER
         )
         btns = buttons.build_menu(1)
 
-        text = f"""⌬ <b>Video Tools :</b>
-┟ <b>Name</b> → {user_name}
-┃
-┖ <b>Auto Merge</b> → <b>{auto_merge_status}</b>
-"""
+        text = f"""<b>🎬 Video Processing Tools</b>
+
+<blockquote>• <b>User:</b> {user_name}
+• <b>Auto Video Merge:</b> <b>{auto_merge_status}</b></blockquote>"""
 
     elif stype == "uphoster":
         uphoster_service = user_dict.get("UPHOSTER_SERVICE", "gofile")
@@ -639,23 +578,23 @@ async def get_user_settings(from_user, stype="main"):
         buttons.data_button("PixelDrain Tools", f"userset {user_id} pixeldrain")
         buttons.data_button("DevUploads Tools", f"userset {user_id} devuploads")
         buttons.data_button("VikingFile Tools", f"userset {user_id} vikingfile")
-        buttons.data_button("Back", f"userset {user_id} back", "footer")
+        buttons.data_button("◀️ Back", f"userset {user_id} back", "footer")
         buttons.data_button(
-            "Close", f"userset {user_id} close", "footer", style=ButtonStyle.DANGER
+            "❌ Close", f"userset {user_id} close", "footer", style=ButtonStyle.DANGER
         )
         btns = buttons.build_menu(2)
 
         destinations = [s.capitalize() for s in uphoster_service.split(",")]
-        text = f"""⌬ <b>Uphoster Settings :</b>
-┟ <b>Name</b> → {user_name}
-┃
-┖ <b>Current Destination</b> → {", ".join(destinations)}"""
+        text = f"""<b>🌐 Uphoster Services Settings</b>
+
+<blockquote>• <b>User:</b> {user_name}
+• <b>Active Services:</b> {", ".join(destinations)}</blockquote>"""
 
     elif stype == "pixeldrain":
         buttons.data_button("PixelDrain Key", f"userset {user_id} menu PIXELDRAIN_KEY")
-        buttons.data_button("Back", f"userset {user_id} back uphoster", "footer")
+        buttons.data_button("◀️ Back", f"userset {user_id} back uphoster", "footer")
         buttons.data_button(
-            "Close", f"userset {user_id} close", "footer", style=ButtonStyle.DANGER
+            "❌ Close", f"userset {user_id} close", "footer", style=ButtonStyle.DANGER
         )
         btns = buttons.build_menu(1)
 
@@ -666,10 +605,10 @@ async def get_user_settings(from_user, stype="main"):
         else:
             pdtoken = "None"
 
-        text = f"""⌬ <b>PixelDrain Settings :</b>
-┟ <b>Name</b> → {user_name}
-┃
-┖ <b>PixelDrain Key</b> → <code>{pdtoken}</code>"""
+        text = f"""<b>PixelDrain Settings</b>
+
+<blockquote>• <b>User:</b> {user_name}
+• <b>API Key:</b> <code>{pdtoken}</code></blockquote>"""
 
     elif stype == "buzzheavier":
         buttons.data_button(
@@ -678,9 +617,9 @@ async def get_user_settings(from_user, stype="main"):
         buttons.data_button(
             "BuzzHeavier Folder ID", f"userset {user_id} menu BUZZHEAVIER_FOLDER_ID"
         )
-        buttons.data_button("Back", f"userset {user_id} back uphoster", "footer")
+        buttons.data_button("◀️ Back", f"userset {user_id} back uphoster", "footer")
         buttons.data_button(
-            "Close", f"userset {user_id} close", "footer", style=ButtonStyle.DANGER
+            "❌ Close", f"userset {user_id} close", "footer", style=ButtonStyle.DANGER
         )
         btns = buttons.build_menu(1)
 
@@ -696,11 +635,11 @@ async def get_user_settings(from_user, stype="main"):
         else:
             bzfolder = "None"
 
-        text = f"""⌬ <b>BuzzHeavier Settings :</b>
-┟ <b>Name</b> → {user_name}
-┃
-┠ <b>BuzzHeavier Token</b> → <code>{bztoken}</code>
-┖ <b>BuzzHeavier Folder ID</b> → <code>{bzfolder}</code>"""
+        text = f"""<b>BuzzHeavier Settings</b>
+
+<blockquote>• <b>User:</b> {user_name}
+• <b>API Token:</b> <code>{bztoken}</code>
+• <b>Folder ID:</b> <code>{bzfolder}</code></blockquote>"""
 
     elif stype == "devuploads":
         buttons.data_button(
@@ -709,9 +648,9 @@ async def get_user_settings(from_user, stype="main"):
         buttons.data_button(
             "DevUploads Folder ID", f"userset {user_id} menu DEVUPLOADS_FOLDER"
         )
-        buttons.data_button("Back", f"userset {user_id} back uphoster", "footer")
+        buttons.data_button("◀️ Back", f"userset {user_id} back uphoster", "footer")
         buttons.data_button(
-            "Close", f"userset {user_id} close", "footer", style=ButtonStyle.DANGER
+            "❌ Close", f"userset {user_id} close", "footer", style=ButtonStyle.DANGER
         )
         btns = buttons.build_menu(1)
 
@@ -721,11 +660,11 @@ async def get_user_settings(from_user, stype="main"):
             or Config.DEVUPLOADS_FOLDER
             or "None (Root)"
         )
-        text = f"""⌬ <b>DevUploads Settings :</b>
-┟ <b>Name</b> → {user_name}
-┃
-┠ <b>DevUploads Key</b> → <code>{dukey}</code>
-┖ <b>DevUploads Folder ID</b> → <code>{dufolder}</code>"""
+        text = f"""<b>DevUploads Settings</b>
+
+<blockquote>• <b>User:</b> {user_name}
+• <b>API Key:</b> <code>{dukey}</code>
+• <b>Folder ID:</b> <code>{dufolder}</code></blockquote>"""
 
     elif stype == "vikingfile":
         buttons.data_button(
@@ -734,9 +673,9 @@ async def get_user_settings(from_user, stype="main"):
         buttons.data_button(
             "VikingFile Folder", f"userset {user_id} menu VIKINGFILE_FOLDER"
         )
-        buttons.data_button("Back", f"userset {user_id} back uphoster", "footer")
+        buttons.data_button("◀️ Back", f"userset {user_id} back uphoster", "footer")
         buttons.data_button(
-            "Close", f"userset {user_id} close", "footer", style=ButtonStyle.DANGER
+            "❌ Close", f"userset {user_id} close", "footer", style=ButtonStyle.DANGER
         )
         btns = buttons.build_menu(1)
 
@@ -746,11 +685,11 @@ async def get_user_settings(from_user, stype="main"):
             or Config.VIKINGFILE_FOLDER
             or "None (Root)"
         )
-        text = f"""⌬ <b>VikingFile Settings :</b>
-┟ <b>Name</b> → {user_name}
-┃
-┠ <b>VikingFile Hash</b> → <code>{vfkey}</code>
-┖ <b>VikingFile Folder</b> → <code>{vffolder}</code>"""
+        text = f"""<b>VikingFile Settings</b>
+
+<blockquote>• <b>User:</b> {user_name}
+• <b>User Hash:</b> <code>{vfkey}</code>
+• <b>Folder Path:</b> <code>{vffolder}</code></blockquote>"""
 
     elif stype == "gofile":
         buttons.data_button("Gofile Token", f"userset {user_id} menu GOFILE_TOKEN")
@@ -767,9 +706,9 @@ async def get_user_settings(from_user, stype="main"):
             f"Auto-Create Folder {auto_state}",
             f"userset {user_id} tog GOFILE_AUTO_CREATE_FOLDER {'t' if not auto_create else 'f'}",
         )
-        buttons.data_button("Back", f"userset {user_id} back uphoster", "footer")
+        buttons.data_button("◀️ Back", f"userset {user_id} back uphoster", "footer")
         buttons.data_button(
-            "Close", f"userset {user_id} close", "footer", style=ButtonStyle.DANGER
+            "❌ Close", f"userset {user_id} close", "footer", style=ButtonStyle.DANGER
         )
         btns = buttons.build_menu(1)
 
@@ -787,12 +726,12 @@ async def get_user_settings(from_user, stype="main"):
         else:
             gffolder = "None (Uploads to Root)"
 
-        text = f"""⌬ <b>Gofile Settings :</b>
-┟ <b>Name</b> → {user_name}
-┃
-┠ <b>Gofile Token</b> → <code>{gftoken}</code>
-┠ <b>Gofile Folder ID</b> → <code>{gffolder}</code>
-┖ <b>Auto-Create Folder</b> → <code>{"Enabled" if auto_create else "Disabled"}</code>"""
+        text = f"""<b>Gofile Settings</b>
+
+<blockquote>• <b>User:</b> {user_name}
+• <b>API Token:</b> <code>{gftoken}</code>
+• <b>Folder ID:</b> <code>{gffolder}</code>
+• <b>Auto-Create Folder:</b> <code>{"Enabled" if auto_create else "Disabled"}</code></blockquote>"""
 
     elif stype == "rclone":
         buttons.data_button("Rclone Config", f"userset {user_id} menu RCLONE_CONFIG")
@@ -801,9 +740,9 @@ async def get_user_settings(from_user, stype="main"):
         )
         buttons.data_button("Rclone Flags", f"userset {user_id} menu RCLONE_FLAGS")
 
-        buttons.data_button("Back", f"userset {user_id} back mirror", "footer")
+        buttons.data_button("◀️ Back", f"userset {user_id} back mirror", "footer")
         buttons.data_button(
-            "Close", f"userset {user_id} close", "footer", style=ButtonStyle.DANGER
+            "❌ Close", f"userset {user_id} close", "footer", style=ButtonStyle.DANGER
         )
 
         rccmsg = "Exists" if await aiopath.exists(rclone_conf) else "Not Exists"
@@ -822,12 +761,12 @@ async def get_user_settings(from_user, stype="main"):
         else:
             rcflags = "None"
 
-        text = f"""⌬ <b>RClone Settings :</b>
-┟ <b>Name</b> → {user_name}
-┃
-┠ <b>Rclone Config</b> → <b>{rccmsg}</b>
-┠ <b>Rclone Flags</b> → <code>{rcflags}</code>
-┖ <b>Rclone Path</b> → <code>{rccpath}</code>"""
+        text = f"""<b>☁️ Rclone Settings</b>
+
+<blockquote>• <b>User:</b> {user_name}
+• <b>Config Status:</b> <b>{rccmsg}</b>
+• <b>Default Flags:</b> <code>{rcflags}</code>
+• <b>Default Path:</b> <code>{rccpath}</code></blockquote>"""
 
     elif stype == "gdrive":
         buttons.data_button("Default Gdrive ID", f"userset {user_id} menu GDRIVE_ID")
@@ -852,9 +791,9 @@ async def get_user_settings(from_user, stype="main"):
         buttons.data_button(
             "User Drive Categories", f"userset {user_id} menu DRIVE_CAT", "header"
         )
-        buttons.data_button("Back", f"userset {user_id} back mirror", "footer")
+        buttons.data_button("◀️ Back", f"userset {user_id} back mirror", "footer")
         buttons.data_button(
-            "Close", f"userset {user_id} close", "footer", style=ButtonStyle.DANGER
+            "❌ Close", f"userset {user_id} close", "footer", style=ButtonStyle.DANGER
         )
 
         tokenmsg = "Exists" if await aiopath.exists(token_pickle) else "Not Exists"
@@ -876,7 +815,7 @@ async def get_user_settings(from_user, stype="main"):
             f" | <code>{escape(index)}</code>" if index != "None" else ""
         )
         lines.append(
-            f"  <b>Default</b>: <code>{escape(gdrive_id)}</code>{default_ilink_part}"
+            f"• <b>Default:</b> <code>{escape(gdrive_id)}</code>{default_ilink_part}"
         )
         if drive_cat_val:
             for k, v in drive_cat_val.items():
@@ -884,22 +823,21 @@ async def get_user_settings(from_user, stype="main"):
                 ilink = v.get("index_link", "")
                 ilink_part = f" | <code>{escape(ilink)}</code>" if ilink else ""
                 lines.append(
-                    f"  <b>{escape(k)}</b>: <code>{escape(did)}</code>{ilink_part}"
+                    f"• <b>{escape(k)}:</b> <code>{escape(did)}</code>{ilink_part}"
                 )
-        drive_cat_display = "\n   ".join(lines)
+        drive_cat_display = "\n".join(lines)
         btns = buttons.build_menu(2)
 
-        text = f"""⌬ <b>GDrive Tools Settings :</b>
-┟ <b>Name</b> → {user_name}
-┃
-┠ <b>Gdrive ID</b> → <code>{gdrive_id}</code> <i>(Default)</i>
-┠ <b>Index URL</b> → <code>{index}</code> <i>(Default)</i>
-┠ <b>Stop Duplicate</b> → <b>{sd_msg}</b>
-┠ <b>GDrive token.pickle</b> → <b>{tokenmsg}</b>
-┠ <b>Drive Upload SA</b> → <code>{sa_display}</code>
-┠ <b>Drive Category</b> → <b>{dc_status}</b>
-┖ <b>Drive Categories:</b> 
-   {drive_cat_display}"""
+        text = f"""<b>📁 Google Drive Tools Settings</b>
+
+<blockquote>• <b>User:</b> {user_name}
+• <b>Default Drive ID:</b> <code>{gdrive_id}</code>
+• <b>Index Mirror URL:</b> <code>{index}</code>
+• <b>Stop Duplicate:</b> <b>{sd_msg}</b>
+• <b>Token.pickle Status:</b> <b>{tokenmsg}</b>
+• <b>Category SA:</b> <code>{sa_display}</code>
+• <b>Category Mode:</b> <b>{dc_status}</b>
+• <b>Categories:</b>\n{drive_cat_display}</blockquote>"""
     elif stype == "mirror":
         buttons.data_button("RClone Tools", f"userset {user_id} rclone")
         rccmsg = "Exists" if await aiopath.exists(rclone_conf) else "Not Exists"
@@ -940,17 +878,16 @@ async def get_user_settings(from_user, stype="main"):
                 f"userset {user_id} tog drive_cat_mode {'f' if dc_enabled else 't'}",
                 "header",
             )
-        buttons.data_button("Back", f"userset {user_id} back", "footer")
+        buttons.data_button("◀️ Back", f"userset {user_id} back", "footer")
         buttons.data_button(
-            "Close", f"userset {user_id} close", "footer", style=ButtonStyle.DANGER
+            "❌ Close", f"userset {user_id} close", "footer", style=ButtonStyle.DANGER
         )
         btns = buttons.build_menu(2)
 
-        text = f"""⌬ <b>Mirror Settings :</b>
-┟ <b>Name</b> → {user_name}
-┃
-┖ <b>Bot Stop Duplicate</b> → <b>{sd_msg}</b>
-"""
+        text = f"""<b>☁️ Mirror Cloud Settings</b>
+
+<blockquote>• <b>User:</b> {user_name}
+• <b>Stop Duplicate Checks:</b> <b>{sd_msg}</b></blockquote>"""
 
     elif stype == "mega":
         mega_email = user_dict.get("MEGA_EMAIL", "")
@@ -979,21 +916,21 @@ async def get_user_settings(from_user, stype="main"):
                 position="l_body",
             )
 
-        buttons.data_button("Back", f"userset {user_id} back mirror", "footer")
+        buttons.data_button("◀️ Back", f"userset {user_id} back mirror", "footer")
         buttons.data_button(
-            "Close", f"userset {user_id} close", "footer", style=ButtonStyle.DANGER
+            "❌ Close", f"userset {user_id} close", "footer", style=ButtonStyle.DANGER
         )
         btns = buttons.build_menu(1)
 
         email_display = mega_email or "Not Set"
         pass_display = masked_pass if mega_password else "Not Set"
         account_status = "✓ Configured" if has_creds else "❌ Not Configured"
-        text = f"""⌬ <b>Mega Tools :</b>
-┟ <b>Name</b> → {user_name}
-┃
-┠ <b>Mega Email</b> → <code>{email_display}</code>
-┠ <b>Mega Password</b> → <code>{pass_display}</code>
-┖ <b>Account</b> → {account_status}"""
+        text = f"""<b>🔴 Mega.nz Cloud Account</b>
+
+<blockquote>• <b>User:</b> {user_name}
+• <b>Email:</b> <code>{email_display}</code>
+• <b>Password:</b> <code>{pass_display}</code>
+• <b>Status:</b> {account_status}</blockquote>"""
 
     elif stype == "seedr":
         seedr_email = user_dict.get("SEEDR_EMAIL", "")
@@ -1039,9 +976,9 @@ async def get_user_settings(from_user, stype="main"):
                 position="l_body",
             )
 
-        buttons.data_button("Back", f"userset {user_id} back mirror", "footer")
+        buttons.data_button("◀️ Back", f"userset {user_id} back mirror", "footer")
         buttons.data_button(
-            "Close", f"userset {user_id} close", "footer", style=ButtonStyle.DANGER
+            "❌ Close", f"userset {user_id} close", "footer", style=ButtonStyle.DANGER
         )
         btns = buttons.build_menu(1)
 
@@ -1049,13 +986,13 @@ async def get_user_settings(from_user, stype="main"):
         pass_display = masked_pass if seedr_password else "Not Set"
         account_status = "✓ Configured" if has_creds else "❌ Not Configured"
         delete_display = "Enabled" if seedr_delete else "Disabled"
-        text = f"""⌬ <b>Seedr Tools :</b>
-┟ <b>Name</b> → {user_name}
-┃
-┠ <b>Seedr Email</b> → <code>{email_display}</code>
-┠ <b>Seedr Password</b> → <code>{pass_display}</code>
-┠ <b>Delete Folder</b> → {delete_display}
-┖ <b>Account</b> → {account_status}"""
+        text = f"""<b>🌱 Seedr.cc Cloud Account</b>
+
+<blockquote>• <b>User:</b> {user_name}
+• <b>Email:</b> <code>{email_display}</code>
+• <b>Password:</b> <code>{pass_display}</code>
+• <b>Auto Delete Folder:</b> {delete_display}
+• <b>Status:</b> {account_status}</blockquote>"""
 
     elif stype == "ffset":
         buttons.data_button(
@@ -1066,7 +1003,7 @@ async def get_user_settings(from_user, stype="main"):
         elif "FFMPEG_CMDS" not in user_dict and Config.FFMPEG_CMDS:
             ffc = Config.FFMPEG_CMDS
         else:
-            ffc = "<b>Not Exists</b>"
+            ffc = "<b>Not Set</b>"
 
         if isinstance(ffc, dict):
             ffc = "\n" + "\n".join(
@@ -1136,25 +1073,23 @@ async def get_user_settings(from_user, stype="main"):
             )
             display_subtitle_meta = f"<code>{display_subtitle_meta}</code>"
 
-        buttons.data_button("Back", f"userset {user_id} back", "footer")
+        buttons.data_button("◀️ Back", f"userset {user_id} back", "footer")
         buttons.data_button(
-            "Close", f"userset {user_id} close", "footer", style=ButtonStyle.DANGER
+            "❌ Close", f"userset {user_id} close", "footer", style=ButtonStyle.DANGER
         )
         btns = buttons.build_menu(2)
 
         set_all_status = "Enabled" if set_all_enabled else "Disabled"
-        text = f"""⌬ <b>FF Settings :</b>
-┟ <b>Name</b> → {user_name}
-┃
-┠ <b>FFmpeg CLI Commands</b> → {ffc}
-┃
-┠ <b>Set All Metadata Status</b> → <b>{set_all_status}</b>
-┠ <b>Set All Metadata</b> → {display_set_all_meta}
-┃
-┠ <b>Default Metadata</b> → {display_meta_val if not set_all_enabled else '<i>(Disabled - Set All Active)</i>'}
-┠ <b>Audio Metadata</b> → {display_audio_meta if not set_all_enabled else '<i>(Disabled - Set All Active)</i>'}
-┠ <b>Video Metadata</b> → {display_video_meta if not set_all_enabled else '<i>(Disabled - Set All Active)</i>'}
-┖ <b>Subtitle Metadata</b> → {display_subtitle_meta if not set_all_enabled else '<i>(Disabled - Set All Active)</i>'}"""
+        text = f"""<b>🎞️ FFmpeg & Media Metadata Settings</b>
+
+<blockquote>• <b>User:</b> {user_name}
+• <b>FFmpeg Commands:</b> {ffc}
+• <b>Global Metadata Override:</b> <b>{set_all_status}</b>
+• <b>Global Metadata:</b> {display_set_all_meta}
+• <b>Default Metadata:</b> {display_meta_val if not set_all_enabled else '(Disabled)'}
+• <b>Audio Metadata:</b> {display_audio_meta if not set_all_enabled else '(Disabled)'}
+• <b>Video Metadata:</b> {display_video_meta if not set_all_enabled else '(Disabled)'}
+• <b>Subtitle Metadata:</b> {display_subtitle_meta if not set_all_enabled else '(Disabled)'}</blockquote>"""
 
     elif stype == "advanced":
         buttons.data_button(
@@ -1173,7 +1108,7 @@ async def get_user_settings(from_user, stype="main"):
         ns_msg = (
             f"<code>{swap}</code>"
             if (swap := user_dict.get("NAME_SWAP", False))
-            else "<b>Not Exists</b>"
+            else "<b>Not Set</b>"
         )
         buttons.data_button("Name Swap", f"userset {user_id} menu NAME_SWAP")
 
@@ -1201,20 +1136,20 @@ async def get_user_settings(from_user, stype="main"):
             "YT Cookie File", f"userset {user_id} menu USER_COOKIE_FILE"
         )
 
-        buttons.data_button("Back", f"userset {user_id} back", "footer")
+        buttons.data_button("◀️ Back", f"userset {user_id} back", "footer")
         buttons.data_button(
-            "Close", f"userset {user_id} close", "footer", style=ButtonStyle.DANGER
+            "❌ Close", f"userset {user_id} close", "footer", style=ButtonStyle.DANGER
         )
         btns = buttons.build_menu(2)
 
-        text = f"""⌬ <b>Advanced Settings :</b>
-┟ <b>Name</b> → {user_name}
-┃
-┠ <b>Auto Name Swaps</b> → {ns_msg}
-┠ <b>Excluded Extensions</b> → <code>{ex_ex}</code>
-┠ <b>Upload Paths</b> → <b>{upload_paths}</b>
-┠ <b>YT-DLP Options</b> → <code>{ytopt}</code>
-┖ <b>YT User Cookie File</b> → <b>{user_cookie_msg}</b>"""
+        text = f"""<b>🛠️ Advanced Options Settings</b>
+
+<blockquote>• <b>User:</b> {user_name}
+• <b>Name Swap Patterns:</b> {ns_msg}
+• <b>Excluded Extensions:</b> <code>{ex_ex}</code>
+• <b>Upload Paths Dict:</b> <b>{upload_paths}</b>
+• <b>YT-DLP Custom Options:</b> <code>{ytopt}</code>
+• <b>Cookie File Status:</b> <b>{user_cookie_msg}</b></blockquote>"""
     elif stype == "yttools":
         buttons.data_button("YT Description", f"userset {user_id} menu YT_DESP")
         yt_desp_val = user_dict.get(
@@ -1252,19 +1187,19 @@ async def get_user_settings(from_user, stype="main"):
             ),
         )
 
-        buttons.data_button("Back", f"userset {user_id} back mirror", "footer")
+        buttons.data_button("◀️ Back", f"userset {user_id} back mirror", "footer")
         buttons.data_button(
-            "Close", f"userset {user_id} close", "footer", style=ButtonStyle.DANGER
+            "❌ Close", f"userset {user_id} close", "footer", style=ButtonStyle.DANGER
         )
         btns = buttons.build_menu(2)
 
-        text = f"""⌬ <b>YouTube Tools Settings:</b>
-┟ <b>Name</b> → {user_name}
-┃
-┠ <b>YT Description</b> → <code>{escape(str(yt_desp_val))}</code>
-┠ <b>YT Tags</b> → <code>{escape(str(yt_tags_val))}</code>
-┠ <b>YT Category ID</b> → <code>{escape(str(yt_cat_id_val))}</code>
-┖ <b>YT Privacy Status</b> → <code>{escape(str(yt_privacy_val))}</code>"""
+        text = f"""<b>▶️ YouTube Upload Tools Settings</b>
+
+<blockquote>• <b>User:</b> {user_name}
+• <b>Description:</b> <code>{escape(str(yt_desp_val))}</code>
+• <b>Tags:</b> <code>{escape(str(yt_tags_val))}</code>
+• <b>Category ID:</b> <code>{escape(str(yt_cat_id_val))}</code>
+• <b>Privacy Status:</b> <code>{escape(str(yt_privacy_val))}</code></blockquote>"""
 
     return text, btns
 
@@ -1354,7 +1289,7 @@ async def add_one(_, message, option, rfunc):
             await send_message(message, str(e))
             return
     else:
-        await send_message(message, "It must be Dict!")
+        await send_message(message, "Input must be a valid Python dictionary!")
         return
     await delete_message(message)
     await rfunc()
@@ -1385,7 +1320,6 @@ async def set_option(_, message, option, rfunc):
         if not value.isdigit():
             value = get_size_bytes(value)
         value = min(int(value), TgClient.MAX_SPLIT_SIZE)
-    # elif option == "LEECH_DUMP_CHAT": # TODO: Add
     elif option == "EXCLUDED_EXTENSIONS":
         fx = value.split()
         value = ["aria2", "!qB"]
@@ -1480,7 +1414,7 @@ async def set_option(_, message, option, rfunc):
                 await send_message(message, str(e))
                 return
         else:
-            await send_message(message, "It must be dict!")
+            await send_message(message, "Input must be a valid Python dictionary!")
             return
     update_user_ldata(user_id, option, value)
     if option == "SET_ALL_METADATA":
@@ -1523,7 +1457,7 @@ async def get_menu(option, message, user_id):
                 "Remove One", f"userset {user_id} rmone {option}", "header"
             )
 
-        if key != "file":  # TODO: option default val check
+        if key != "file":
             buttons.data_button("Reset", f"userset {user_id} reset {option}")
         elif await aiopath.exists(file_dict[option]):
             buttons.data_button("Remove", f"userset {user_id} remove {option}")
@@ -1547,9 +1481,9 @@ async def get_menu(option, message, user_id):
         back_to = "seedr"
     else:
         back_to = "back"
-    buttons.data_button("Back", f"userset {user_id} {back_to}", "footer")
+    buttons.data_button("◀️ Back", f"userset {user_id} {back_to}", "footer")
     buttons.data_button(
-        "Close", f"userset {user_id} close", "footer", style=ButtonStyle.DANGER
+        "❌ Close", f"userset {user_id} close", "footer", style=ButtonStyle.DANGER
     )
     val = user_dict.get(option)
     if option in file_dict and await aiopath.exists(file_dict[option]):
@@ -1565,18 +1499,18 @@ async def get_menu(option, message, user_id):
             val = f"<code>{val}</code>"
         elif isinstance(current_meta_val, str) and current_meta_val:
             val = (
-                f"<code>{escape(current_meta_val)}</code> [<i>Legacy, needs re-set</i>]"
+                f"<code>{escape(current_meta_val)}</code> [<i>Legacy format</i>]"
             )
         elif not current_meta_val:
             val = "<b>Not Set</b>"
 
         if val is None:
-            val = "<b>Not Exists</b>"
+            val = "<b>Not Set</b>"
 
     elif option == "DRIVE_CAT":
         default_id = user_dict.get("GDRIVE_ID") or Config.GDRIVE_ID
         default_index = user_dict.get("INDEX_URL") or Config.INDEX_URL
-        lines = [f"  <b>Default</b>: <code>{escape(str(default_id))}</code>"]
+        lines = [f"• <b>Default:</b> <code>{escape(str(default_id))}</code>"]
         if default_index:
             lines[0] += f" | <code>{escape(default_index)}</code>"
         if isinstance(val, dict):
@@ -1585,43 +1519,21 @@ async def get_menu(option, message, user_id):
                 ilink = v.get("index_link", "")
                 ilink_part = f" | <code>{escape(ilink)}</code>" if ilink else ""
                 lines.append(
-                    f"  <b>{escape(k)}</b>: <code>{escape(did)}</code>{ilink_part}"
+                    f"• <b>{escape(k)}:</b> <code>{escape(did)}</code>{ilink_part}"
                 )
-            val = "\n   ".join(lines)
+            val = "\n".join(lines)
         elif not val:
-            val = "<b>Not Exists</b>"
+            val = "<b>Not Set</b>"
 
     elif option in ["FFMPEG_CMDS", "YT_DLP_OPTIONS", "UPLOAD_PATHS"]:
-        val = f"<code>{escape(str(val))}</code>" if val else "<b>Not Exists</b>"
+        val = f"<code>{escape(str(val))}</code>" if val else "<b>Not Set</b>"
 
-    if option == "METADATA":
-        text = f"""⌬ <b><u>Menu Settings :</u></b>
-│
-┟ <b>Option</b> → {option}
-┃
-┠ <b>Option's Value</b> → {val if val else "<b>Not Exists</b>"}
-┃
-┠ <b>Default Input Type</b> → {user_settings_text[option][0]}
-┠ <b>Description</b> → {user_settings_text[option][1]}
-┃
-┠ <b>Dynamic Variables:</b>
-┠ • <code>{{filename}}</code> - Full filename
-┠ • <code>{{basename}}</code> - Filename without extension  
-┠ • <code>{{extension}}</code> - File extension
-┃
-┠ • <code>{{audiolang}}</code> - Audio language
-┖ • <code>{{sublang}}</code> - Subtitle language
-"""
-    else:
-        text = f"""⌬ <b><u>Menu Settings :</u></b>
-│
-┟ <b>Option</b> → {option}
-┃
-┠ <b>Option's Value</b> → {val if val else "<b>Not Exists</b>"}
-┃
-┠ <b>Default Input Type</b> → {user_settings_text[option][0]}
-┖ <b>Description</b> → {user_settings_text[option][1]}
-"""
+    text = f"""<b>⚙️ Setting Configuration: {option}</b>
+
+<blockquote>• <b>Current Value:</b> {val if val else "<b>Not Set</b>"}
+• <b>Expected Input Type:</b> {user_settings_text[option][0]}
+• <b>Description:</b> {user_settings_text[option][1]}</blockquote>"""
+
     await edit_message(message, text, buttons.build_menu(2))
 
 
@@ -1654,11 +1566,11 @@ async def event_handler(client, query, pfunc, rfunc, photo=False, document=False
         elif time() - update_time > 8 and handler_dict[user_id]:
             update_time = time()
             msg = await client.get_messages(query.message.chat.id, query.message.id)
-            text = msg.text.split("\n")
-            text[-1] = (
-                f"┖ <b>Time Left :</b> <code>{round(60 - (time() - start_time), 2)} sec</code>"
+            lines = msg.text.split("\n")
+            lines[-1] = (
+                f"⏱️ <b>Time Left:</b> <code>{round(60 - (time() - start_time), 1)}s</code>"
             )
-            await edit_message(msg, "\n".join(text), msg.reply_markup)
+            await edit_message(msg, "\n".join(lines), msg.reply_markup)
     client.remove_handler(*handler)
 
 
@@ -1678,7 +1590,7 @@ async def edit_user_settings(client, query):
 
     user_dict = user_data.get(user_id, {})
     if user_id != int(data[1]):
-        return await query.answer("Not Yours!", show_alert=True)
+        return await query.answer("This menu is not for you!", show_alert=True)
     elif data[2] == "setevent":
         await query.answer()
     elif data[2] in [
@@ -1720,12 +1632,12 @@ async def edit_user_settings(client, query):
                 sc = SeedrClient(seedr_email, seedr_password)
                 await sc.login()
                 space_max, space_used = await sc.get_space()
-                msg += f"\n\n<b>Seedr Space</b> → <code>{get_readable_file_size(space_used)} / {get_readable_file_size(space_max)}</code>"
+                msg += f"\n\n<b>Seedr Storage Space:</b> <code>{get_readable_file_size(space_used)} / {get_readable_file_size(space_max)}</code>"
             except Exception as e:
                 msg += f"\n\n<b>Seedr Login Failed:</b> {escape(str(e))}"
             await edit_message(message, msg, button)
     elif data[2] == "clear_seedr":
-        await query.answer("Clearing Seedr Storage...", show_alert=False)
+        await query.answer("Clearing Seedr storage...", show_alert=False)
         seedr_email = user_dict.get("SEEDR_EMAIL", "")
         seedr_password = user_dict.get("SEEDR_PASSWORD", "")
         if seedr_email and seedr_password:
@@ -1734,7 +1646,7 @@ async def edit_user_settings(client, query):
 
                 t_c, f_c = await clear_seedr_account(seedr_email, seedr_password)
                 await query.answer(
-                    f"Removed {t_c} torrent(s) and {f_c} folder(s)!", show_alert=True
+                    f"Removed {t_c} torrents and {f_c} folders!", show_alert=True
                 )
             except Exception as e:
                 await query.answer(f"Failed: {e}"[:180], show_alert=True)
@@ -1755,7 +1667,7 @@ async def edit_user_settings(client, query):
                     selected_services.remove(service)
                 else:
                     await query.answer(
-                        "At least one destination must be selected!", show_alert=True
+                        "At least one destination service must be selected!", show_alert=True
                     )
             else:
                 selected_services.append(service)
@@ -1782,12 +1694,12 @@ async def edit_user_settings(client, query):
                 f"userset {user_id} uphoster_destinations {service}",
             )
 
-        buttons.data_button("Back", f"userset {user_id} back uphoster", "footer")
+        buttons.data_button("◀️ Back", f"userset {user_id} back uphoster", "footer")
         buttons.data_button(
-            "Close", f"userset {user_id} close", "footer", style=ButtonStyle.DANGER
+            "❌ Close", f"userset {user_id} close", "footer", style=ButtonStyle.DANGER
         )
 
-        text = """⌬ <b>Select Uphoster Destinations :</b>"""
+        text = "<b>🌐 Select Active Uphoster Destinations:</b>"
         await edit_message(message, text, buttons.build_menu(2))
     elif data[2] == "menu":
         await query.answer()
@@ -1818,12 +1730,12 @@ async def edit_user_settings(client, query):
         buttons = ButtonMaker()
         text = user_settings_text[data[3]][2]
         buttons.data_button("Stop", f"userset {user_id} menu {data[3]} stop")
-        buttons.data_button("Back", f"userset {user_id} menu {data[3]}", "footer")
+        buttons.data_button("◀️ Back", f"userset {user_id} menu {data[3]}", "footer")
         buttons.data_button(
-            "Close", f"userset {user_id} close", "footer", style=ButtonStyle.DANGER
+            "❌ Close", f"userset {user_id} close", "footer", style=ButtonStyle.DANGER
         )
         prompt_title = data[3].replace("_", " ").title()
-        new_message_text = f"⌬ <b>Set {prompt_title}</b>\n\n{text}"
+        new_message_text = f"<b>Upload {prompt_title}</b>\n\n{text}"
         await edit_message(message, new_message_text, buttons.build_menu(1))
         rfunc = partial(get_menu, data[3], message, user_id)
         pfunc = partial(add_file, ftype=data[3], rfunc=rfunc)
@@ -1842,15 +1754,15 @@ async def edit_user_settings(client, query):
             text = user_settings_text[data[3]][2]
             func = set_option
         elif data[2] == "addone":
-            text = f"Add one or more string key and value to {data[3]}. Example: {{'key 1': 62625261, 'key 2': 'value 2'}}. Timeout: 60 sec"
+            text = f"<blockquote><b>Add entry to {data[3]}:</b>\nExample: <code>{{'key1': 'value1', 'key2': 'value2'}}</code>\n⏱️ <b>Time Left:</b> <code>60 sec</code></blockquote>"
             func = add_one
         elif data[2] == "rmone":
-            text = f"Remove one or more key from {data[3]}. Example: key 1/key2/key 3. Timeout: 60 sec"
+            text = f"<blockquote><b>Remove entry from {data[3]}:</b>\nExample: <code>key1/key2</code>\n⏱️ <b>Time Left:</b> <code>60 sec</code></blockquote>"
             func = remove_one
         buttons.data_button("Stop", f"userset {user_id} menu {data[3]} stop")
-        buttons.data_button("Back", f"userset {user_id} menu {data[3]}", "footer")
+        buttons.data_button("◀️ Back", f"userset {user_id} menu {data[3]}", "footer")
         buttons.data_button(
-            "Close", f"userset {user_id} close", "footer", style=ButtonStyle.DANGER
+            "❌ Close", f"userset {user_id} close", "footer", style=ButtonStyle.DANGER
         )
         await edit_message(
             message, message.text.html + "\n\n" + text, buttons.build_menu(1)
@@ -1859,7 +1771,7 @@ async def edit_user_settings(client, query):
         pfunc = partial(func, option=data[3], rfunc=rfunc)
         await event_handler(client, query, pfunc, rfunc)
     elif data[2] == "remove":
-        await query.answer("Removed!", show_alert=True)
+        await query.answer("Removed configuration!", show_alert=True)
         if data[3] in [
             "THUMBNAIL",
             "RCLONE_CONFIG",
@@ -1887,23 +1799,23 @@ async def edit_user_settings(client, query):
             await database.update_user_data(user_id)
         await get_menu(data[3], message, user_id)
     elif data[2] == "reset":
-        await query.answer("Reset Done!", show_alert=True)
+        await query.answer("Reset option to default!", show_alert=True)
         user_dict.pop(data[3], None)
         await database.update_user_data(user_id)
         await get_menu(data[3], message, user_id)
     elif data[2] == "confirm_reset_all":
         await query.answer()
         buttons = ButtonMaker()
-        buttons.data_button("Yes", f"userset {user_id} do_reset_all yes")
-        buttons.data_button("No", f"userset {user_id} do_reset_all no")
+        buttons.data_button("Yes, Reset", f"userset {user_id} do_reset_all yes")
+        buttons.data_button("No, Cancel", f"userset {user_id} do_reset_all no")
         buttons.data_button(
-            "Close", f"userset {user_id} close", "footer", style=ButtonStyle.DANGER
+            "❌ Close", f"userset {user_id} close", "footer", style=ButtonStyle.DANGER
         )
-        text = "<i>Are you sure you want to reset all your user settings?</i>"
+        text = "<blockquote><b>⚠️ Warning:</b> Are you sure you want to reset all your personal user settings? This action cannot be undone.</blockquote>"
         await edit_message(query.message, text, buttons.build_menu(2))
     elif data[2] == "do_reset_all":
         if data[3] == "yes":
-            await query.answer("Reset Done!", show_alert=True)
+            await query.answer("All user settings reset!", show_alert=True)
             user_dict = user_data.get(user_id, {})
             for k in list(user_dict.keys()):
                 if k not in ("SUDO", "AUTH", "VERIFY_TOKEN", "VERIFY_TIME"):
@@ -1914,13 +1826,13 @@ async def edit_user_settings(client, query):
             await update_user_settings(query)
             await database.update_user_data(user_id)
         else:
-            await query.answer("Reset Cancelled.", show_alert=True)
+            await query.answer("Reset cancelled.", show_alert=True)
             await update_user_settings(query)
     elif data[2] == "view":
         await query.answer()
         await send_file(message, thumb_path, name)
     elif data[2] == "export_settings":
-        await query.answer("Exporting User Settings...", show_alert=False)
+        await query.answer("Exporting user settings...", show_alert=False)
         zip_path = f"US{user_id}.zip"
         try:
             with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zipf:
@@ -1955,9 +1867,9 @@ async def edit_user_settings(client, query):
             await TgClient.bot.send_document(
                 chat_id=user_id,
                 document=zip_path,
-                caption=f"Here is your exported User Settings archive: <code>{zip_path}</code>",
+                caption=f"<b>Exported User Settings Backup Archive</b>\n\nFilename: <code>{zip_path}</code>",
             )
-            await query.answer("Exported settings sent to your DM!", show_alert=True)
+            await query.answer("Exported settings archive sent to DM!", show_alert=True)
         except Exception as e:
             await query.answer(f"Export failed: {e}"[:180], show_alert=True)
         finally:
@@ -1967,11 +1879,11 @@ async def edit_user_settings(client, query):
         await query.answer()
         buttons = ButtonMaker()
         buttons.data_button("Stop", f"userset {user_id} back main")
-        buttons.data_button("Back", f"userset {user_id} back main", "footer")
+        buttons.data_button("◀️ Back", f"userset {user_id} back main", "footer")
         buttons.data_button(
-            "Close", f"userset {user_id} close", "footer", style=ButtonStyle.DANGER
+            "❌ Close", f"userset {user_id} close", "footer", style=ButtonStyle.DANGER
         )
-        prompt_text = f"⌬ <b>Import User Settings</b>\n\n<blockquote><b>📥 Action Required:</b> Send your <code>US{user_id}.zip</code> file to restore your settings and configurations.</blockquote>\n\n┖ <b>Time Left :</b> <code>60 sec</code>"
+        prompt_text = f"<b>Import User Settings Backup</b>\n\n<blockquote><b>📥 Action Required:</b> Send your exported <code>US{user_id}.zip</code> file to restore configurations.\n⏱️ <b>Time Left:</b> <code>60 sec</code></blockquote>"
         await edit_message(message, prompt_text, buttons.build_menu(1))
 
         @new_task
@@ -1979,7 +1891,7 @@ async def edit_user_settings(client, query):
             handler_dict[user_id] = False
             doc = msg.document
             if not doc or not doc.file_name.endswith(".zip"):
-                await send_message(msg, "Invalid file! Please send a valid ZIP file.")
+                await send_message(msg, "Invalid file! Please send a valid backup ZIP archive.")
                 return
             temp_zip = f"import_{user_id}.zip"
             try:
@@ -2044,7 +1956,7 @@ async def edit_user_settings(client, query):
                             await database.update_user_doc(user_id, "USER_COOKIE_FILE", dest)
 
                 await database.update_user_data(user_id)
-                await send_message(msg, "Settings successfully imported!")
+                await send_message(msg, "<b>Settings imported successfully!</b>")
             except Exception as e:
                 await send_message(msg, f"Failed to import settings: {e}")
             finally:
@@ -2084,13 +1996,13 @@ async def get_users_settings(_, message):
         msg += f"SUDO_USERS: {sudo_users}\n\n"
     if user_data:
         for u, d in user_data.items():
-            kmsg = f"\n<b>{u}:</b>\n"
+            kmsg = f"\n<b>User ID {u}:</b>\n"
             if vmsg := "".join(
-                f"{k}: <code>{v or None}</code>\n" for k, v in d.items()
+                f"• {k}: <code>{v or None}</code>\n" for k, v in d.items()
             ):
                 msg += kmsg + vmsg
         if not msg:
-            await send_message(message, "No users data!")
+            await send_message(message, "No user settings data found!")
             return
         msg_ecd = msg.encode()
         if len(msg_ecd) > 4000:
@@ -2100,4 +2012,4 @@ async def get_users_settings(_, message):
         else:
             await send_message(message, msg)
     else:
-        await send_message(message, "No users data!")
+        await send_message(message, "No user settings data found!")

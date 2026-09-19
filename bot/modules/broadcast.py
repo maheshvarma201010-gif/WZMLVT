@@ -19,10 +19,10 @@ bc_cache = {}
 
 async def delete_broadcast(bc_id, message):
     if bc_id not in bc_cache:
-        return await send_message(message, "Invalid Broadcast ID!")
+        return await send_message(message, "Invalid or expired Broadcast ID!")
 
     temp_wait = await send_message(
-        message, "<i>Deleting the Broadcasted Message! Please Wait ...</i>"
+        message, "<b>Deleting broadcasted messages... Please wait.</b>"
     )
     total, success, failed = 0, 0, 0
     msgs = bc_cache.get(bc_id, [])
@@ -40,29 +40,29 @@ async def delete_broadcast(bc_id, message):
         total += 1
     return await edit_message(
         temp_wait,
-        f"""⌬  <b><i>Broadcast Deleted Stats :</i></b>
-┠ <b>Total Users:</b> <code>{total}</code>
-┠ <b>Success:</b> <code>{success}</code>
-┖ <b>Failed Attempts:</b> <code>{failed}</code>
+        f"""<b>🗑️ Broadcast Message Deletion Stats</b>
 
-<b>Broadcast ID:</b> <code>{bc_id}</code>""",
+<blockquote>• <b>Total Targets:</b> {total}
+• <b>Successfully Deleted:</b> {success}
+• <b>Failed Attempts:</b> {failed}
+• <b>Broadcast ID:</b> <code>{bc_id}</code></blockquote>""",
     )
 
 
 async def edit_broadcast(bc_id, message, rply):
     if bc_id not in bc_cache:
-        return await send_message(message, "Invalid Broadcast ID!")
+        return await send_message(message, "Invalid or expired Broadcast ID!")
 
     temp_wait = await send_message(
-        message, "<i>Editing the Broadcasted Message! Please Wait ...</i>"
+        message, "<b>Editing broadcasted messages... Please wait.</b>"
     )
     total, success, failed = 0, 0, 0
     for uid, msg_id in bc_cache[bc_id]:
         msg = await TgClient.bot.get_messages(uid, msg_id)
-        if hasattr(msg, "forward_from"):
+        if hasattr(msg, "forward_from") and msg.forward_from:
             return await edit_message(
                 temp_wait,
-                "<i>Forwarded Messages can't be Edited, Only can be Deleted!</i>",
+                "<blockquote>Forwarded messages cannot be edited. They can only be deleted!</blockquote>",
             )
         try:
             await msg.edit(
@@ -86,12 +86,12 @@ async def edit_broadcast(bc_id, message, rply):
         total += 1
     return await edit_message(
         temp_wait,
-        f"""⌬  <b><i>Broadcast Edited Stats :</i></b>
-┠ <b>Total Users:</b> <code>{total}</code>
-┠ <b>Success:</b> <code>{success}</code>
-┖ <b>Failed Attempts:</b> <code>{failed}</code>
+        f"""<b>✏️ Broadcast Message Edit Stats</b>
 
-<b>Broadcast ID:</b> <code>{bc_id}</code>""",
+<blockquote>• <b>Total Targets:</b> {total}
+• <b>Successfully Edited:</b> {success}
+• <b>Failed Attempts:</b> {failed}
+• <b>Broadcast ID:</b> <code>{bc_id}</code></blockquote>""",
     )
 
 
@@ -100,7 +100,7 @@ async def broadcast(_, message):
     bc_id, forwarded, quietly, deleted, edited = "", False, False, False, False
     if not Config.DATABASE_URL:
         return await send_message(
-            message, "DATABASE_URL not provided to fetch PM Users!"
+            message, "DATABASE_URL is required to fetch database users!"
         )
     rply = message.reply_to_message
     if len(message.command) > 1:
@@ -111,7 +111,7 @@ async def broadcast(_, message):
             if not bc_id:
                 return await send_message(
                     message,
-                    "<i>Broadcast ID not found! After Restart, you can't edit or delete broadcasted messages...</i>",
+                    "<blockquote>Broadcast ID not found in cache. Cached broadcasts are lost after bot restart.</blockquote>",
                 )
         for arg in message.command:
             if arg in ["-f", "-forward"] and rply:
@@ -125,24 +125,17 @@ async def broadcast(_, message):
     if not bc_id and not rply:
         return await send_message(
             message,
-            """<b>By replying to msg to Broadcast:</b>
-/broadcast bc_id -d -e -f -q
+            """<b>📢 Broadcast Usage Guide</b>
 
-<b>Forward Broadcast with Tag:</b> -f or -forward
-/cmd [reply_msg] -f
-
-<b>Quietly Broadcast msg:</b> -q or -quiet
-/cmd [reply_msg] -q -f
-
-<b>Edit Broadcast msg:</b> -e or -edit
-/cmd [reply_edited_msg] broadcast_id -e
-
-<b>Delete Broadcast msg:</b> -d or -delete
-/bc broadcast_id -d
+<blockquote><b>Commands & Flags:</b>
+• <b>Forward with Tag:</b> <code>/broadcast -f</code> (Reply to message)
+• <b>Quiet Delivery:</b> <code>/broadcast -q</code> (Reply to message)
+• <b>Edit Broadcast:</b> <code>/broadcast broadcast_id -e</code> (Reply to updated message)
+• <b>Delete Broadcast:</b> <code>/broadcast broadcast_id -d</code>
 
 <b>Notes:</b>
-1. Broadcast msgs can be only edited or deleted until restart.
-2. Forwarded msgs can't be Edited""",
+• Broadcasts can be edited or deleted until the next bot restart.
+• Forwarded messages cannot be edited, only deleted.</blockquote>""",
         )
     if deleted:
         return await delete_broadcast(bc_id, message)
@@ -151,15 +144,16 @@ async def broadcast(_, message):
 
     # Broadcasting logic
     start_time = time()
-    status = """⌬  <b><i>Broadcast Stats :</i></b>
-┠ <b>Total Users:</b> <code>{t}</code>
-┠ <b>Success:</b> <code>{s}</code>
-┠ <b>Blocked Users:</b> <code>{b}</code>
-┠ <b>Deleted Accounts:</b> <code>{d}</code>
-┖ <b>Unsuccess Attempt:</b> <code>{u}</code>"""
+    status_fmt = """<b>📢 Broadcast Progress Stats</b>
+
+<blockquote>• <b>Total Users:</b> {t}
+• <b>Successful:</b> {s}
+• <b>Blocked Users:</b> {b}
+• <b>Deleted Accounts:</b> {d}
+• <b>Failed Attempts:</b> {u}</blockquote>"""
     updater = time()
     bc_hash, bc_msgs = token_hex(5), []
-    pls_wait = await send_message(message, status.format(t=0, s=0, b=0, d=0, u=0))
+    pls_wait = await send_message(message, status_fmt.format(t=0, s=0, b=0, d=0, u=0))
     t, s, b, d, u = 0, 0, 0, 0, 0
     for uid in await database.get_pm_uids():
         try:
@@ -190,10 +184,18 @@ async def broadcast(_, message):
             bc_msgs.append((uid, bc_msg.id))
         t += 1
         if (time() - updater) > 10:
-            await edit_message(pls_wait, status.format(t=t, s=s, b=b, d=d, u=u))
+            await edit_message(pls_wait, status_fmt.format(t=t, s=s, b=b, d=d, u=u))
             updater = time()
     bc_cache[bc_hash] = bc_msgs
     await edit_message(
         pls_wait,
-        f"{status.format(t=t, s=s, b=b, d=d, u=u)}\n\n<b>Elapsed Time:</b> <code>{get_readable_time(time() - start_time)}</code>\n<b>Broadcast ID:</b> <code>{bc_hash}</code>",
+        f"""<b>📢 Broadcast Completed</b>
+
+<blockquote>• <b>Total Users:</b> {t}
+• <b>Successful:</b> {s}
+• <b>Blocked Users:</b> {b}
+• <b>Deleted Accounts:</b> {d}
+• <b>Failed Attempts:</b> {u}
+• <b>Elapsed Time:</b> {get_readable_time(time() - start_time)}
+• <b>Broadcast ID:</b> <code>{bc_hash}</code></blockquote>""",
     )

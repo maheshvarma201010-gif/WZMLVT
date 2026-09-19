@@ -33,7 +33,7 @@ class GDClean(TaskListener):
         if link and not is_gdrive_link(link):
             return await send_message(
                 self.message,
-                "Provide a valid GDrive link or use /gdclean -gc <category>",
+                "<blockquote>Provide a valid Google Drive link or use <code>/gdclean -gc &lt;category&gt;</code></blockquote>",
             )
         self.link = link
         obj = GoogleDriveClean(self)
@@ -52,12 +52,12 @@ class GDClean(TaskListener):
             }
             if cat_name not in merged:
                 return await send_message(
-                    self.message, f"Category '{cat_name}' not found"
+                    self.message, f"<blockquote>Category '<code>{cat_name}</code>' not found!</blockquote>"
                 )
             drive_id = merged[cat_name].get("drive_id")
             if not drive_id:
                 return await send_message(
-                    self.message, f"Category '{cat_name}' has no drive ID"
+                    self.message, f"<blockquote>Category '<code>{cat_name}</code>' has no drive ID configured.</blockquote>"
                 )
             await obj.start(drive_id=drive_id)
         elif link:
@@ -67,7 +67,7 @@ class GDClean(TaskListener):
             if is_cancelled:
                 return
             if not drive_id:
-                return await send_message(self.message, "No drive ID selected")
+                return await send_message(self.message, "<blockquote>No Drive ID selected!</blockquote>")
             await obj.start(drive_id=drive_id, cat_name=cat_name)
 
 
@@ -82,7 +82,7 @@ async def confirm_drive_clean_cb(_, query):
     data = query.data.split(maxsplit=3)
     msg_id = int(data[2])
     if msg_id not in bot_cache:
-        return await edit_message(query.message, "<b>Session Expired</b>")
+        return await edit_message(query.message, "<b>Session Expired!</b>")
     elif user_id != int(data[1]):
         return await query.answer(text="This task is not for you!", show_alert=True)
     cat_name = data[3]
@@ -110,7 +110,7 @@ async def confirm_drive_clean_cb(_, query):
     for name in merged:
         selected = cat_name == name
         buttons.data_button(
-            f"{'✓️' if selected else ''} {name}",
+            f"{'✓' if selected else ''} {name}",
             f"gdccat {user_id} {msg_id} {name.replace(' ', '_')}",
         )
     if selected_id:
@@ -127,8 +127,8 @@ async def confirm_drive_clean_cb(_, query):
     )
     await edit_message(
         query.message,
-        f"<b>Select Drive Category to Clean</b>\n\n"
-        f"<b>Category:</b> <code>{cat_name}</code>\n\n"
-        f"<b>Timeout:</b> 60 sec",
+        f"<b>🧹 Select Google Drive Category to Clean</b>\n\n"
+        f"<blockquote>• <b>Selected Category:</b> <code>{cat_name}</code>\n"
+        f"• <b>Timeout:</b> 60 sec</blockquote>",
         buttons.build_menu(3),
     )

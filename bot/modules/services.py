@@ -47,7 +47,7 @@ async def start(_, message):
             decrypted_url = decrypted_url.replace("file", "")
             chat_id, msg_id = decrypted_url.split("&&")
             LOGGER.info(f"Copying message from {chat_id} & {msg_id} to {userid}")
-            return await TgClient.bot.copy_message(  # TODO: make it function
+            return await TgClient.bot.copy_message(
                 chat_id=userid,
                 from_chat_id=int(chat_id) if match(r"\d+", chat_id) else chat_id,
                 message_id=int(msg_id),
@@ -58,13 +58,13 @@ async def start(_, message):
             if int(pre_uid) != userid:
                 return await send_message(
                     message,
-                    "<b>Access Token is not yours!</b>\n\n<i>Kindly generate your own to use.</i>",
+                    "<blockquote><b>Access Token is not yours!</b>\nPlease generate your own token.</blockquote>",
                 )
             data = user_data.get(userid, {})
             if "VERIFY_TOKEN" not in data or data["VERIFY_TOKEN"] != input_token:
                 return await send_message(
                     message,
-                    "<b>Access Token already used!</b>\n\n<i>Kindly generate a new one.</i>",
+                    "<blockquote><b>Access Token already used!</b>\nPlease generate a new one.</blockquote>",
                 )
             elif (
                 Config.LOGIN_PASS
@@ -72,18 +72,17 @@ async def start(_, message):
             ):
                 return await send_message(
                     message,
-                    "<b>Bot Already Logged In via Password</b>\n\n<i>No Need to Accept Temp Tokens.</i>",
+                    "<blockquote><b>Bot Already Logged In via Password</b>\nNo need to accept temporary tokens.</blockquote>",
                 )
             buttons.data_button(
                 "Activate Access Token", f"start pass {input_token}", "header"
             )
             reply_markup = buttons.build_menu(2)
-            msg = f"""⌬ Access Login Token : 
-    │
-    ┟ <b>Status</b> → <code>Generated Successfully</code>
-    ┟ <b>Access Token</b> → <code>{input_token}</code>
-    ┃
-    ┖ <b>Validity:</b> {get_readable_time(int(Config.VERIFY_TIMEOUT))}"""
+            msg = f"""<b>🔑 Access Login Token</b>
+
+<blockquote>• <b>Status:</b> Generated Successfully
+• <b>Access Token:</b> <code>{input_token}</code>
+• <b>Validity:</b> {get_readable_time(int(Config.VERIFY_TIMEOUT))}</blockquote>"""
             return await send_message(message, msg, reply_markup)
 
     if await CustomFilters.authorized(_, message):
@@ -94,14 +93,14 @@ async def start(_, message):
     elif Config.BOT_PM:
         await send_message(
             message,
-            "<i>Now, Bot will send you all your files and links here. Start Using Now...</i>",
+            "<blockquote>Bot will send all your files and links here. Start using now!</blockquote>",
             reply_markup,
             photo="IMAGES",
         )
     else:
         await send_message(
             message,
-            "<i>Bot can mirror/leech from links|tgfiles|torrents|nzb|rclone-cloud to any rclone cloud, Google Drive or to telegram.\n\n⚠️ You are not an authorized user! Deploy your own WZML-X bot</i>",
+            "<blockquote><b>Welcome to WZML-X Bot!</b>\nMirror and leech files, torrents, and links to Telegram or Cloud Storage.\n\n<b>Note:</b> You are not authorized to use this bot instance.</blockquote>",
             reply_markup,
             photo="IMAGES",
         )
@@ -115,20 +114,20 @@ async def start_cb(_, query):
     data = user_data.get(user_id, {})
 
     if input_token == "activated":
-        return await query.answer("Already Activated!", show_alert=True)
+        return await query.answer("Already activated!", show_alert=True)
     elif "VERIFY_TOKEN" not in data or data["VERIFY_TOKEN"] != input_token:
-        return await query.answer("Already Used, Generate New One", show_alert=True)
+        return await query.answer("Already used! Please generate a new one.", show_alert=True)
 
     update_user_ldata(user_id, "VERIFY_TOKEN", str(uuid4()))
     update_user_ldata(user_id, "VERIFY_TIME", time())
     if Config.DATABASE_URL:
         await database.update_user_data(user_id)
-    await query.answer("Activated Access Login Token!", show_alert=True)
+    await query.answer("Access token activated successfully!", show_alert=True)
 
     kb = query.message.reply_markup.inline_keyboard[1:]
     kb.insert(
         0,
-        [InlineKeyboardButton("✅️ Activated ✅", callback_data="start pass activated")],
+        [InlineKeyboardButton("✅ Activated", callback_data="start pass activated")],
     )
     await edit_reply_markup(query.message, InlineKeyboardMarkup(kb))
 
@@ -136,40 +135,40 @@ async def start_cb(_, query):
 @new_task
 async def login(_, message):
     if Config.LOGIN_PASS is None:
-        return await send_message(message, "<i>Login is not enabled !</i>")
+        return await send_message(message, "<blockquote>Login password feature is not enabled.</blockquote>")
     elif len(message.command) > 1:
         user_id = message.from_user.id
         input_pass = message.command[1]
 
         if user_data.get(user_id, {}).get("VERIFY_TOKEN", "") == Config.LOGIN_PASS:
             return await send_message(
-                message, "<b>Already Bot Login In!</b>\n\n<i>No Need to Login Again</i>"
+                message, "<blockquote>Already logged in! No need to login again.</blockquote>"
             )
 
         if input_pass.casefold() != Config.LOGIN_PASS.casefold():
             return await send_message(
-                message, "<b>Wrong Password!</b>\n\n<i>Kindly check and try again</i>"
+                message, "<blockquote>Incorrect password! Please try again.</blockquote>"
             )
 
         update_user_ldata(user_id, "VERIFY_TOKEN", Config.LOGIN_PASS)
         if Config.DATABASE_URL:
             await database.update_user_data(user_id)
         return await send_message(
-            message, "<b>Bot Permanent Logged In!</b>\n\n<i>Now you can use the bot</i>"
+            message, "<blockquote><b>Logged in successfully!</b> You can now use the bot.</blockquote>"
         )
     else:
         await send_message(
-            message, "<b>Bot Login Usage :</b>\n\n<code>/login [password]</code>"
+            message, "<b>🔑 Bot Login Usage Guide</b>\n\n<blockquote><code>/login [password]</code></blockquote>"
         )
 
 
 @new_task
 async def ping(_, message):
     start_time = monotonic()
-    reply = await send_message(message, "<i>Starting Ping..</i>")
+    reply = await send_message(message, "<b>Pinging bot server...</b>")
     end_time = monotonic()
     await edit_message(
-        reply, f"<i>Pong!</i>\n <code>{int((end_time - start_time) * 1000)} ms</code>"
+        reply, f"<b>🏓 Pong!</b>\n<blockquote><b>Latency:</b> <code>{int((end_time - start_time) * 1000)} ms</code></blockquote>"
     )
 
 
@@ -189,12 +188,12 @@ async def log_cb(_, query):
     message = query.message
     user_id = query.from_user.id
     if user_id != int(data[1]):
-        await query.answer("Not Yours!", show_alert=True)
+        await query.answer("This menu is not for you!", show_alert=True)
     elif data[2] == "close":
         await query.answer()
         await delete_message(message, message.reply_to_message)
     elif data[2] == "disp":
-        await query.answer("Fetching Log..")
+        await query.answer("Fetching log file...")
         async with aiopen("log.txt", "r") as f:
             content = await f.read()
 
@@ -211,14 +210,14 @@ async def log_cb(_, query):
                 if total > 3500:
                     break
 
-            text = f"<b>Showing Last {len(res)} Lines from log.txt:</b> \n\n----------<b>START LOG</b>----------\n\n<blockquote expandable>{escape('\n'.join(reversed(res)))}</blockquote>\n----------<b>END LOG</b>----------"
+            text = f"<b>📜 Recent Log Entries ({len(res)} lines)</b>\n\n<blockquote expandable>{escape('\n'.join(reversed(res)))}</blockquote>"
 
             btn = ButtonMaker()
             btn.data_button("Close", f"log {user_id} close", style=ButtonStyle.DANGER)
             await send_message(message, text, btn.build_menu(1))
             await edit_reply_markup(message, None)
         except Exception as err:
-            LOGGER.error(f"TG Log Display : {str(err)}")
+            LOGGER.error(f"TG Log Display Error: {str(err)}")
     elif data[2] == "web":
         boundary = "R1eFDeaC554BUkLF"
         headers = {
@@ -249,9 +248,9 @@ async def log_cb(_, query):
         cget = create_scraper().request
         resp = cget("POST", "https://spaceb.in/", headers=headers, data=data)
         if resp.status_code == 200:
-            await query.answer("Generating..")
+            await query.answer("Generating web paste...")
             btn = ButtonMaker()
-            btn.url_button("📨 Web Paste (SB)", resp.url, style=ButtonStyle.PRIMARY)
+            btn.url_button("📨 Open Web Log (Spacebin)", resp.url, style=ButtonStyle.PRIMARY)
             await edit_reply_markup(message, btn.build_menu(1))
         else:
-            await query.answer("Web Paste Failed ! Check Logs", show_alert=True)
+            await query.answer("Web paste failed! Check logs.", show_alert=True)

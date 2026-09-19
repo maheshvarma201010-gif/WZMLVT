@@ -104,7 +104,7 @@ async def drive_clean_cb(_, query, obj):
         buttons.data_button("No, Back", "gdc cancel_del", style=ButtonStyle.SUCCESS)
         await edit_message(
             message,
-            f"Delete <code>{name}</code> ({size})?",
+            f"<b>Delete item:</b> <code>{name}</code> ({size})?",
             buttons.build_menu(2),
         )
     elif action == "confirm":
@@ -214,14 +214,14 @@ class GoogleDriveClean(GoogleDriveHelper):
         )
         button = buttons.build_menu(2)
         path_str = "/".join(i["name"] for i in self.parents)
-        msg = "<b>Google Drive Clean</b>"
-        msg += f"\n\nItems: {items_no}"
+        msg = "<b>🧹 Google Drive Clean Manager</b>\n\n"
+        msg += f"<blockquote>• <b>Items:</b> {items_no}"
         if items_no > LIST_LIMIT:
-            msg += f" | Page: {int(page)}/{pages} | Page Step: {self.page_step}"
-        msg += f"\n\nCurrent ID: <code>{self.id}</code>"
-        msg += f"\nCurrent Path: <code>{path_str}</code>"
-        msg += f"\nToken Path: {self.token_path}"
-        msg += f"\nTimeout: {get_readable_time(self._timeout - (time() - self._time))}"
+            msg += f" | <b>Page:</b> {int(page)}/{pages} | <b>Step:</b> {self.page_step}"
+        msg += f"\n• <b>Current ID:</b> <code>{self.id}</code>"
+        msg += f"\n• <b>Current Path:</b> <code>{path_str}</code>"
+        msg += f"\n• <b>Token Path:</b> {self.token_path}"
+        msg += f"\n• <b>Timeout:</b> {get_readable_time(self._timeout - (time() - self._time))}</blockquote>"
         await self._send_list_message(msg, button)
 
     async def get_items(self):
@@ -259,7 +259,7 @@ class GoogleDriveClean(GoogleDriveHelper):
             self.id = "root"
             await self.get_items()
         elif len(drives) == 0:
-            msg = "Service accounts Doesn't have access to any drive!"
+            msg = "<blockquote>Service accounts do not have access to any drive!</blockquote>"
             buttons = ButtonMaker()
             if self._token_user and self._token_owner:
                 buttons.data_button("Back", "gdc back", position="footer")
@@ -274,10 +274,10 @@ class GoogleDriveClean(GoogleDriveHelper):
             self.parents = [{"id": self.id, "name": drives[0]["name"]}]
             await self.get_items()
         else:
-            msg = "<b>Choose Drive:</b>"
-            msg += f"\nToken Path: {self.token_path}"
+            msg = "<b>📁 Choose Drive to Clean:</b>\n\n"
+            msg += f"<blockquote>• <b>Token Path:</b> {self.token_path}\n"
             msg += (
-                f"\nTimeout: {get_readable_time(self._timeout - (time() - self._time))}"
+                f"• <b>Timeout:</b> {get_readable_time(self._timeout - (time() - self._time))}</blockquote>"
             )
             buttons = ButtonMaker()
             self.drives.clear()
@@ -305,9 +305,9 @@ class GoogleDriveClean(GoogleDriveHelper):
             or self._sa_owner
             and self._token_user
         ):
-            msg = "<b>Choose Token:</b>"
+            msg = "<b>🔑 Choose Token for Drive Clean:</b>\n\n"
             msg += (
-                f"\nTimeout: {get_readable_time(self._timeout - (time() - self._time))}"
+                f"<blockquote>• <b>Timeout:</b> {get_readable_time(self._timeout - (time() - self._time))}</blockquote>"
             )
             buttons = ButtonMaker()
             if self._token_owner:
@@ -348,7 +348,7 @@ class GoogleDriveClean(GoogleDriveHelper):
                 file_id = self.get_id_from_url(link)
             except (KeyError, IndexError):
                 self._error_msg = (
-                    "Google Drive ID could not be found in the provided link"
+                    "Google Drive ID could not be found in the provided link."
                 )
                 self.id = self._error_msg
                 self.listener.is_cancelled = True
@@ -387,7 +387,7 @@ class GoogleDriveClean(GoogleDriveHelper):
                 aiopath.exists("accounts"),
             )
             if not self._token_owner and not self._token_user and not self._sa_owner:
-                self._error_msg = "token.pickle or service accounts are not Exists!"
+                self._error_msg = "Neither token.pickle nor service accounts exist!"
                 self.id = self._error_msg
                 self.listener.is_cancelled = True
                 self.event.set()
@@ -400,10 +400,10 @@ class GoogleDriveClean(GoogleDriveHelper):
             display_name = cat_name or "Selected"
             await send_message(
                 self.listener.message,
-                f"⌬ <b><i>Drive Cleaned</i></b>\n┟ <b>Category</b> → <code>{display_name}</code>\n┖ <b>Status</b> → <i>Completed</i>",
+                f"<b>🧹 Google Drive Cleaned</b>\n\n<blockquote>• <b>Category:</b> <code>{display_name}</code>\n• <b>Status:</b> Completed</blockquote>",
             )
         elif self._error_msg:
             await send_message(
                 self.listener.message,
-                f"⌬ <b><i>Drive Clean Error</i></b>\n┖ <b>Error</b> → <code>{self._error_msg}</code>",
+                f"<b>❌ Drive Clean Error</b>\n\n<blockquote>• <b>Error:</b> <code>{self._error_msg}</code></blockquote>",
             )

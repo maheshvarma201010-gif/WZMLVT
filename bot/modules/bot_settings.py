@@ -144,165 +144,165 @@ DEFAULT_DESP = {
     "HELPER_STRINGS": "Extra user session strings for parallel task handling. Space-separated.",
     "HELPER_BOT_PROXIES": "One proxy dict per line, matching HELPER_TOKENS order. Empty line = no proxy for that bot.",
     "HELPER_USER_PROXIES": "One proxy dict per line, matching HELPER_STRINGS order. Empty line = no proxy for that user.",
-    "STREAM_TOKENS": "Bot tokens dedicated to /stream and /dl. If set, streaming uses these and is isolated from mirror/leech load. Falls back to HELPER_TOKENS.",
+    "STREAM_TOKENS": "Bot tokens dedicated to /stream and /dl.",
     "BOT_MAX_TASKS": "Max tasks (including queued) the bot runs in parallel. 0 = unlimited.",
     "BOT_PM": "Send files/links to bot owner PM. Default: False.",
-    "CMD_SUFFIX": "Text appended to all bot commands. Useful for running multiple bot instances.",
+    "CMD_SUFFIX": "Text appended to all bot commands.",
     "DEFAULT_LANG": "Default bot language code. Default: en.",
     "DATABASE_URL": "MongoDB connection string for persistent storage.",
     "DEFAULT_UPLOAD": "Default upload destination: gd (Google Drive) or rc (rclone). Default: rc.",
     "DELETE_LINKS": "Auto-delete source links/messages on task start. Default: False.",
     "DEBRID_LINK_API": "Debrid-link.com API key for premium hoster support.",
-    "ALLDEBRID_API_KEY": "AllDebrid API key, used by the -ad flag to unlock links/magnets.",
-    "ALLDEBRID_NO_SEED_TIMEOUT": "Seconds a -ad magnet may stall with no seeders before aborting. 0 = no limit. Default: 180.",
+    "ALLDEBRID_API_KEY": "AllDebrid API key, used by the -ad flag.",
+    "ALLDEBRID_NO_SEED_TIMEOUT": "Seconds a -ad magnet may stall before aborting.",
     "DISABLE_TORRENTS": "Disable all torrent downloads. Default: False.",
-    "DISABLE_LEECH": "Disable all leech (download to Telegram) tasks. Default: False.",
-    "DISABLE_MIRROR": "Disable all mirror (upload to cloud) tasks. Default: False.",
-    "DISABLE_BULK": "Disable bulk (zip/unzip) operations. Default: False.",
+    "DISABLE_LEECH": "Disable all leech tasks. Default: False.",
+    "DISABLE_MIRROR": "Disable all mirror tasks. Default: False.",
+    "DISABLE_BULK": "Disable bulk operations. Default: False.",
     "DISABLE_MULTI": "Disable multi-part splits. Default: False.",
-    "DISABLE_SEED": "Disable seeding after torrent download. Default: False.",
+    "DISABLE_SEED": "Disable seeding. Default: False.",
     "DISABLE_FF_MODE": "Disable FFmpeg processing mode. Default: False.",
     "DISABLE_MEGA": "Disable Mega Processor for bot. Default: False.",
-    "DISABLE_PLUGINS": "Disable the plugin system. Unloads every plugin and stops loading them at boot. Default: False.",
-    "DISABLE_JD": "Disable JDownloader downloads. Saves ~256-500MB RAM. Default: False.",
-    "DISABLE_NZB": "Disable SABnzbd/Usenet downloads. Saves ~100-200MB RAM. Default: False.",
+    "DISABLE_PLUGINS": "Disable the plugin system. Default: False.",
+    "DISABLE_JD": "Disable JDownloader downloads. Default: False.",
+    "DISABLE_NZB": "Disable SABnzbd/Usenet downloads. Default: False.",
     "DISABLE_SEEDR": "Disable Seedr downloads. Default: False.",
-    "DISABLE_RSS": "Disable RSS feed monitoring. Saves CPU cycles. Default: False.",
-    "DISABLE_SEARCH": "Disable torrent search plugins. Saves network I/O. Default: False.",
-    "DISABLE_STREAM": "Disable streaming. Stops /stream and the stream server. Default: False.",
+    "DISABLE_RSS": "Disable RSS feed monitoring. Default: False.",
+    "DISABLE_SEARCH": "Disable torrent search plugins. Default: False.",
+    "DISABLE_STREAM": "Disable streaming. Default: False.",
     "DISABLE_YTDLP": "Disable YouTube/YT-DLP downloads. Default: False.",
     "EQUAL_SPLITS": "Split files into equal parts of LEECH_SPLIT_SIZE. Default: False.",
-    "EXCLUDED_EXTENSIONS": "File extensions to exclude from upload/clone. Space-separated.",
-    "FFMPEG_CMDS": "Custom FFmpeg command presets. Dict format.",
-    "FILELION_API": "FileLion.cc API key for direct download support.",
+    "EXCLUDED_EXTENSIONS": "File extensions to exclude from upload. Space-separated.",
+    "FFMPEG_CMDS": "Custom FFmpeg command presets.",
+    "FILELION_API": "FileLion.cc API key.",
     "MEDIA_STORE": "Store media metadata for re-upload. Default: True.",
-    "FORCE_SUB_IDS": "Channel/Group IDs for force subscription. Space-separated.",
-    "GOFILE_API": "Gofile.io API token for file uploads.",
-    "GOFILE_FOLDER_ID": "Gofile.io folder ID for uploads.",
-    "GOFILE_AUTO_CREATE_FOLDER": "With no GOFILE_FOLDER_ID, make a folder per upload instead of using the account root. Default: False.",
-    "PIXELDRAIN_KEY": "PixelDrain API key for uploads.",
+    "FORCE_SUB_IDS": "Channel/Group IDs for force subscription.",
+    "GOFILE_API": "Gofile.io API token.",
+    "GOFILE_FOLDER_ID": "Gofile.io folder ID.",
+    "GOFILE_AUTO_CREATE_FOLDER": "Create folder per upload. Default: False.",
+    "PIXELDRAIN_KEY": "PixelDrain API key.",
     "PROTECTED_API": "ProtectedFiles.cc API key.",
-    "BUZZHEAVIER_API": "BuzzHeavier API key for uploads.",
+    "BUZZHEAVIER_API": "BuzzHeavier API key.",
     "DEVUPLOADS_KEY": "DevUploads API key.",
     "DEVUPLOADS_FOLDER": "DevUploads folder ID.",
-    "VIKINGFILE_HASH": "VikingFile.to hash for uploads.",
+    "VIKINGFILE_HASH": "VikingFile.to hash.",
     "VIKINGFILE_FOLDER": "VikingFile.to folder ID.",
-    "GDRIVE_ID": "Google Drive folder/TeamDrive ID for uploads.",
-    "DRIVE_CATEGORY_MODE": "Let users set their own Drive upload categories in /usettings. Default: False.",
-    "DRIVE_CATEGORY_SA": "Email given reader access on uploads that go outside GDRIVE_ID. Empty = skip.",
-    "GD_DESP": "Description for Google Drive uploads. Default: Uploaded with WZ Bot.",
-    "AUTHOR_NAME": "Author name shown on Telegraph pages.",
-    "AUTHOR_URL": "Author URL for Telegraph pages. Use channel URL for join button.",
+    "GDRIVE_ID": "Google Drive folder/TeamDrive ID.",
+    "DRIVE_CATEGORY_MODE": "Drive categories mode. Default: False.",
+    "DRIVE_CATEGORY_SA": "Service account reader email.",
+    "GD_DESP": "Description for Google Drive uploads.",
+    "AUTHOR_NAME": "Author name for Telegraph pages.",
+    "AUTHOR_URL": "Author URL for Telegraph pages.",
     "INSTADL_API": "Instagram downloader API key.",
-    "IMDB_TEMPLATE": "Optional HTML template for IMDB results. If empty, uses Rich Messages.",
-    "IMAGES": "List of image URLs or file_ids for the gallery. Managed via /addimage command.",
-    "IMG_SEARCH": "Comma-separated keywords to auto-fetch wallpaper images on startup. e.g. anime, nature, space",
-    "IMG_PAGE": "Number of pages to search for each keyword in IMG_SEARCH. Each page has ~70 images. Default: 1",
-    "USE_IMAGES": "Enable random photo backgrounds on bot messages. Requires IMAGES list. Default: False",
-    "IMG_SOURCES": "List of image sources to fetch from. Options: wallpaperflare, peapix, wallhaven. Default: wallpaperflare",
-    "INC_TASK_NOTIFY": "Notify about incomplete tasks after restart. Default: False.",
-    "INC_TASK_RESUME": "Auto-resume incomplete tasks on restart. Default: False.",
-    "INDEX_URL": "Google Drive Index URL for direct links.",
-    "IS_TEAM_DRIVE": "Set True for TeamDrive uploads. Default: False.",
-    "JD_EMAIL": "JDownloader account email for premium downloads.",
+    "IMDB_TEMPLATE": "HTML template for IMDB results.",
+    "IMAGES": "Gallery image URLs/IDs.",
+    "IMG_SEARCH": "Auto-fetch keywords.",
+    "IMG_PAGE": "Search pages count.",
+    "USE_IMAGES": "Enable random photo backgrounds.",
+    "IMG_SOURCES": "Image source list.",
+    "INC_TASK_NOTIFY": "Notify incomplete tasks on restart.",
+    "INC_TASK_RESUME": "Auto-resume incomplete tasks.",
+    "INDEX_URL": "Google Drive Index URL.",
+    "IS_TEAM_DRIVE": "Set True for TeamDrive uploads.",
+    "JD_EMAIL": "JDownloader account email.",
     "JD_PASS": "JDownloader account password.",
-    "MEGA_EMAIL": "Mega.nz account email for premium.",
+    "MEGA_EMAIL": "Mega.nz account email.",
     "MEGA_PASSWORD": "Mega.nz account password.",
-    "SEEDR_EMAIL": "Seedr account email for magnet mirroring.",
+    "SEEDR_EMAIL": "Seedr account email.",
     "SEEDR_PASSWORD": "Seedr account password.",
-    "SEEDR_DELETE_FOLDER": "Delete folder from Seedr after downloading locally. Default: False.",
-    "DIRECT_LIMIT": "Direct link download size limit in GB. 0 = unlimited.",
-    "MEGA_LIMIT": "Mega download size limit in GB. 0 = unlimited.",
-    "TORRENT_LIMIT": "Torrent download size limit in GB. 0 = unlimited.",
-    "GD_DL_LIMIT": "Google Drive download size limit in GB. 0 = unlimited.",
-    "RC_DL_LIMIT": "Rclone download size limit in GB. 0 = unlimited.",
-    "CLONE_LIMIT": "Google Drive clone size limit in GB. 0 = unlimited.",
-    "JD_LIMIT": "JDownloader download size limit in GB. 0 = unlimited.",
-    "NZB_LIMIT": "Usenet download size limit in GB. 0 = unlimited.",
-    "SEEDR_LIMIT": "Seedr download size limit in GB. 0 = unlimited.",
-    "YTDLP_LIMIT": "yt-dlp download size limit in GB. 0 = unlimited.",
-    "PLAYLIST_LIMIT": "Max items to download from a playlist. 0 = unlimited.",
-    "LEECH_LIMIT": "Leech (Telegram upload) size limit in GB. 0 = unlimited.",
-    "EXTRACT_LIMIT": "Extracted file size limit in GB. 0 = unlimited.",
-    "ARCHIVE_LIMIT": "Archive (zip) size limit in GB. 0 = unlimited.",
-    "STORAGE_LIMIT": "Minimum free storage to maintain in GB. Downloads cancelled if exceeded.",
-    "LEECH_LOG_CHAT": "Chat ID to dump all leeched files, or chat_id|topic_id for a forum topic. Leave empty to disable.",
-    "LEECH_DUMP_CHATS": 'Named leech dump chats selectable per task via -ud flag. Dict format: {"name": chat_id}. Example: {"A": -100123}.',
-    "LINKS_LOG_ID": "Chat ID for link logging.",
-    "MIRROR_LOG_ID": "Chat ID(s) for mirror logs. Space-separated for multiple.",
-    "LEECH_PREFIX": "Prefix added to leeched file names.",
-    "TMDB_ACCESS_TOKEN": "TMDb API key (v3) or Read Access Token (v4), used by AUTO_THUMBNAIL.",
-    "AUTO_THUMBNAIL": "Fetch a poster from TMDb as thumbnail when no other thumbnail exists. Default: False.",
-    "LEECH_CAPTION": "Custom caption for leeched files. Supports HTML.",
-    "LEECH_SUFFIX": "Suffix added to leeched file names.",
-    "LEECH_FONT": "Font style for captions: b, i, u, s, code, spoiler.",
-    "LEECH_SPLIT_SIZE": "Split size for Telegram uploads in bytes. Default: 2GB (4GB for premium).",
-    "MEDIA_GROUP": "Upload split parts as media group. Default: False.",
-    "USE_HYPER": "Enable HyperDL/HyperUP for faster Telegram transfers. Default: True.",
-    "HYPER_THREADS": "Number of parallel download parts (clients). 0 = auto.",
-    "HYPER_PIPELINE": "Concurrent GetFile requests per HyperDL part. Default: 4.",
-    "HYPER_CHUNK": "HyperDL working chunk size in bytes. Default: 512 * 1024 (512KB).",
-    "STREAM_PIPELINE": "Concurrent GetFile requests for /dl downloads. Default: 8.",
-    "STREAM_CHUNK": "Streaming chunk size in bytes, capped at 1 MiB. Default: 1048576.",
-    "STREAM_PER_CLIENT": "Concurrent playback streams allowed per bot. Raise for more simultaneous viewers, lower if Telegram floods. Default: 6.",
-    "STREAM_GATE": "Process-wide ceiling on concurrent GetFile calls. Default: 96.",
-    "MEM_BUDGET": "Memory ceiling for transfer buffers in MB. 0 = auto (15% of the container limit).",
-    "MEM_DEEP_STATS": "Add object counts to /memory. Costs a full GC scan per call. Default: False.",
-    "CPU_LIMIT": "CPU limit percentage for background services (SABnzbd, JDownloader). Default: 20.",
-    "FFMPEG_CORES": "CPUs given to FFmpeg. auto = 60% of them, all/0 = every CPU, a count (5), a percentage (75%), or a taskset list (0-4). Services take the rest.",
-    "THROTTLE_SERVICES": "Pause services during heavy ops (FFmpeg). auto=low-end only, always, never.",
-    "HYDRA_IP": "Hydra API IP address for search.",
-    "HYDRA_API_KEY": "Hydra API key for search.",
-    "NAME_SWAP": "Rename files using pattern. Format: old:new|old2:new2.",
-    "OWNER_ID": "Telegram User ID of the bot owner.",
-    "QUEUE_ALL": "Max parallel download+upload tasks. 0 = unlimited.",
-    "QUEUE_DOWNLOAD": "Max parallel downloading tasks. 0 = unlimited.",
-    "QUEUE_UPLOAD": "Max parallel uploading tasks. 0 = unlimited.",
-    "RCLONE_FLAGS": "Rclone flags. Format: key:value|key|key:value.",
-    "RCLONE_PATH": "Default rclone remote path for uploads.",
-    "RCLONE_SERVE_URL": "Public URL for rclone serve. Format: http://ip.",
-    "SHOW_CLOUD_LINK": "Show cloud link button on leeched files. Default: True.",
-    "RCLONE_SERVE_USER": "Username for rclone serve authentication.",
-    "RCLONE_SERVE_PASS": "Password for rclone serve authentication.",
-    "RCLONE_SERVE_PORT": "Port for rclone serve. Default: 8081.",
-    "RSS_CHAT": "Chat ID for RSS feed notifications.",
-    "RSS_DELAY": "RSS feed check interval in seconds. Default: 600.",
-    "RSS_SIZE_LIMIT": "RSS download size limit in GB. 0 = unlimited.",
-    "SEARCH_API_LINK": "Search API app URL for multi-search.",
-    "SEARCH_LIMIT": "Max search results per site. 0 = default API limit.",
-    "SEARCH_PLUGINS": "qBittorrent search plugin URLs. List format.",
-    "SET_COMMANDS": "Auto-set bot commands on start. Default: True.",
-    "STATUS_LIMIT": "Number of status messages to show. Default: 10.",
-    "STATUS_UPDATE_INTERVAL": "Status message refresh interval in seconds. Default: 15.",
-    "STOP_DUPLICATE": "Stop if file/folder exists in GDrive. Default: False.",
-    "STREAMWISH_API": "StreamWish API key for uploads.",
-    "SUDO_USERS": "User IDs with sudo access. Space-separated.",
-    "TELEGRAM_API": "Telegram API ID from my.telegram.org.",
-    "TELEGRAM_HASH": "Telegram API Hash from my.telegram.org.",
-    "TG_PROXY": "SOCKS5 proxy for Telegram connection. Format: socks5://user:pass@ip:port.",
-    "THUMBNAIL_LAYOUT": "Thumbnail layout for uploads. Format: WxH (e.g., 1280x720).",
-    "VERIFY_TIMEOUT": "Verification timeout in seconds. 0 = disabled.",
-    "LOGIN_PASS": "Password to skip token system. Leave empty to disable.",
-    "TORRENT_TIMEOUT": "Dead torrent timeout in seconds. 0 = disabled.",
-    "TIMEZONE": "Timezone for messages. Default: Asia/Kolkata.",
-    "USER_MAX_TASKS": "Max concurrent tasks per user. 0 = unlimited.",
-    "USER_TIME_INTERVAL": "Cooldown between tasks per user in seconds. 0 = disabled.",
-    "UPLOAD_PATHS": "Custom upload paths per extension. Dict format.",
-    "UPSTREAM_REPO": "GitHub repo URL for bot updates.",
-    "UPSTREAM_BRANCH": "Branch for updates. Default: wzv3.",
-    "USENET_SERVERS": "Usenet server configurations. List of dicts.",
-    "USER_SESSION_STRING": "Pyrogram session string for user account tasks.",
-    "TRANSMISSION_MODE": "Transmission mode: bot, user, or both. Default: both.",
-    "USE_SERVICE_ACCOUNTS": "Use Google Service Accounts. Default: False.",
-    "WEB_ACCESS_PASSWORD": "Secret for deriving proxy passwords. Set once, use derived passwords in browser. Empty = auto-generated.",
-    "WEB_PINCODE": "Ask for pincode in web file selection. Default: True.",
-    "YT_DLP_OPTIONS": "Default yt-dlp options. Format: key:value|key:value.",
-    "YT_DESP": "Description for YouTube uploads. Default: Uploaded with WZML-X bot.",
-    "YT_TAGS": "Tags for YouTube uploads. List format.",
-    "YT_CATEGORY_ID": "YouTube video category ID. Default: 22 (People & Blogs).",
-    "PLUGIN_INDEXES": "Extra plugin index URLs on top of the official one. Each must be a JSON file holding a plugins list.",
-    "ENABLE_TELEMETRY": "Send crash reports to telemetry.wzmlx.com to help fix bugs. Default: True.",
-    "YT_PRIVACY_STATUS": "YouTube upload privacy: public, unlisted, or private.",
+    "SEEDR_DELETE_FOLDER": "Auto delete Seedr folder after download.",
+    "DIRECT_LIMIT": "Direct link size limit in GB.",
+    "MEGA_LIMIT": "Mega download limit in GB.",
+    "TORRENT_LIMIT": "Torrent limit in GB.",
+    "GD_DL_LIMIT": "Google Drive limit in GB.",
+    "RC_DL_LIMIT": "Rclone limit in GB.",
+    "CLONE_LIMIT": "Clone size limit in GB.",
+    "JD_LIMIT": "JDownloader limit in GB.",
+    "NZB_LIMIT": "NZB limit in GB.",
+    "SEEDR_LIMIT": "Seedr limit in GB.",
+    "YTDLP_LIMIT": "yt-dlp limit in GB.",
+    "PLAYLIST_LIMIT": "Max playlist items.",
+    "LEECH_LIMIT": "Leech limit in GB.",
+    "EXTRACT_LIMIT": "Extract limit in GB.",
+    "ARCHIVE_LIMIT": "Archive limit in GB.",
+    "STORAGE_LIMIT": "Min free storage limit in GB.",
+    "LEECH_LOG_CHAT": "Chat ID for leeched dumps.",
+    "LEECH_DUMP_CHATS": "Named dump chats dict.",
+    "LINKS_LOG_ID": "Chat ID for link logs.",
+    "MIRROR_LOG_ID": "Chat ID for mirror logs.",
+    "LEECH_PREFIX": "Leech filename prefix.",
+    "TMDB_ACCESS_TOKEN": "TMDb API Read Token.",
+    "AUTO_THUMBNAIL": "TMDb auto poster thumbnail.",
+    "LEECH_CAPTION": "Custom leech caption.",
+    "LEECH_SUFFIX": "Leech filename suffix.",
+    "LEECH_FONT": "Caption font style.",
+    "LEECH_SPLIT_SIZE": "Telegram upload split size.",
+    "MEDIA_GROUP": "Upload split parts as media group.",
+    "USE_HYPER": "Enable HyperDL/HyperUP.",
+    "HYPER_THREADS": "Parallel download threads.",
+    "HYPER_PIPELINE": "HyperDL pipeline count.",
+    "HYPER_CHUNK": "HyperDL chunk size.",
+    "STREAM_PIPELINE": "Stream pipeline count.",
+    "STREAM_CHUNK": "Stream chunk size.",
+    "STREAM_PER_CLIENT": "Max streams per client.",
+    "STREAM_GATE": "Stream process ceiling.",
+    "MEM_BUDGET": "Memory budget ceiling in MB.",
+    "MEM_DEEP_STATS": "Add object counts to /memory.",
+    "CPU_LIMIT": "CPU limit percentage.",
+    "FFMPEG_CORES": "CPUs given to FFmpeg.",
+    "THROTTLE_SERVICES": "Pause background services during FFmpeg.",
+    "HYDRA_IP": "Hydra API IP.",
+    "HYDRA_API_KEY": "Hydra API key.",
+    "NAME_SWAP": "Rename pattern rules.",
+    "OWNER_ID": "Bot owner user ID.",
+    "QUEUE_ALL": "Max parallel tasks.",
+    "QUEUE_DOWNLOAD": "Max parallel download tasks.",
+    "QUEUE_UPLOAD": "Max parallel upload tasks.",
+    "RCLONE_FLAGS": "Custom Rclone flags.",
+    "RCLONE_PATH": "Default Rclone remote path.",
+    "RCLONE_SERVE_URL": "Rclone serve public URL.",
+    "SHOW_CLOUD_LINK": "Show cloud button on leeched files.",
+    "RCLONE_SERVE_USER": "Rclone serve username.",
+    "RCLONE_SERVE_PASS": "Rclone serve password.",
+    "RCLONE_SERVE_PORT": "Rclone serve port.",
+    "RSS_CHAT": "RSS notification chat ID.",
+    "RSS_DELAY": "RSS check interval seconds.",
+    "RSS_SIZE_LIMIT": "RSS size limit in GB.",
+    "SEARCH_API_LINK": "Search API URL.",
+    "SEARCH_LIMIT": "Max search results.",
+    "SEARCH_PLUGINS": "qBittorrent search plugins.",
+    "SET_COMMANDS": "Auto-set bot commands.",
+    "STATUS_LIMIT": "Status messages count.",
+    "STATUS_UPDATE_INTERVAL": "Status refresh seconds.",
+    "STOP_DUPLICATE": "Stop duplicate GDrive files.",
+    "STREAMWISH_API": "StreamWish API key.",
+    "SUDO_USERS": "Sudo user IDs.",
+    "TELEGRAM_API": "Telegram API ID.",
+    "TELEGRAM_HASH": "Telegram API Hash.",
+    "TG_PROXY": "Telegram SOCKS5 proxy.",
+    "THUMBNAIL_LAYOUT": "Grid layout dimensions.",
+    "VERIFY_TIMEOUT": "Token timeout seconds.",
+    "LOGIN_PASS": "Global password.",
+    "TORRENT_TIMEOUT": "Torrent timeout seconds.",
+    "TIMEZONE": "Bot timezone.",
+    "USER_MAX_TASKS": "Max tasks per user.",
+    "USER_TIME_INTERVAL": "Cooldown seconds.",
+    "UPLOAD_PATHS": "Upload paths dict.",
+    "UPSTREAM_REPO": "Upstream git repo.",
+    "UPSTREAM_BRANCH": "Upstream git branch.",
+    "USENET_SERVERS": "Usenet servers list.",
+    "USER_SESSION_STRING": "User string session.",
+    "TRANSMISSION_MODE": "Telegram transmission mode.",
+    "USE_SERVICE_ACCOUNTS": "Use Service Accounts.",
+    "WEB_ACCESS_PASSWORD": "Web proxy password.",
+    "WEB_PINCODE": "Web file selection pin.",
+    "YT_DLP_OPTIONS": "yt-dlp options dict.",
+    "YT_DESP": "YouTube description.",
+    "YT_TAGS": "YouTube tags list.",
+    "YT_CATEGORY_ID": "YouTube category ID.",
+    "PLUGIN_INDEXES": "Plugin index URLs.",
+    "ENABLE_TELEMETRY": "Enable crash telemetry.",
+    "YT_PRIVACY_STATUS": "YouTube privacy status.",
 }
 
 PROTECTED_VARS = {
@@ -407,7 +407,7 @@ async def get_buttons(key=None, edit_type=None, edit_mode=False):
         buttons.data_button("Sabnzbd Settings", "botset nzb")
         buttons.data_button("JDownloader Sync", "botset syncjd")
         buttons.data_button("Close", "botset close", style=ButtonStyle.DANGER)
-        msg = "Bot Settings:"
+        msg = "<b>⚙️ Global Bot Settings Dashboard</b>\n\n<blockquote>Select a category to configure global bot settings.</blockquote>"
     elif edit_type is not None:
         if edit_type == "ariavar":
             buttons.data_button("Back", "botset aria", style=ButtonStyle.PRIMARY)
@@ -415,21 +415,21 @@ async def get_buttons(key=None, edit_type=None, edit_mode=False):
                 buttons.data_button("Empty String", f"botset emptyaria {key}")
             buttons.data_button("Close", "botset close", style=ButtonStyle.DANGER)
             msg = (
-                "<i>Send a key with value.</i> Example: <code>https-proxy-user:value</code>\n┖ <b>Time Left :</b> <code>60 sec</code>"
+                "<blockquote>Send key and value formatted as <code>key:value</code>.\n⏱️ <b>Time Left:</b> <code>60 sec</code></blockquote>"
                 if key == "newkey"
-                else f"<i>Send a valid value for <code>{key}</code>.</i> Current value is <code>{aria2_options[key]}</code>\n┖ <b>Time Left :</b> <code>60 sec</code>"
+                else f"<blockquote>Send new value for <code>{key}</code>. Current: <code>{aria2_options[key]}</code>\n⏱️ <b>Time Left:</b> <code>60 sec</code></blockquote>"
             )
         elif edit_type == "qbitvar":
             buttons.data_button("Back", "botset qbit", style=ButtonStyle.PRIMARY)
             buttons.data_button("Empty String", f"botset emptyqbit {key}")
             buttons.data_button("Close", "botset close", style=ButtonStyle.DANGER)
-            msg = f"<i>Send a valid value for <code>{key}</code>.</i> Current value is <code>{qbit_options[key]}</code>\n┖ <b>Time Left :</b> <code>60 sec</code>"
+            msg = f"<blockquote>Send new value for <code>{key}</code>. Current: <code>{qbit_options[key]}</code>\n⏱️ <b>Time Left:</b> <code>60 sec</code></blockquote>"
         elif edit_type == "nzbvar":
             buttons.data_button("Back", "botset nzb", style=ButtonStyle.PRIMARY)
             buttons.data_button("Default", f"botset resetnzb {key}")
             buttons.data_button("Empty String", f"botset emptynzb {key}")
             buttons.data_button("Close", "botset close", style=ButtonStyle.DANGER)
-            msg = f"<i>Send a valid value for <code>{key}</code>.</i> Current value is <code>{nzb_options[key]}</code>\nIf the value is list then separate them by space or ,\nExample: <code>.exe,info</code> or <code>.exe .info</code>\n┖ <b>Time Left :</b> <code>60 sec</code>"
+            msg = f"<blockquote>Send new value for <code>{key}</code>. Current: <code>{nzb_options[key]}</code>\n⏱️ <b>Time Left:</b> <code>60 sec</code></blockquote>"
         elif edit_type.startswith("nzbsevar"):
             index = 0 if key == "newser" else int(edit_type.replace("nzbsevar", ""))
             buttons.data_button(
@@ -439,16 +439,16 @@ async def get_buttons(key=None, edit_type=None, edit_mode=False):
                 buttons.data_button("Empty", f"botset emptyserkey {index} {key}")
             buttons.data_button("Close", "botset close", style=ButtonStyle.DANGER)
             if key == "newser":
-                msg = "<i>Send one server as dictionary <code>{}</code>, like in config.py without <code>[]</code>.</i>\n┖ <b>Time Left :</b> <code>60 sec</code>"
+                msg = "<blockquote>Send new server dict <code>{}</code>.\n⏱️ <b>Time Left:</b> <code>60 sec</code></blockquote>"
             else:
-                msg = f"<i>Send a valid value for <code>{key}</code> in server <code>{Config.USENET_SERVERS[index]['name']}</code>.</i> Current value is <code>{Config.USENET_SERVERS[index][key]}</code>\n┖ <b>Time Left :</b> <code>60 sec</code>"
+                msg = f"<blockquote>Send value for <code>{key}</code> in server <code>{Config.USENET_SERVERS[index]['name']}</code>. Current: <code>{Config.USENET_SERVERS[index][key]}</code>\n⏱️ <b>Time Left:</b> <code>60 sec</code></blockquote>"
         elif edit_type == "editvar":
-            msg = f"<b>Variable:</b> <code>{key}</code>\n\n"
-            msg += f"<b>Description:</b> {DEFAULT_DESP.get(key, 'No Description Provided')}\n\n"
+            msg = f"<b>⚙️ Variable Configuration: {key}</b>\n\n"
+            msg += f"<blockquote>• <b>Description:</b> {DEFAULT_DESP.get(key, 'No description provided')}\n"
             value = Config.get(key)
             if value == "":
                 value = "None"
-            msg += f"<b>Current Value:</b> <code>{value}</code>\n\n"
+            msg += f"• <b>Current Value:</b> <code>{value}</code></blockquote>\n\n"
             buttons.data_button(
                 "View Value", f"botset showvar {key}", position="header"
             )
@@ -467,7 +467,7 @@ async def get_buttons(key=None, edit_type=None, edit_mode=False):
                 else:
                     buttons.data_button("Stop Edit", f"botset editvar {key}")
             else:
-                msg += "<i>Choose a valid value for the above Var</i>\n\n"
+                msg += "<blockquote>Choose value for this boolean variable:</blockquote>\n\n"
                 buttons.data_button("True", f"botset boolvar {key} on")
                 buttons.data_button("False", f"botset boolvar {key} off")
             if key not in BOOL_VARS and key not in PROTECTED_VARS:
@@ -477,10 +477,10 @@ async def get_buttons(key=None, edit_type=None, edit_mode=False):
             )
             if edit_mode and key in RESTART_VARS:
                 msg += (
-                    "\n<b>Note:</b> Restart required for this edit to take effect!\n\n"
+                    "<blockquote><b>Note:</b> Bot restart required for changes to take effect!</blockquote>\n\n"
                 )
             if edit_mode and key not in BOOL_VARS:
-                msg += "<i>Send a valid value for the above Var.</i>\n┖ <b>Time Left :</b> <code>60 sec</code>"
+                msg += "<blockquote>Send new value for this variable.\n⏱️ <b>Time Left:</b> <code>60 sec</code></blockquote>"
     elif key == "var":
         conf_dict = {
             k: v
@@ -496,7 +496,7 @@ async def get_buttons(key=None, edit_type=None, edit_mode=False):
             buttons.data_button(
                 f"{int(x / 10) + 1}", f"botset start var {x}", position="footer"
             )
-        msg = f"⌬ <b><u>Config Variables</u></b> | <b><u>Page: {int(start / 10) + 1}</b></u>"
+        msg = f"<b>⚙️ Config Variables</b> (Page {int(start / 10) + 1})"
     elif key == "setonoff":
         buttons.data_button("On/Off Settings", "botset settoggle")
         buttons.data_button("Limit Settings", "botset setlimit")
@@ -504,7 +504,7 @@ async def get_buttons(key=None, edit_type=None, edit_mode=False):
         buttons.data_button(
             "Close", "botset close", position="footer", style=ButtonStyle.DANGER
         )
-        msg = "⌬ <b><u>Module Settings</u></b>"
+        msg = "<b>⚙️ Module Settings</b>"
     elif key == "settoggle":
         for k in ONOFF_VARS:
             val = Config.get(k)
@@ -525,7 +525,7 @@ async def get_buttons(key=None, edit_type=None, edit_mode=False):
         buttons.data_button(
             "Close", "botset close", position="footer", style=ButtonStyle.DANGER
         )
-        msg = "⌬ <b><u>On/Off Settings</u></b>"
+        msg = "<b>🔘 Feature On/Off Settings</b>"
     elif key == "setlimit":
         page_vars = LIMIT_VARS[start : 10 + start]
         for k in page_vars:
@@ -639,9 +639,9 @@ async def get_buttons(key=None, edit_type=None, edit_mode=False):
         buttons.data_button(
             "Close", "botset close", position="footer", style=ButtonStyle.DANGER
         )
-        txt = "\n┠ ".join(
+        txt = "\n".join(
             [
-                f"<code>{fn}</code> → <b>{'Exists' if await aiopath.isfile(fn) else 'Not Exists'}</b>"
+                f"• <code>{fn}</code>: <b>{'Exists' if await aiopath.isfile(fn) else 'Not Exists'}</b>"
                 for fn in [
                     "config.py",
                     "token.pickle",
@@ -656,16 +656,13 @@ async def get_buttons(key=None, edit_type=None, edit_mode=False):
                 ]
             ]
         )
-        msg = f"""⌬ <b>Private File Settings</b>
-┠ <b>Dashboard :</b> 
-┃
-┠ {txt}
-┃
-┠ <b>Delete File</b> → Send the file name as text message, Like <code>rclone.conf</code>.
-┃
-┖ <b>Note:</b> Changing .netrc will not take effect for aria2c until restart."""
+        msg = f"""<b>🔐 Private Files Dashboard</b>
+
+<blockquote>{txt}
+
+<b>Note:</b> Send file name to delete. Send file document to save. Changes to .netrc take effect after restart.</blockquote>"""
         if edit_mode:
-            msg += "\n\n<i>Send the file name to delete the file, file to save the file & for new file create, follow below format.</i> \n\n<b>Format:</b> \n<code>file_name\n\ncontents of file</code></i>\n┖ <b>Time Left :</b> <code>60 sec</code>"
+            msg += "\n\n<blockquote>Send file name to delete or send file contents to create new file.\n⏱️ <b>Time Left:</b> <code>60 sec</code></blockquote>"
     elif key == "aria":
         for k in list(aria2_options.keys())[start : 10 + start]:
             if k not in ["checksum", "index-out", "out", "pause", "select-file"]:
@@ -681,7 +678,7 @@ async def get_buttons(key=None, edit_type=None, edit_mode=False):
             buttons.data_button(
                 f"{int(x / 10)}", f"botset start aria {x}", position="footer"
             )
-        msg = f"Aria2c Options | Page: {int(start / 10)} | State: {state}"
+        msg = f"<b>⚙️ Aria2c Options</b> (Page {int(start / 10)} | Mode: {state})"
     elif key == "qbit":
         for k in list(qbit_options.keys())[start : 10 + start]:
             buttons.data_button(k, f"botset qbitvar {k}")
@@ -696,7 +693,7 @@ async def get_buttons(key=None, edit_type=None, edit_mode=False):
             buttons.data_button(
                 f"{int(x / 10)}", f"botset start qbit {x}", position="footer"
             )
-        msg = f"Qbittorrent Options | Page: {int(start / 10)} | State: {state}"
+        msg = f"<b>⚙️ qBittorrent Options</b> (Page {int(start / 10)} | Mode: {state})"
     elif key == "nzb":
         for k in list(nzb_options.keys())[start : 10 + start]:
             buttons.data_button(k, f"botset nzbvar {k}")
@@ -712,7 +709,7 @@ async def get_buttons(key=None, edit_type=None, edit_mode=False):
             buttons.data_button(
                 f"{int(x / 10)}", f"botset start nzb {x}", position="footer"
             )
-        msg = f"Sabnzbd Options | Page: {int(start / 10)} | State: {state}"
+        msg = f"<b>⚙️ SABnzbd Options</b> (Page {int(start / 10)} | Mode: {state})"
     elif key == "nzbserver":
         servers = (
             Config.USENET_SERVERS if isinstance(Config.USENET_SERVERS, list) else []
@@ -728,7 +725,7 @@ async def get_buttons(key=None, edit_type=None, edit_mode=False):
                 buttons.data_button(
                     f"{int(x / 10)}", f"botset start nzbser {x}", position="footer"
                 )
-        msg = f"Usenet Servers | Page: {int(start / 10)} | State: {state}"
+        msg = f"<b>🌐 Usenet Servers</b> (Page {int(start / 10)} | Mode: {state})"
     elif key.startswith("nzbser"):
         servers = (
             Config.USENET_SERVERS if isinstance(Config.USENET_SERVERS, list) else []
@@ -750,9 +747,9 @@ async def get_buttons(key=None, edit_type=None, edit_mode=False):
                 buttons.data_button(
                     f"{int(x / 10)}", f"botset start {key} {x}", position="footer"
                 )
-        msg = f"Server Keys | Page: {int(start / 10)} | State: {state}"
+        msg = f"<b>⚙️ Usenet Server Keys</b> (Page {int(start / 10)} | Mode: {state})"
     else:
-        msg = "Unknown option"
+        msg = "<b>Unknown option</b>"
 
     return msg, buttons.build_menu(1 if key is None else 2, lb_cols=8)
 
@@ -1350,11 +1347,11 @@ async def event_handler(client, query, pfunc, rfunc, document=False):
         elif time() - update_time > 8 and handler_dict[chat_id]:
             update_time = time()
             msg = await client.get_messages(chat_id, query.message.id)
-            text = msg.text.split("\n")
-            text[-1] = (
-                f"┖ <b>Time Left :</b> <code>{round(60 - (time() - start_time), 2)} sec</code>"
+            lines = msg.text.split("\n")
+            lines[-1] = (
+                f"⏱️ <b>Time Left:</b> <code>{round(60 - (time() - start_time), 1)}s</code>"
             )
-            await edit_message(msg, "\n".join(text), msg.reply_markup)
+            await edit_message(msg, "\n".join(lines), msg.reply_markup)
     client.remove_handler(*handler)
 
 

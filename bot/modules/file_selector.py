@@ -27,7 +27,7 @@ from ..helper.telegram_helper.message_utils import (
 @new_task
 async def select(_, message):
     if not Config.BASE_URL:
-        await send_message(message, "Base URL not defined!")
+        await send_message(message, "<blockquote>BASE_URL is not configured! Selection web app requires BASE_URL.</blockquote>")
         return
     user_id = message.from_user.id
     text = message.text
@@ -44,19 +44,19 @@ async def select(_, message):
         if gid:
             task = await get_task_by_gid(gid)
             if task is None:
-                await send_message(message, f"GID: <code>{gid}</code> Not Found.")
+                await send_message(message, f"<blockquote>Task GID <code>{gid}</code> not found!</blockquote>")
                 return
     if task is None and (reply_to_id := message.reply_to_message_id):
         async with task_dict_lock:
             task = task_dict.get(reply_to_id)
         if task is None:
-            await send_message(message, "This is not an active task!")
+            await send_message(message, "<blockquote>No active task found for replied message!</blockquote>")
             return
     if task is None:
         msg = (
-            "Reply to an active /cmd which was used to start the download or add gid along with cmd\n\n"
-            + "This command mainly for selection incase you decided to select files from already added torrent/nzb. "
-            + "But you can always use /cmd with arg `s` to select files before download start."
+            "<b>🎯 File Selection Usage</b>\n\n"
+            "<blockquote>Reply to an active task message or pass task GID:\n"
+            "<code>/select GID</code></blockquote>"
         )
         await send_message(message, msg)
         return
@@ -65,10 +65,10 @@ async def select(_, message):
         and task.listener.user_id != user_id
         and (user_id not in user_data or not user_data[user_id].get("SUDO"))
     ):
-        await send_message(message, "This task is not for you!")
+        await send_message(message, "<blockquote>You do not have permission to modify files for this task!</blockquote>")
         return
     if not iscoroutinefunction(task.status):
-        await send_message(message, "The task has finished the download stage!")
+        await send_message(message, "<blockquote>The task has completed its download phase.</blockquote>")
         return
     if await task.status() not in [
         MirrorStatus.STATUS_DOWNLOAD,
@@ -77,11 +77,11 @@ async def select(_, message):
     ]:
         await send_message(
             message,
-            "Task should be in download or pause (in case message was deleted by mistake) or queued status (in case you have used torrent or nzb file)!",
+            "<blockquote>Task must be downloading, paused, or queued to open file selector.</blockquote>",
         )
         return
     if task.name().startswith("[METADATA]") or task.name().startswith("Trying"):
-        await send_message(message, "Try after downloading metadata finished!")
+        await send_message(message, "<blockquote>Please wait until torrent metadata download finishes.</blockquote>")
         return
 
     try:
@@ -101,11 +101,11 @@ async def select(_, message):
                     )
         task.listener.select = True
     except Exception:
-        await send_message(message, "This is not a bittorrent or sabnzbd task!")
+        await send_message(message, "<blockquote>This is not a BitTorrent or SABnzbd task.</blockquote>")
         return
 
     SBUTTONS = bt_selection_buttons(id_, message)
-    msg = "<b>Download Paused!</b>\n\n<i>Select your files &amp; press <b>Done Selecting</b> to start.</i>"
+    msg = "<b>⏸️ Download Paused for File Selection</b>\n\n<blockquote>Select files in the web interface and click <b>Done Selecting</b> to resume download.</blockquote>"
     await send_message(message, msg, SBUTTONS)
 
 
@@ -179,7 +179,7 @@ async def confirm_selection(_, query):
                         await TorrentManager.aria2.unpause(id_)
                     except Exception as e:
                         LOGGER.error(
-                            f"{e} Error in resume, this mostly happens after abuse aria2. Try to use select cmd again!"
+                            f"{e} Error in resume, this mostly happens after abuse aria2."
                         )
         elif task.listener.is_nzb:
             if not task.queued:

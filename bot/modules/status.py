@@ -43,13 +43,13 @@ async def task_status(_, message):
     if count == 0:
         currentTime = get_readable_time(time() - bot_start_time)
         free = get_readable_file_size(disk_usage(DOWNLOAD_DIR).free)
-        msg = f"""〶 <b><i>No Active Bot Tasks!</i></b>
-│
-┖ <b>NOTE</b> → <i>Each user can get status for his tasks by adding "me" or user_id like "1234xxx" after cmd: /{BotCommands.StatusCommand[0]} me or /{BotCommands.StatusCommand[1]} me</i>
+        msg = f"""<b>📊 Active Bot Status</b>
 
-⌬ <b><u>Bot Stats</u></b>
-┟ <b>CPU</b> → {cpu_percent()}% | <b>F</b> → {free} [{round(100 - disk_usage(DOWNLOAD_DIR).percent, 1)}%]
-┖ <b>RAM</b> → {virtual_memory().percent}% | <b>UP</b> → {currentTime}
+<blockquote><b>No Active Tasks Running!</b>
+
+• <b>Tip:</b> Check personal tasks using <code>/{BotCommands.StatusCommand[0]} me</code> or <code>/{BotCommands.StatusCommand[0]} user_id</code></blockquote>
+
+<blockquote>⚡ <b>CPU:</b> {cpu_percent()}% | 💾 <b>Free Disk:</b> {free} [{round(100 - disk_usage(DOWNLOAD_DIR).percent, 1)}%]\n🧠 <b>RAM:</b> {virtual_memory().percent}% | ⏱️ <b>Uptime:</b> {currentTime}</blockquote>
 """
         reply_message = await send_message(message, msg)
         await auto_delete_message(message, reply_message)
@@ -201,22 +201,22 @@ async def status_pages(_, query):
                 case _:
                     tasks["Download"] += 1
 
-        msg = f"""㊂ <b>Tasks Overview</b> :
-        
-┎ <b>Download:</b> {tasks["Download"]} | <b>Upload:</b> {tasks["Upload"]}
-┠ <b>Seed:</b> {tasks["Seed"]} | <b>Archive:</b> {tasks["Archive"]}
-┠ <b>Extract:</b> {tasks["Extract"]} | <b>Split:</b> {tasks["Split"]}
-┠ <b>QueueDL:</b> {tasks["QueueDl"]} | <b>QueueUP:</b> {tasks["QueueUp"]}
-┠ <b>Clone:</b> {tasks["Clone"]} | <b>CheckUp:</b> {tasks["CheckUp"]}
-┠ <b>Paused:</b> {tasks["Pause"]} | <b>SamVideo:</b> {tasks["SamVid"]}
-┞ <b>Convert:</b> {tasks["ConvertMedia"]} | <b>FFmpeg:</b> {tasks["FFmpeg"]}
-│
-┟ <b>Total Download Speed:</b> {get_readable_file_size(dl_speed)}/s
-┠ <b>Total Upload Speed:</b> {get_readable_file_size(up_speed)}/s
-┖ <b>Total Seeding Speed:</b> {get_readable_file_size(seed_speed)}/s
+        msg = f"""<b>📊 System Tasks Overview</b>
+
+<blockquote>• <b>Download:</b> {tasks["Download"]} | <b>Upload:</b> {tasks["Upload"]}
+• <b>Seed:</b> {tasks["Seed"]} | <b>Archive:</b> {tasks["Archive"]}
+• <b>Extract:</b> {tasks["Extract"]} | <b>Split:</b> {tasks["Split"]}
+• <b>QueueDL:</b> {tasks["QueueDl"]} | <b>QueueUP:</b> {tasks["QueueUp"]}
+• <b>Clone:</b> {tasks["Clone"]} | <b>CheckUp:</b> {tasks["CheckUp"]}
+• <b>Paused:</b> {tasks["Pause"]} | <b>SampleVid:</b> {tasks["SamVid"]}
+• <b>Convert:</b> {tasks["ConvertMedia"]} | <b>FFmpeg:</b> {tasks["FFmpeg"]}
+
+⚡ <b>Overall Download Speed:</b> {get_readable_file_size(dl_speed)}/s
+⚡ <b>Overall Upload Speed:</b> {get_readable_file_size(up_speed)}/s
+🌱 <b>Overall Seeding Speed:</b> {get_readable_file_size(seed_speed)}/s</blockquote>
 """
         button = ButtonMaker()
-        button.data_button("Back", f"status {data[1]} ref")
+        button.data_button("◀️ Back", f"status {data[1]} ref")
         await edit_message(message, msg, button.build_menu())
 
     try:

@@ -67,19 +67,19 @@ async def authorize(_, message):
             and thread_id in user_data[chat_id].get("thread_ids", [])
             or thread_id is None
         ):
-            msg = "Already Authorized!"
+            msg = "<blockquote>Chat or user is already authorized!</blockquote>"
         else:
             if "thread_ids" in user_data[chat_id]:
                 user_data[chat_id]["thread_ids"].append(thread_id)
             else:
                 user_data[chat_id]["thread_ids"] = [thread_id]
-            msg = "Authorized"
+            msg = f"<blockquote><b>Authorized successfully!</b> Chat ID: <code>{chat_id}</code></blockquote>"
     else:
         update_user_ldata(chat_id, "AUTH", True)
         if thread_id is not None:
             update_user_ldata(chat_id, "thread_ids", [thread_id])
         await database.update_user_data(chat_id)
-        msg = "Authorized"
+        msg = f"<blockquote><b>Authorized successfully!</b> Chat ID: <code>{chat_id}</code></blockquote>"
     await send_message(message, msg)
 
 
@@ -108,9 +108,9 @@ async def unauthorize(_, message):
         else:
             update_user_ldata(chat_id, "AUTH", False)
         await database.update_user_data(chat_id)
-        msg = "Unauthorized"
+        msg = f"<blockquote><b>Unauthorized successfully!</b> Chat ID: <code>{chat_id}</code></blockquote>"
     else:
-        msg = "Already Unauthorized!"
+        msg = "<blockquote>Chat or user is already unauthorized!</blockquote>"
     await send_message(message, msg)
 
 
@@ -124,13 +124,13 @@ async def add_sudo(_, message):
         id_ = (reply_to.from_user or reply_to.sender_chat).id
     if id_:
         if id_ in user_data and user_data[id_].get("SUDO"):
-            msg = "Already Sudo!"
+            msg = "<blockquote>User is already a Sudo user!</blockquote>"
         else:
             update_user_ldata(id_, "SUDO", True)
             await database.update_user_data(id_)
-            msg = "Promoted as Sudo"
+            msg = f"<blockquote><b>Promoted as Sudo user!</b> User ID: <code>{id_}</code></blockquote>"
     else:
-        msg = "Give ID or Reply To message of whom you want to Promote."
+        msg = "<blockquote>Provide user ID or reply to a user's message to promote.</blockquote>"
     await send_message(message, msg)
 
 
@@ -146,11 +146,11 @@ async def remove_sudo(_, message):
         if id_ in user_data and user_data[id_].get("SUDO"):
             update_user_ldata(id_, "SUDO", False)
             await database.update_user_data(id_)
-            msg = "Demoted"
+            msg = f"<blockquote><b>Demoted Sudo user!</b> User ID: <code>{id_}</code></blockquote>"
         else:
-            msg = "Already Not Sudo! Sudo users added from config must be removed from config."
+            msg = "<blockquote>User is not a Sudo user! Sudo users added via config must be removed from config.env.</blockquote>"
     else:
-        msg = "Give ID or Reply To message of whom you want to remove from Sudo"
+        msg = "<blockquote>Provide user ID or reply to a user's message to demote.</blockquote>"
     await send_message(message, msg)
 
 
@@ -182,17 +182,17 @@ async def add_blacklist(_, message):
         ).id
 
     if id_ is None:
-        help_msg = """⌬ <b><u>BlackList Usage</u></b>
-│
-┠ <b>Permanent:</b> <code>/bl {user_id}</code>
-┠ <b>Temporary:</b> <code>/bl {user_id} -t 1d</code>
-┠ <b>Reply:</b> <code>/bl -t 2h</code> <i>(reply to user)</i>
-┖ <b>Time Format:</b> <code>3d</code> | <code>12h</code> | <code>20m</code> <i>(any digit)</i>"""
+        help_msg = """<b>🚫 Blacklist Usage Guide</b>
+
+<blockquote>• <b>Permanent:</b> <code>/bl {user_id}</code>
+• <b>Temporary:</b> <code>/bl {user_id} -t 1d</code>
+• <b>Reply:</b> Reply to message with <code>/bl -t 2h</code>
+• <b>Time Units:</b> <code>1d</code> (days), <code>12h</code> (hours), <code>30m</code> (minutes)</blockquote>"""
         return await send_message(message, help_msg)
 
     if id_ in user_data and _get_blacklist_info(user_data[id_].get("BLACKLIST"))[0]:
         return await send_message(
-            message, f"<b>User Already BlackListed!</b> \u2192 <code>{id_}</code>"
+            message, f"<blockquote><b>User already blacklisted!</b> ID: <code>{id_}</code></blockquote>"
         )
 
     if time_str:
@@ -200,26 +200,25 @@ async def add_blacklist(_, message):
         if seconds is None:
             return await send_message(
                 message,
-                "<b>Invalid Time Format!</b> Use <code>1d</code>, <code>2h</code>, or <code>30m</code>.",
+                "<blockquote>Invalid time format! Use <code>1d</code>, <code>2h</code>, or <code>30m</code>.</blockquote>",
             )
         bl_value = time() + seconds
         remaining = _format_remaining(seconds)
         update_user_ldata(id_, "BLACKLIST", bl_value)
         await database.update_user_data(id_)
-        msg = f"""⌬ <b><u>BlackList Applied</u></b>
-│
-┟ <b>User</b> \u2192 <code>{id_}</code>
-┠ <b>Type</b> \u2192 <b>Temporary</b>
-┠ <b>Duration</b> \u2192 <code>{remaining}</code>
-┖ <b>Expires</b> \u2192 <b>{remaining} from now</b>"""
+        msg = f"""<b>🚫 Temporary Blacklist Applied</b>
+
+<blockquote>• <b>User ID:</b> <code>{id_}</code>
+• <b>Restriction Type:</b> Temporary
+• <b>Duration:</b> {remaining}</blockquote>"""
     else:
         update_user_ldata(id_, "BLACKLIST", True)
         await database.update_user_data(id_)
-        msg = f"""⌬ <b><u>BlackList Applied</u></b>
-│
-┟ <b>User</b> \u2192 <code>{id_}</code>
-┠ <b>Type</b> \u2192 <b>Permanent</b>
-┖ <b>Status</b> \u2192 <i>Restricted from Bot</i>"""
+        msg = f"""<b>🚫 Permanent Blacklist Applied</b>
+
+<blockquote>• <b>User ID:</b> <code>{id_}</code>
+• <b>Restriction Type:</b> Permanent
+• <b>Status:</b> Restricted from using bot commands</blockquote>"""
 
     await send_message(message, msg)
 
@@ -242,29 +241,29 @@ async def remove_blacklist(_, message):
     if id_ is None:
         return await send_message(
             message,
-            "Give ID or Reply To message of whom you want to remove from blacklist",
+            "<blockquote>Provide user ID or reply to user message to remove from blacklist.</blockquote>",
         )
 
     bl_value = user_data.get(id_, {}).get("BLACKLIST")
     is_bl, remaining = _get_blacklist_info(bl_value)
     if not is_bl:
         return await send_message(
-            message, f"<b>User Already Freed</b> \u2192 <code>{id_}</code>"
+            message, f"<blockquote><b>User is not blacklisted!</b> ID: <code>{id_}</code></blockquote>"
         )
 
     update_user_ldata(id_, "BLACKLIST", False)
     await database.update_user_data(id_)
     await send_message(
         message,
-        f"""⌬ <b><u>BlackList Removed</u></b>
-│
-┟ <b>User</b> \u2192 <code>{id_}</code>
-┖ <b>Status</b> \u2192 <i>User Set Free!</i>""",
+        f"""<b>✅ Blacklist Removed</b>
+
+<blockquote>• <b>User ID:</b> <code>{id_}</code>
+• <b>Status:</b> User restriction cleared!</blockquote>""",
     )
 
 
 @new_task
 async def black_listed(_, message):
     await send_message(
-        message, "<b>BlackListed Detected</b> \u2192 <i>Restricted from Bot</i>"
+        message, "<blockquote><b>Blacklisted User Detected:</b> You are restricted from using this bot.</blockquote>"
     )

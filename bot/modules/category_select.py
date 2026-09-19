@@ -46,22 +46,22 @@ async def change_category(client, message):
     if gid := arg_base["link"]:
         dl = await get_task_by_gid(gid)
         if not dl:
-            await send_message(message, f"GID: <code>{gid}</code> Not Found.")
+            await send_message(message, f"<blockquote>Task GID <code>{gid}</code> not found!</blockquote>")
             return
     if reply_to := message.reply_to_message:
         async with task_dict_lock:
             dl = task_dict.get(reply_to.id, None)
         if not dl:
-            await send_message(message, "This is not an active task!")
+            await send_message(message, "<blockquote>No active task found for replied message!</blockquote>")
             return
     if not dl:
-        await send_message(message, "Provide a task GID or reply to an active task.")
+        await send_message(message, "<blockquote>Provide a task GID or reply to an active task.</blockquote>")
         return
     if (
         not await CustomFilters.sudo("", message)
         and dl.listener.message.from_user.id != user_id
     ):
-        await send_message(message, "This task is not for you!")
+        await send_message(message, "<blockquote>You do not have permission to change category for this task!</blockquote>")
         return
     if dl.status() not in [
         MirrorStatus.STATUS_DOWNLOAD,
@@ -70,8 +70,7 @@ async def change_category(client, message):
     ]:
         await send_message(
             message,
-            f"Task should be on {MirrorStatus.STATUS_DOWNLOAD} or "
-            f"{MirrorStatus.STATUS_PAUSED} or {MirrorStatus.STATUS_QUEUEDL}",
+            f"<blockquote>Task must be in download, paused, or queued status.</blockquote>",
         )
         return
     listener = dl.listener if hasattr(dl, "listener") else None
@@ -82,8 +81,8 @@ async def change_category(client, message):
                 listener.is_cancelled = True
                 return
         if not index_link and not drive_id:
-            return await send_message(message, "Time out")
-        msg = "<b>Task has been Updated Successfully!</b>"
+            return await send_message(message, "<blockquote>Category selection timed out!</blockquote>")
+        msg = "<b>Task Category Updated Successfully!</b>"
         if drive_id:
             if not (
                 folder_meta := await sync_to_async(
@@ -91,21 +90,21 @@ async def change_category(client, message):
                 )
             ):
                 return await send_message(
-                    message, "Google Drive id validation failed!!"
+                    message, "<blockquote>Google Drive ID validation failed!</blockquote>"
                 )
             if listener.drive_id and listener.drive_id == drive_id:
                 msg += (
-                    f"\n\n<b>Folder name</b> : {folder_meta['name']} Already selected"
+                    f"\n\n<blockquote><b>Folder:</b> {folder_meta['name']} (Already selected)</blockquote>"
                 )
             else:
-                msg += f"\n\n<b>Folder name</b> : {folder_meta['name']}"
+                msg += f"\n\n<blockquote><b>Folder:</b> {folder_meta['name']}</blockquote>"
             listener.drive_id = drive_id
         if index_link:
             listener.index_link = index_link
-            msg += f"\n\n<b>Index Link</b> : <code>{index_link}</code>"
+            msg += f"\n\n<blockquote><b>Index URL:</b> <code>{index_link}</code></blockquote>"
         return await send_message(message, msg)
     else:
-        await send_message(message, "Can not change Category for this task!")
+        await send_message(message, "<blockquote>Cannot change category for this task!</blockquote>")
 
 
 @new_task
@@ -114,7 +113,7 @@ async def confirm_category(client, query):
     data = query.data.split(maxsplit=3)
     msg_id = int(data[2])
     if msg_id not in bot_cache:
-        return await edit_message(query.message, "<b>Old Task</b>")
+        return await edit_message(query.message, "<b>Session Expired!</b>")
     elif user_id != int(data[1]) and not await CustomFilters.sudo("", query):
         return await query.answer(text="This task is not for you!", show_alert=True)
     elif data[3] == "sdone":
@@ -138,7 +137,7 @@ async def confirm_category(client, query):
     buttons = ButtonMaker()
     for _name in merged_dict:
         buttons.data_button(
-            f"{'✓️' if cat_name == _name else ''} {_name}",
+            f"{'✓' if cat_name == _name else ''} {_name}",
             f"scat {user_id} {msg_id} {_name.replace(' ', '_')}",
         )
     buttons.data_button(
@@ -152,9 +151,9 @@ async def confirm_category(client, query):
     )
     await edit_message(
         query.message,
-        f"<b>Select the category where you want to upload</b>\n\n"
-        f"<i><b>Upload Category:</b></i> <code>{cat_name}</code>\n\n"
-        f"<b>Timeout:</b> 60 sec",
+        f"<b>📁 Select Upload Drive Category</b>\n\n"
+        f"<blockquote>• <b>Upload Category:</b> <code>{cat_name}</code>\n"
+        f"• <b>Timeout:</b> 60 sec</blockquote>",
         buttons.build_menu(3),
     )
 
@@ -166,7 +165,7 @@ async def confirm_dump_chat(client, query):
     msg_id = int(data[2])
     cache_key = f"sdump_{msg_id}"
     if cache_key not in bot_cache:
-        return await edit_message(query.message, "<b>Old Task</b>")
+        return await edit_message(query.message, "<b>Session Expired!</b>")
     elif user_id != int(data[1]) and not await CustomFilters.sudo("", query):
         return await query.answer(text="This task is not for you!", show_alert=True)
     elif data[3] == "sdone":
@@ -186,7 +185,7 @@ async def confirm_dump_chat(client, query):
     buttons = ButtonMaker()
     for i, name in enumerate(dump_names):
         buttons.data_button(
-            f"{'✓️' if dump_name == name else ''} {name}",
+            f"{'✓' if dump_name == name else ''} {name}",
             f"sdump {user_id} {msg_id} {i}",
         )
     buttons.data_button(
@@ -203,8 +202,8 @@ async def confirm_dump_chat(client, query):
     )
     await edit_message(
         query.message,
-        f"<b>Select the dump chat for this task</b>\n\n"
-        f"<i><b>Dump Chat:</b></i> <code>{dump_name}</code>\n\n"
-        f"<b>Timeout:</b> 60 sec",
+        f"<b>💬 Select Dump Chat Destination</b>\n\n"
+        f"<blockquote>• <b>Dump Chat:</b> <code>{dump_name}</code>\n"
+        f"• <b>Timeout:</b> 60 sec</blockquote>",
         buttons.build_menu(3),
     )

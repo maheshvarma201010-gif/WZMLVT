@@ -23,25 +23,21 @@ async def remove_from_queue(_, message):
         gid = msg[2] if status else msg[1]
         task = await get_task_by_gid(gid)
         if task is None:
-            await send_message(message, f"GID: <code>{gid}</code> Not Found.")
+            await send_message(message, f"<blockquote>Task GID <code>{gid}</code> not found!</blockquote>")
             return
     elif reply_to_id := message.reply_to_message_id:
         async with task_dict_lock:
             task = task_dict.get(reply_to_id)
         if task is None:
-            await send_message(message, "This is not an active task!")
+            await send_message(message, "<blockquote>No active queued task found for replied message!</blockquote>")
             return
     elif len(msg) in {1, 2}:
-        msg = f"""Reply to an active Command message which was used to start the download/upload.
-<code>/{BotCommands.ForceStartCommand[0]}</code> fd (to remove it from download queue) or fu (to remove it from upload queue) or nothing to start remove it from both download and upload queue.
-Also send <code>/{BotCommands.ForceStartCommand[0]} GID</code> fu|fd or obly gid to force start by removeing the task rom queue!
-Examples:
-<code>/{BotCommands.ForceStartCommand[1]}</code> GID fu (force upload)
-<code>/{BotCommands.ForceStartCommand[1]}</code> GID (force download and upload)
-By reply to task cmd:
-<code>/{BotCommands.ForceStartCommand[1]}</code> (force download and upload)
-<code>/{BotCommands.ForceStartCommand[1]}</code> fd (force download)
-"""
+        msg = f"""<b>⚡ Force Start Task Usage</b>
+
+<blockquote>Reply to a queued task command message or pass GID:
+• <code>/{BotCommands.ForceStartCommand[0]} GID</code> (Force download & upload)
+• <code>/{BotCommands.ForceStartCommand[0]} GID fd</code> (Force download only)
+• <code>/{BotCommands.ForceStartCommand[0]} GID fu</code> (Force upload only)</blockquote>"""
         await send_message(message, msg)
         return
     if (
@@ -49,7 +45,7 @@ By reply to task cmd:
         and task.listener.user_id != user_id
         and (user_id not in user_data or not user_data[user_id].get("SUDO"))
     ):
-        await send_message(message, "This task is not for you!")
+        await send_message(message, "<blockquote>You do not have permission to force start this task!</blockquote>")
         return
     listener = task.listener
     msg = ""
@@ -58,26 +54,26 @@ By reply to task cmd:
             listener.force_upload = True
             if listener.mid in queued_up:
                 await start_up_from_queued(listener.mid)
-                msg = "Task have been force started to upload!"
+                msg = "<b>Task force started for upload!</b>"
             else:
-                msg = "Force upload enabled for this task!"
+                msg = "<b>Force upload enabled for this task!</b>"
         elif status == "fd":
             listener.force_download = True
             if listener.mid in queued_dl:
                 await start_dl_from_queued(listener.mid)
-                msg = "Task have been force started to download only!"
+                msg = "<b>Task force started for download only!</b>"
             else:
-                msg = "This task not in download queue!"
+                msg = "<b>This task is not in the download queue!</b>"
         else:
             listener.force_download = True
             listener.force_upload = True
             if listener.mid in queued_up:
                 await start_up_from_queued(listener.mid)
-                msg = "Task have been force started to upload!"
+                msg = "<b>Task force started for upload!</b>"
             elif listener.mid in queued_dl:
                 await start_dl_from_queued(listener.mid)
-                msg = "Task have been force started to download and upload will start once download finish!"
+                msg = "<b>Task force started for download & upload!</b>"
             else:
-                msg = "This task not in queue!"
+                msg = "<b>This task is not in queue!</b>"
     if msg:
         await send_message(message, msg)

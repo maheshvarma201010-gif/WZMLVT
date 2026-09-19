@@ -171,12 +171,13 @@ class Clone(TaskListener):
             if limit_exceeded := await limit_checker(self):
                 await send_message(
                     self.message,
-                    f"""〶 <b><i><u>Limit Breached:</u></i></b>
-│
-┟ <b>Task Size</b> → {get_readable_file_size(self.size)}
-┠ <b>In Mode</b> → {self.mode[0]}
-┠ <b>Out Mode</b> → {self.mode[1]}
-{limit_exceeded}""",
+                    f"""<b>⚠️ Task Size Limit Exceeded</b>
+
+<blockquote>• <b>Task Size:</b> {get_readable_file_size(self.size)}
+• <b>In Mode:</b> {self.mode[0]}
+• <b>Out Mode:</b> {self.mode[1]}
+
+{limit_exceeded}</blockquote>""",
                 )
                 return
             await self.on_download_start()
@@ -327,7 +328,7 @@ class Clone(TaskListener):
             if is_mega_folder_link(self.link):
                 await send_message(
                     self.message,
-                    "Mega folder clone is not supported. Only file links can be cloned.",
+                    "Mega folder clone is not supported. Only single file links can be cloned.",
                 )
                 return
 
@@ -335,7 +336,7 @@ class Clone(TaskListener):
             mega_password = self.user_dict.get("MEGA_PASSWORD") or ""
             if not mega_email or not mega_password:
                 await send_message(
-                    self.message, "Mega credentials not configured for this user."
+                    self.message, "Mega credentials not configured in user settings."
                 )
                 return
 

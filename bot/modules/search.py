@@ -38,10 +38,10 @@ async def initiate_search_tools():
             SITES = {
                 str(site): str(site).capitalize() for site in data["supported_sites"]
             }
-            SITES["all"] = "All"
+            SITES["all"] = "All Sites"
         except Exception as e:
             LOGGER.error(
-                f"{e} Can't fetching sites from SEARCH_API_LINK make sure use latest version of API"
+                f"{e} Can't fetch sites from SEARCH_API_LINK. Ensure latest API version is used."
             )
             SITES = None
 
@@ -73,28 +73,26 @@ async def search(key, site, message, method):
             if "error" in search_results or search_results["total"] == 0:
                 await edit_message(
                     message,
-                    f"No result found for <i>{key}</i>\nTorrent Site:- <i>{SITES.get(site)}</i>",
+                    f"<b>No results found for:</b> <code>{key}</code>\n<blockquote>Site: {SITES.get(site)}</blockquote>",
                 )
                 return
-            msg = f"<b>Found {min(search_results['total'], TELEGRAPH_LIMIT)}</b>"
+            msg = f"<b>Found {min(search_results['total'], TELEGRAPH_LIMIT)} result(s)</b>"
             if method == "apitrend":
-                msg += f" <b>trending result(s)\nTorrent Site:- <i>{SITES.get(site)}</i></b>"
+                msg += f"\n<blockquote><b>Type:</b> Trending | <b>Site:</b> {SITES.get(site)}</blockquote>"
             elif method == "apirecent":
-                msg += (
-                    f" <b>recent result(s)\nTorrent Site:- <i>{SITES.get(site)}</i></b>"
-                )
+                msg += f"\n<blockquote><b>Type:</b> Recent | <b>Site:</b> {SITES.get(site)}</blockquote>"
             else:
-                msg += f" <b>result(s) for <i>{key}</i>\nTorrent Site:- <i>{SITES.get(site)}</i></b>"
+                msg += f"\n<blockquote><b>Query:</b> <code>{key}</code> | <b>Site:</b> {SITES.get(site)}</blockquote>"
             search_results = search_results["data"]
         except Exception as e:
-            await edit_message(message, str(e))
+            await edit_message(message, f"<b>Error:</b> {str(e)}")
             return
     else:
         LOGGER.info(f"PLUGINS Searching: {key} from {site}")
-        search = await TorrentManager.qbittorrent.search.start(
+        search_job = await TorrentManager.qbittorrent.search.start(
             pattern=key, plugins=[site], category="all"
         )
-        search_id = search.id
+        search_id = search_job.id
         while True:
             result_status = await TorrentManager.qbittorrent.search.status(search_id)
             status = result_status[0].status
@@ -108,15 +106,15 @@ async def search(key, site, message, method):
         if total_results == 0:
             await edit_message(
                 message,
-                f"No result found for <i>{key}</i>\nTorrent Site:- <i>{site.capitalize()}</i>",
+                f"<b>No results found for:</b> <code>{key}</code>\n<blockquote>Plugin Site: {site.capitalize()}</blockquote>",
             )
             return
-        msg = f"<b>Found {min(total_results, TELEGRAPH_LIMIT)}</b>"
-        msg += f" <b>result(s) for <i>{key}</i>\nTorrent Site:- <i>{site.capitalize()}</i></b>"
+        msg = f"<b>Found {min(total_results, TELEGRAPH_LIMIT)} result(s)</b>"
+        msg += f"\n<blockquote><b>Query:</b> <code>{key}</code> | <b>Site:</b> {site.capitalize()}</blockquote>"
         await TorrentManager.qbittorrent.search.delete(search_id)
     link = await get_result(search_results, key, message, method)
     buttons = ButtonMaker()
-    buttons.url_button("🔎 VIEW", link, style=ButtonStyle.PRIMARY)
+    buttons.url_button("🔎 View Search Results", link, style=ButtonStyle.PRIMARY)
     button = buttons.build_menu(1)
     await edit_message(message, msg, button)
 
@@ -126,11 +124,11 @@ async def get_result(search_results, key, message, method):
     if method == "apirecent":
         msg = "<h4>API Recent Results</h4>"
     elif method == "apisearch":
-        msg = f"<h4>API Search Result(s) For {key}</h4>"
+        msg = f"<h4>API Search Results For {key}</h4>"
     elif method == "apitrend":
         msg = "<h4>API Trending Results</h4>"
     else:
-        msg = f"<h4>PLUGINS Search Result(s) For {key}</h4>"
+        msg = f"<h4>Plugin Search Results For {key}</h4>"
     for index, result in enumerate(search_results, start=1):
         if method.startswith("api"):
             try:
@@ -143,7 +141,7 @@ async def get_result(search_results, key, message, method):
                         if "torrent" in subres.keys():
                             msg += f"<a href='{subres['torrent']}'>Direct Link</a><br>"
                         elif "magnet" in subres.keys():
-                            msg += "<b>Share Magnet to</b> "
+                            msg += "<b>Share Magnet: </b>"
                             msg += f"<a href='http://t.me/share/url?url={subres['magnet']}'>Telegram</a><br>"
                     msg += "<br>"
                 else:
@@ -155,7 +153,7 @@ async def get_result(search_results, key, message, method):
                     if "torrent" in result.keys():
                         msg += f"<a href='{result['torrent']}'>Direct Link</a><br><br>"
                     elif "magnet" in result.keys():
-                        msg += "<b>Share Magnet to</b> "
+                        msg += "<b>Share Magnet: </b>"
                         msg += f"<a href='http://t.me/share/url?url={quote(result['magnet'])}'>Telegram</a><br><br>"
                     else:
                         msg += "<br>"
@@ -167,7 +165,7 @@ async def get_result(search_results, key, message, method):
             msg += f"<b>Seeders: </b>{result.nbSeeders} | <b>Leechers: </b>{result.nbLeechers}<br>"
             link = result.fileUrl
             if link.startswith("magnet:"):
-                msg += f"<b>Share Magnet to</b> <a href='http://t.me/share/url?url={quote(link)}'>Telegram</a><br><br>"
+                msg += f"<b>Share Magnet: </b><a href='http://t.me/share/url?url={quote(link)}'>Telegram</a><br><br>"
             else:
                 msg += f"<a href='{link}'>Direct Link</a><br><br>"
 
@@ -182,19 +180,19 @@ async def get_result(search_results, key, message, method):
         telegraph_content.append(msg)
 
     await edit_message(
-        message, f"<b>Creating</b> {len(telegraph_content)} <b>Telegraph pages.</b>"
+        message, f"<b>Generating Telegraph results ({len(telegraph_content)} page/s)...</b>"
     )
     path = [
         (
             await telegraph.create_page(
-                title="Mirror-leech-bot Torrent Search", content=content
+                title="Torrent Search Results", content=content
             )
         )["path"]
         for content in telegraph_content
     ]
     if len(path) > 1:
         await edit_message(
-            message, f"<b>Editing</b> {len(telegraph_content)} <b>Telegraph pages.</b>"
+            message, f"<b>Updating Telegraph results ({len(telegraph_content)} page/s)...</b>"
         )
         await telegraph.edit_telegraph(path, telegraph_content)
     return f"https://telegra.ph/{path[0]}"
@@ -218,7 +216,7 @@ async def plugin_buttons(user_id):
         buttons.data_button(
             siteName.capitalize(), f"torser {user_id} {siteName} plugin"
         )
-    buttons.data_button("All", f"torser {user_id} all plugin")
+    buttons.data_button("All Sites", f"torser {user_id} all plugin")
     buttons.data_button("Cancel", f"torser {user_id} cancel")
     return buttons.build_menu(2)
 
@@ -227,7 +225,7 @@ async def plugin_buttons(user_id):
 async def torrent_search(_, message):
     if Config.DISABLE_SEARCH:
         await send_message(
-            message, "Torrent search is currently disabled by the Bot Owner."
+            message, "<blockquote>Torrent search is disabled by the owner.</blockquote>"
         )
         return
     user_id = message.from_user.id
@@ -235,28 +233,28 @@ async def torrent_search(_, message):
     key = message.text.split()
     if SITES is None and not Config.SEARCH_PLUGINS:
         await send_message(
-            message, "No API link or search PLUGINS added for this function"
+            message, "<blockquote>No Search API link or Plugins configured.</blockquote>"
         )
     elif len(key) == 1 and SITES is None:
-        await send_message(message, "Send a search key along with command")
+        await send_message(message, "<blockquote>Send search keyword along with command.</blockquote>")
     elif len(key) == 1:
-        buttons.data_button("Trending", f"torser {user_id} apitrend")
-        buttons.data_button("Recent", f"torser {user_id} apirecent")
-        buttons.data_button("Cancel", f"torser {user_id} cancel")
+        buttons.data_button("🔥 Trending", f"torser {user_id} apitrend")
+        buttons.data_button("🆕 Recent", f"torser {user_id} apirecent")
+        buttons.data_button("❌ Cancel", f"torser {user_id} cancel")
         button = buttons.build_menu(2)
-        await send_message(message, "Send a search key along with command", button)
+        await send_message(message, "<b>Select Search Mode:</b>", button)
     elif SITES is not None and Config.SEARCH_PLUGINS:
-        buttons.data_button("Api", f"torser {user_id} apisearch")
-        buttons.data_button("Plugins", f"torser {user_id} plugin")
-        buttons.data_button("Cancel", f"torser {user_id} cancel")
+        buttons.data_button("🌐 API", f"torser {user_id} apisearch")
+        buttons.data_button("🔌 Plugins", f"torser {user_id} plugin")
+        buttons.data_button("❌ Cancel", f"torser {user_id} cancel")
         button = buttons.build_menu(2)
-        await send_message(message, "Choose tool to search:", button)
+        await send_message(message, "<b>Select Search Engine:</b>", button)
     elif SITES is not None:
         button = api_buttons(user_id, "apisearch")
-        await send_message(message, "Choose site to search | API:", button)
+        await send_message(message, "<b>Select Search Site (API):</b>", button)
     else:
         button = await plugin_buttons(user_id)
-        await send_message(message, "Choose site to search | Plugins:", button)
+        await send_message(message, "<b>Select Search Site (Plugins):</b>", button)
 
 
 @new_task
@@ -267,15 +265,15 @@ async def torrent_search_update(_, query):
     key = key[1].strip() if len(key) > 1 else None
     data = query.data.split()
     if user_id != int(data[1]):
-        await query.answer("Not Yours!", show_alert=True)
+        await query.answer("This menu is not for you!", show_alert=True)
     elif data[2].startswith("api"):
         await query.answer()
         button = api_buttons(user_id, data[2])
-        await edit_message(message, "Choose site:", button)
+        await edit_message(message, "<b>Select Search Site:</b>", button)
     elif data[2] == "plugin":
         await query.answer()
         button = await plugin_buttons(user_id)
-        await edit_message(message, "Choose site:", button)
+        await edit_message(message, "<b>Select Search Site:</b>", button)
     elif data[2] != "cancel":
         await query.answer()
         site = data[2]
@@ -288,19 +286,19 @@ async def torrent_search_update(_, query):
                     endpoint = "Trending"
                 await edit_message(
                     message,
-                    f"<b>Listing {endpoint} Items...\nTorrent Site:- <i>{SITES.get(site)}</i></b>",
+                    f"<b>Fetching {endpoint} torrents...</b>\n<blockquote>Site: {SITES.get(site)}</blockquote>",
                 )
             else:
                 await edit_message(
                     message,
-                    f"<b>Searching for <i>{key}</i>\nTorrent Site:- <i>{SITES.get(site)}</i></b>",
+                    f"<b>Searching for:</b> <code>{key}</code>\n<blockquote>Site: {SITES.get(site)}</blockquote>",
                 )
         else:
             await edit_message(
                 message,
-                f"<b>Searching for <i>{key}</i>\nTorrent Site:- <i>{site.capitalize()}</i></b>",
+                f"<b>Searching for:</b> <code>{key}</code>\n<blockquote>Site: {site.capitalize()}</blockquote>",
             )
         await search(key, site, message, method)
     else:
         await query.answer()
-        await edit_message(message, "Search has been canceled!")
+        await edit_message(message, "<b>Search process cancelled!</b>")

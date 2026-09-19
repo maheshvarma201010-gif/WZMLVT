@@ -150,7 +150,7 @@ async def send_message(message, text, buttons=None, block=True, photo=None, **kw
     except (MessageEmpty, EntityBoundsInvalid):
         return await send_message(message, text, parse_mode=ParseMode.DISABLED)
     except PeerIdInvalid:
-        LOGGER.warning(f"PeerIdInvalid {type(message)}")  # My Debug Style
+        LOGGER.warning(f"PeerIdInvalid {type(message)}")
         if isinstance(message, (int, str)):
             return await send_message(int(message), text, buttons, block, photo)
     except ConnectionError:
@@ -507,7 +507,7 @@ async def open_category_btns(message):
         if i == 0:
             cat_name = name
         buttons.data_button(
-            f"{'✓️' if i == 0 else ''} {name}",
+            f"{'✓' if i == 0 else ''} {name}",
             f"scat {user_id} {msg_id} {name.replace(' ', '_')}",
         )
     buttons.data_button(
@@ -521,9 +521,9 @@ async def open_category_btns(message):
     )
     prompt = await send_message(
         message,
-        f"<b>Select the category where you want to upload</b>\n\n"
-        f"<i><b>Upload Category:</b></i> <code>{cat_name or 'None'}</code>\n\n"
-        f"<b>Timeout:</b> 60 sec",
+        f"<b>📁 Select Upload Category</b>\n\n"
+        f"<blockquote>• <b>Upload Category:</b> <code>{cat_name or 'None'}</code>\n"
+        f"• <b>Timeout:</b> 60 sec</blockquote>",
         buttons.build_menu(3),
     )
     start_time = time()
@@ -558,7 +558,7 @@ async def open_drive_clean(message):
         if i == 0:
             first_cat = name
         buttons.data_button(
-            f"{'✓️' if i == 0 else ''} {name}",
+            f"{'✓' if i == 0 else ''} {name}",
             f"gdccat {user_id} {msg_id} {name.replace(' ', '_')}",
         )
     buttons.data_button(
@@ -569,9 +569,9 @@ async def open_drive_clean(message):
     )
     prompt = await send_message(
         message,
-        f"<b>Select Drive Category to Clean</b>\n\n"
-        f"<b>Category:</b> <code>{first_cat or 'None'}</code>\n\n"
-        f"<b>Timeout:</b> 60 sec",
+        f"<b>🧹 Select Drive Category to Clean</b>\n\n"
+        f"<blockquote>• <b>Category:</b> <code>{first_cat or 'None'}</code>\n"
+        f"• <b>Timeout:</b> 60 sec</blockquote>",
         buttons.build_menu(3),
     )
     start_time = time()
@@ -600,7 +600,7 @@ async def open_dump_chat_btns(message, dump_chats, invalid_name=None):
     selected_name = dump_names[0] if dump_names else None
     for i, name in enumerate(dump_names):
         buttons.data_button(
-            f"{'✓️' if i == 0 else ''} {name}",
+            f"{'✓' if i == 0 else ''} {name}",
             f"sdump {user_id} {msg_id} {i}",
         )
     buttons.data_button(
@@ -620,9 +620,9 @@ async def open_dump_chat_btns(message, dump_chats, invalid_name=None):
     )
     prompt = await send_message(
         message,
-        f"<b>Select the dump chat for this task</b>{invalid_hint}\n\n"
-        f"<i><b>Dump Chat:</b></i> <code>{selected_name or 'None'}</code>\n\n"
-        f"<b>Timeout:</b> 60 sec",
+        f"<b>💬 Select Dump Chat Destination</b>{invalid_hint}\n\n"
+        f"<blockquote>• <b>Dump Chat:</b> <code>{selected_name or 'None'}</code>\n"
+        f"• <b>Timeout:</b> 60 sec</blockquote>",
         buttons.build_menu(3),
     )
     start_time = time()

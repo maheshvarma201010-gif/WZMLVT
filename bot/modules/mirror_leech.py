@@ -77,7 +77,7 @@ from ..helper.telegram_helper.message_utils import (
 )
 
 ht_tasks = {}
-ht_lock = bot_loop.create_task if False else None  # Dict for ht prompt tasks
+ht_lock = bot_loop.create_task if False else None
 
 
 class Mirror(TaskListener):
@@ -119,12 +119,12 @@ class Mirror(TaskListener):
         if self.is_leech:
             if Config.DISABLE_LEECH:
                 await send_message(
-                    self.message, "The Leech command is currently disabled."
+                    self.message, "<blockquote>The Leech command is currently disabled.</blockquote>"
                 )
                 return
         elif Config.DISABLE_MIRROR and not self.is_uphoster:
             await send_message(
-                self.message, "The Mirror command is currently disabled."
+                self.message, "<blockquote>The Mirror command is currently disabled.</blockquote>"
             )
             return
         text = self.message.text.split("\n")
@@ -183,25 +183,25 @@ class Mirror(TaskListener):
         arg_parser(input_list[1:], args)
 
         if Config.DISABLE_BULK and args.get("-b", False):
-            await send_message(self.message, "Bulk downloads are currently disabled.")
+            await send_message(self.message, "<blockquote>Bulk downloads are currently disabled.</blockquote>")
             return
 
         if Config.DISABLE_MULTI and int(args.get("-i", 1)) > 1:
             await send_message(
                 self.message,
-                "Multi-downloads are currently disabled. Please try without the -i flag.",
+                "<blockquote>Multi-downloads are currently disabled.</blockquote>",
             )
             return
 
         if Config.DISABLE_SEED and args.get("-d", False):
             await send_message(
                 self.message,
-                "Seeding is currently disabled. Please try without the -d flag.",
+                "<blockquote>Seeding is currently disabled.</blockquote>",
             )
             return
 
         if Config.DISABLE_FF_MODE and args.get("-ff"):
-            await send_message(self.message, "FFmpeg commands are currently disabled.")
+            await send_message(self.message, "<blockquote>FFmpeg commands are currently disabled.</blockquote>")
             return
 
         self.select = args["-s"]
@@ -595,7 +595,7 @@ async def ht_merge_callback(_, query):
     if not task_info:
         return await query.answer("Task expired or already started!", show_alert=True)
     if query.from_user.id != task_info["user_id"]:
-        return await query.answer("Not Yours!", show_alert=True)
+        return await query.answer("This menu is not for you!", show_alert=True)
 
     if data[1] == "merge":
         task_info["merge"] = not task_info["merge"]
@@ -687,7 +687,7 @@ async def merge_command(client, message):
     if not reply_to:
         await send_message(
             message,
-            "Reply to the first Telegram file or video in the sequence to merge!",
+            "<blockquote>Reply to the first Telegram file or video in sequence to merge!</blockquote>",
         )
         return
 
@@ -695,7 +695,7 @@ async def merge_command(client, message):
     if file_ is None:
         await send_message(
             message,
-            "Unsupported media! Reply to the first Telegram file or video in the sequence.",
+            "<blockquote>Unsupported media! Reply to first Telegram file or video in sequence.</blockquote>",
         )
         return
 
@@ -715,7 +715,7 @@ async def merge_command(client, message):
     if count <= 0:
         await send_message(
             message,
-            "Please specify file count using -i {count}. Usage: <code>/merge -i {count} -n {custom_name}</code>",
+            "<blockquote>Specify file count using -i. Usage: <code>/merge -i 5 -n name.mkv</code></blockquote>",
         )
         return
 
@@ -723,7 +723,7 @@ async def merge_command(client, message):
     if not custom_name:
         await send_message(
             message,
-            "Please specify custom name using -n {custom_name}. Usage: <code>/merge -i {count} -n {custom_name}</code>",
+            "<blockquote>Specify custom output name using -n. Usage: <code>/merge -i 5 -n name.mkv</code></blockquote>",
         )
         return
 
@@ -749,7 +749,7 @@ async def merge_command(client, message):
     start_id = reply_to.id
     chat_id = message.chat.id
 
-    msg = await send_message(message, f"Fetching {count} files for merge task...")
+    msg = await send_message(message, f"<b>Fetching {count} files for merge task...</b>")
 
     for i in range(count):
         curr_id = start_id + i
@@ -826,7 +826,7 @@ def _seedr_creds(user_id):
 
 async def seedr_guard(message, user_id):
     if Config.DISABLE_SEEDR:
-        await send_message(message, "Seedr is currently disabled by the Bot Owner.")
+        await send_message(message, "<blockquote>Seedr is currently disabled by the Bot Owner.</blockquote>")
         return False
     email, password = _seedr_creds(user_id)
     if not email or not password:
@@ -837,7 +837,7 @@ async def seedr_guard(message, user_id):
         )
         await send_message(
             message,
-            f"Seedr credentials are not configured! Please set SEEDR_EMAIL and SEEDR_PASSWORD in {uset_cmd} or bot config.",
+            f"<blockquote>Seedr credentials not configured! Please set SEEDR_EMAIL and SEEDR_PASSWORD in {uset_cmd} or bot settings.</blockquote>",
         )
         return False
     return True
@@ -849,7 +849,7 @@ async def seedr_link(client, message):
     if not await seedr_guard(message, user_id):
         return
     email, password = _seedr_creds(user_id)
-    tag = message.from_user.mention if message.from_user else "N/A"
+    tag = message.from_user.mention(style="html") if message.from_user else "N/A"
     seedrlink_cmd = (
         f"/{BotCommands.SeedrLinkCommand[0]}"
         if isinstance(BotCommands.SeedrLinkCommand, list)
@@ -866,11 +866,11 @@ async def seedr_link(client, message):
 
     if not link or not (is_magnet(link) or is_url(link) or link.endswith(".torrent")):
         await message.reply(
-            f"Please provide a valid magnet link or .torrent URL!\n\n<b>Usage:</b> <code>{seedrlink_cmd} magnet:...</code> or <code>{seedrlink_cmd} https://.../file.torrent</code>"
+            f"<blockquote>Please provide a valid magnet link or .torrent URL!\nUsage: <code>{seedrlink_cmd} magnet:...</code></blockquote>"
         )
         return
 
-    msg = await send_message(message, "<i>Processing Seedr Magnet Link...</i>")
+    msg = await send_message(message, "<b>Processing Seedr magnet link...</b>")
     seedr_client = SeedrClient(email, password)
     torrent_id = None
     folder_id = None
@@ -889,7 +889,7 @@ async def seedr_link(client, message):
         if title:
             await edit_message(
                 msg,
-                f"<b>Added to Seedr Cloud!</b>\n\n<b>Title:</b> <code>{escape(title)}</code>\n<i>Fetching cloud progress...</i>",
+                f"<b>🌱 Added to Seedr Cloud</b>\n\n<blockquote>• <b>Title:</b> <code>{escape(title)}</code>\nFetching cloud progress...</blockquote>",
             )
 
         known_folders = {
@@ -926,7 +926,7 @@ async def seedr_link(client, message):
                 name_str = torrent.get("name") or title or "Torrent"
                 if torrent.get("name"):
                     folder_names.add(torrent["name"])
-                prog_str = f"<b>Seedr Cloud Download...</b>\n\n<b>Name:</b> <code>{escape(name_str)}</code>\n<b>Progress:</b> <code>{round(prog, 2)}%</code>"
+                prog_str = f"<b>🌱 Seedr Cloud Downloading...</b>\n\n<blockquote>• <b>Name:</b> <code>{escape(name_str)}</code>\n• <b>Progress:</b> <code>{round(prog, 2)}%</code></blockquote>"
                 if prog_str != last_progress:
                     last_progress = prog_str
                     await edit_message(msg, prog_str)
@@ -948,20 +948,20 @@ async def seedr_link(client, message):
                 if not_found_count >= 36:
                     raise ValueError("Torrent not found on Seedr account!")
 
-        await edit_message(msg, "<i>Generating Seedr Direct Download Links...</i>")
+        await edit_message(msg, "<b>Generating Seedr direct download links...</b>")
         contents, total_size = await _build_contents(seedr_client, folder_id)
         if not contents:
             raise ValueError("No downloadable files found in Seedr folder!")
 
         buttons = ButtonMaker()
         text_lines = [
-            f"<b><i>{escape(title or contents[0]['filename'])}</i></b>\n│",
-            f"┟ <b>Task Size</b> → {get_readable_file_size(total_size)}",
-            f"┠ <b>Time Taken</b> → {get_readable_time(time() - message.date.timestamp())}",
-            "┠ <b>In Mode</b> → Seedr Cloud",
-            f"┠ <b>Total Files</b> → {len(contents)}",
-            f"┖ <b>Task By</b> → {tag}\n",
-            "〶 <b><u>Files List :</u></b>",
+            f"<b>🌱 {escape(title or contents[0]['filename'])}</b>\n",
+            f"<blockquote>• <b>Task Size:</b> {get_readable_file_size(total_size)}",
+            f"• <b>Time Elapsed:</b> {get_readable_time(time() - message.date.timestamp())}",
+            "• <b>In Mode:</b> Seedr Cloud",
+            f"• <b>Total Files:</b> {len(contents)}",
+            f"• <b>User:</b> {tag}</blockquote>\n",
+            "<b>📁 Direct Download Files:</b>",
         ]
 
         for idx, item in enumerate(contents, start=1):
@@ -977,7 +977,7 @@ async def seedr_link(client, message):
         if len(out_text) > 4000:
             out_text = (
                 out_text[:3900]
-                + "\n\n<i>(Links truncated due to length. Use buttons below)</i>"
+                + "\n\n<i>(Links truncated due to length limits. Use buttons below)</i>"
             )
 
         await edit_message(msg, out_text, buttons.build_menu(2))
@@ -992,10 +992,9 @@ async def seedr_link(client, message):
         await _delete_seedr_folder(seedr_client, folder_id)
         await edit_message(
             msg,
-            "<i><b>〶 Seedr Link Stopped!</b></i>"
-            "\n│"
-            f"\n┟ <b>Due To</b> → {escape(str(e))}"
-            f"\n┠ <b>Time Taken</b> → {get_readable_time(time() - message.date.timestamp())}"
-            "\n┠ <b>In Mode</b> → Seedr Cloud"
-            f"\n┖ <b>Task By</b> → {tag}",
+            "<b>🛑 Seedr Link Generation Stopped</b>\n\n"
+            f"<blockquote>• <b>Reason:</b> {escape(str(e))}\n"
+            f"• <b>Time Elapsed:</b> {get_readable_time(time() - message.date.timestamp())}\n"
+            "• <b>In Mode:</b> Seedr Cloud\n"
+            f"• <b>User:</b> {tag}</blockquote>",
         )

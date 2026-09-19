@@ -12,14 +12,14 @@ async def count_node(_, message):
     if username := user.username:
         tag = f"@{username}"
     else:
-        tag = message.from_user.mention
+        tag = message.from_user.mention(style="html")
 
     link = args[1] if len(args) > 1 else ""
     if len(link) == 0 and (reply_to := message.reply_to_message):
         link = reply_to.text.split(maxsplit=1)[0].strip()
 
     if is_gdrive_link(link):
-        msg = await send_message(message, f"Counting: <code>{link}</code>")
+        msg = await send_message(message, f"<b>Counting Google Drive contents...</b>\n<code>{link}</code>")
         name, mime_type, size, files, folders = await sync_to_async(
             GoogleDriveCount().count, link, user.id
         )
@@ -27,16 +27,17 @@ async def count_node(_, message):
             await send_message(message, name)
             return
         await delete_message(msg)
-        msg = f"<b>Name: </b><code>{name}</code>"
-        msg += f"\n\n<b>Size: </b>{get_readable_file_size(size)}"
-        msg += f"\n\n<b>Type: </b>{mime_type}"
+        msg = "<b>📁 Google Drive Count Result</b>\n\n"
+        msg += f"<blockquote>• <b>Name:</b> <code>{name}</code>\n"
+        msg += f"• <b>Size:</b> {get_readable_file_size(size)}\n"
+        msg += f"• <b>Type:</b> {mime_type}\n"
         if mime_type == "Folder":
-            msg += f"\n<b>SubFolders: </b>{folders}"
-            msg += f"\n<b>Files: </b>{files}"
-        msg += f"\n\n<b>cc: </b>{tag}"
+            msg += f"• <b>Subfolders:</b> {folders}\n"
+            msg += f"• <b>Files:</b> {files}\n"
+        msg += f"• <b>Requested By:</b> {tag}</blockquote>"
     else:
         msg = (
-            "Send Gdrive link along with command or by replying to the link by command"
+            "<blockquote>Send Google Drive link along with command or reply to a message containing the link.</blockquote>"
         )
 
     await send_message(message, msg, photo="IMAGES")

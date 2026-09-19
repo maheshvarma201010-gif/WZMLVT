@@ -36,37 +36,37 @@ async def restart_bot(_, message):
     args = message.text.split()
     mode = "soft" if "-s" in args else "hard"
     buttons = button_build.ButtonMaker()
-    buttons.data_button("Yes!", f"botrestart confirm {mode}", style=ButtonStyle.SUCCESS)
-    buttons.data_button("No!", "botrestart cancel", style=ButtonStyle.DANGER)
+    buttons.data_button("Yes, Restart", f"botrestart confirm {mode}", style=ButtonStyle.SUCCESS)
+    buttons.data_button("No, Cancel", "botrestart cancel", style=ButtonStyle.DANGER)
     button = buttons.build_menu(2)
-    msg = "<i>Are you really sure you want to restart the bot ?</i>"
+    msg = "<b>🔄 Confirm Bot Restart</b>\n\n<blockquote>Are you sure you want to reboot the bot process?</blockquote>"
     if mode == "soft":
-        msg += "\n<i>Mode: Soft (code reload only, tasks keep running)</i>"
+        msg += "\n<blockquote><b>Mode: Soft Reload</b> (Reloads Python code while active tasks continue)</blockquote>"
     await send_message(message, msg, button)
 
 
 @new_task
 async def restart_sessions(_, message):
     buttons = button_build.ButtonMaker()
-    buttons.data_button("Yes!", "sessionrestart confirm", style=ButtonStyle.SUCCESS)
-    buttons.data_button("No!", "sessionrestart cancel", style=ButtonStyle.DANGER)
+    buttons.data_button("Yes, Restart", "sessionrestart confirm", style=ButtonStyle.SUCCESS)
+    buttons.data_button("No, Cancel", "sessionrestart cancel", style=ButtonStyle.DANGER)
     button = buttons.build_menu(2)
     await send_message(
         message,
-        "<i>Are you really sure you want to restart the session(s) ?!</i>",
+        "<b>🔄 Confirm User Sessions Restart</b>\n\n<blockquote>Are you sure you want to restart user account sessions?</blockquote>",
         button,
     )
 
 
 def _restart_header(now, is_restart_chat=False):
-    title = "Restarted Successfully!" if is_restart_chat else "Bot Restarted!"
+    title = "Restart Completed Successfully!" if is_restart_chat else "Bot Process Restarted!"
     return (
-        f"⌬ <b><i>{title}</i></b>\n"
-        f"┟ <b>Date:</b> {now.strftime('%d/%m/%y')}\n"
-        f"┠ <b>Time:</b> {now.strftime('%I:%M:%S %p')}\n"
-        f"┠ <b>TimeZone:</b> {Config.TIMEZONE}\n"
-        f"┠ <b>Branch:</b> {Config.UPSTREAM_BRANCH}\n"
-        f"┖ <b>Version:</b> {get_version()}"
+        f"<b>🚀 {title}</b>\n\n"
+        f"<blockquote>• <b>Date:</b> {now.strftime('%d/%m/%Y')}\n"
+        f"• <b>Time:</b> {now.strftime('%I:%M:%S %p')}\n"
+        f"• <b>TimeZone:</b> {Config.TIMEZONE}\n"
+        f"• <b>Branch:</b> {Config.UPSTREAM_BRANCH}\n"
+        f"• <b>Version:</b> {get_version()}</blockquote>"
     )
 
 
@@ -121,12 +121,13 @@ async def _notify_tasks(notifier_dict, restart_chat_id, now):
     for cid, data in notifier_dict.items():
         is_restart_chat = cid == restart_chat_id
         header = _restart_header(now, is_restart_chat)
-        msg = header + "\n\n⌬ <b><i>Incomplete Tasks!</i></b>"
+        msg = header + "\n\n<b>⚠️ Incomplete Tasks Detected:</b>"
         for tag, tasks in data.items():
-            entry = f"\n➲ <b>User:</b> {tag}\n┖ <b>Tasks:</b>"
+            entry = f"\n<blockquote><b>User:</b> {tag}\n<b>Tasks:</b>"
             for index, task in enumerate(tasks, start=1):
                 link = task.get("link", "")
-                entry += f" {index}. <a href='{link}'>L</a> |"
+                entry += f" {index}. <a href='{link}'>Link</a> |"
+            entry += "</blockquote>"
             if len((msg + entry).encode()) > 4000:
                 await _send_msg(cid, msg)
                 msg = header
@@ -200,7 +201,7 @@ async def confirm_restart(_, query):
     if data[1] == "confirm":
         intervals["stopAll"] = True
         if data[2] == "soft":
-            restart_msg = await send_message(reply_to, "<i>Reloading...</i>")
+            restart_msg = await send_message(reply_to, "<b>Reloading bot modules... Please wait.</b>")
             await _runtime_reload()
             intervals["stopAll"] = False
             try:
@@ -213,7 +214,7 @@ async def confirm_restart(_, query):
             except Exception as e:
                 LOGGER.error(e)
         else:
-            restart_message = await send_message(reply_to, "<i>Restarting...</i>")
+            restart_message = await send_message(reply_to, "<b>Restarting bot process... Please wait.</b>")
 
             if qb := intervals["qb"]:
                 qb.cancel()
