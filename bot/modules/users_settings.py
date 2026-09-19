@@ -222,16 +222,16 @@ Here I will explain how to use mltb.* which is reference to files you want to wo
 ⏱ <b>Time Left:</b> <code>60 sec</code>""",
     ),
     "SET_ALL_METADATA": (
-        "🏷 Set All Metadata (key=value|key=value)",
-        "Apply the same metadata to all metadata fields (Global, Audio, Video, Subtitle).",
-        """<i>📝 Send metadata as</i> <code>key=value|key2=value2</code>
+        "🏷 Set All Metadata",
+        "Apply the same metadata configuration to all stream fields.",
+        """<blockquote><b>📝 Send metadata in format:</b> <code>key=value|key2=value2</code></blockquote>
 
 <b>🔧 Dynamic Variables:</b>
-• <code>{filename}</code> - Original filename
-• <code>{basename}</code> - Name without extension
-• <code>{audiolang}</code> - Audio language
-• <code>{sublang}</code> - Subtitle language
-• <code>{year}</code> - Year from filename
+• <code>{filename}</code> — Original file name
+• <code>{basename}</code> — Name without file extension
+• <code>{audiolang}</code> — Audio track language
+• <code>{sublang}</code> — Subtitle track language
+• <code>{year}</code> — Release year from file name
 
 <b>📋 Example:</b>
 <code>title={basename}|artist={audiolang} Version</code>
@@ -1971,7 +1971,7 @@ async def edit_user_settings(client, query):
         buttons.data_button(
             "Close", f"userset {user_id} close", "footer", style=ButtonStyle.DANGER
         )
-        prompt_text = f"⌬ <b>Import User Settings</b>\n\n<i>Send your <code>US{user_id}.zip</code> file to import and apply your settings.</i>\n\n┖ <b>Time Left :</b> <code>60 sec</code>"
+        prompt_text = f"⌬ <b>Import User Settings</b>\n\n<blockquote><b>📥 Action Required:</b> Send your <code>US{user_id}.zip</code> file to restore your settings and configurations.</blockquote>\n\n┖ <b>Time Left :</b> <code>60 sec</code>"
         await edit_message(message, prompt_text, buttons.build_menu(1))
 
         @new_task

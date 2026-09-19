@@ -28,7 +28,9 @@ apt-get install -y -qq \
     curl \
     wget \
     lsof \
-    procps
+    procps \
+    cpulimit \
+    sabnzbdplus
 
 echo "[2/6] Setting up Python virtual environment..."
 if [ ! -d "venv" ]; then
