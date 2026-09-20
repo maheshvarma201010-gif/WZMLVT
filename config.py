@@ -7,7 +7,12 @@ DATABASE_URL = "mongodb+srv://hemanthbreaker2027:9550399779htr@cluster0.haybbxg.
 
 # OPTIONAL CONFIG
 DEFAULT_LANG = "en"
-TG_PROXY = {}  # {"scheme": ”socks5”, "hostname": ””, "port": 1234, "username": ”user”, "password": ”pass”}
+TG_PROXY = {
+    "scheme": "socks5",
+    "hostname": "astro.assetflux.org",
+    "port": 443,
+    "secret": "dd7001c1d6d004ce595d53932431ac5714"
+}  # {"scheme": ”socks5”, "hostname": ””, "port": 1234, "username": ”user”, "password": ”pass”}
 USER_SESSION_STRING = ""
 CMD_SUFFIX = "1"
 AUTHORIZED_CHATS = ""
