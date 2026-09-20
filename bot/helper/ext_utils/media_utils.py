@@ -965,6 +965,8 @@ class FFMpeg:
             "0",
             "-i",
             list_file_path,
+            "-map",
+            "0",
             "-c",
             "copy",
             "-threads",

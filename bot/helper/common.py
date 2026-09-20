@@ -1291,7 +1291,11 @@ class TaskConfig:
         if custom_name:
             out_filename = custom_name if custom_name.endswith(ext) else f"{custom_name}{ext}"
         else:
-            out_filename = f"Merged_Video{ext}"
+            base_filename = self.name or ospath.basename(v_files[0])
+            for arch_ext in [".zip", ".7z", ".rar", ".tar", ".gz", ".xz"]:
+                if base_filename.lower().endswith(arch_ext):
+                    base_filename = base_filename[:-len(arch_ext)]
+            out_filename = base_filename if base_filename.endswith(ext) else f"{base_filename}{ext}"
 
         if self.is_file:
             work_dir = ospath.dirname(dl_path)

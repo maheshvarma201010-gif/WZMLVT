@@ -91,22 +91,31 @@ class BotCommands:
         commands = cls.get_commands()
 
         for key, cmds in commands.items():
-            setattr(
-                cls,
-                f"{key}Command",
-                (
+            if key == "Start":
+                setattr(cls, f"{key}Command", cmds)
+            elif isinstance(cmds, list):
+                setattr(
+                    cls,
+                    f"{key}Command",
                     [
                         (
                             f"{cmd}{Config.CMD_SUFFIX}"
-                            if cmd not in ["restartall", "statusall"]
+                            if cmd not in ["restartall", "statusall", "start"]
                             else cmd
                         )
                         for cmd in cmds
-                    ]
-                    if isinstance(cmds, list)
-                    else f"{cmds}{Config.CMD_SUFFIX}"
-                ),
-            )
+                    ],
+                )
+            else:
+                setattr(
+                    cls,
+                    f"{key}Command",
+                    (
+                        cmds
+                        if cmds in ["restartall", "statusall", "start"]
+                        else f"{cmds}{Config.CMD_SUFFIX}"
+                    ),
+                )
 
     @classmethod
     def refresh_commands(cls):

@@ -7,7 +7,7 @@ from re import match as re_match
 from time import time
 
 from aiofiles import open as aiopen
-from aiofiles.os import path as aiopath
+from aiofiles.os import makedirs, path as aiopath
 from bot.core.config_manager import Config
 
 from .. import DOWNLOAD_DIR, LOGGER, bot_loop, task_dict_lock, user_data
@@ -68,9 +68,11 @@ from ..helper.mirror_leech_utils.download_utils.telegram_download import (
 )
 from ..helper.telegram_helper.button_build import ButtonMaker
 from ..helper.telegram_helper.bot_commands import BotCommands
+from ..helper.ext_utils.files_utils import clean_download
 from ..helper.telegram_helper.message_utils import (
     auto_delete_message,
     delete_links,
+    delete_message,
     edit_message,
     get_tg_link_message,
     send_message,
@@ -705,6 +707,7 @@ async def merge_command(client, message):
         "-i": 0,
         "-n": "",
         "-up": "",
+        "-ud": "",
         "-sp": 0,
         "-doc": False,
         "-med": False,
@@ -727,14 +730,35 @@ async def merge_command(client, message):
         )
         return
 
-    mirror_task = Mirror(client, message, is_leech=not bool(args["-up"]))
+    up_target = args["-up"] or args["-ud"]
+    is_telegram_dest = False
+    if up_target:
+        up_lower = up_target.lower()
+        dump_chats = Config.LEECH_DUMP_CHATS or {}
+        if (
+            up_lower == "pm"
+            or up_lower.startswith(("b:", "u:", "h:", "@"))
+            or up_lower.lstrip("-").isdigit()
+            or up_target in dump_chats
+        ):
+            is_telegram_dest = True
+
+    is_leech = not up_target or is_telegram_dest
+
+    mirror_task = Mirror(client, message, is_leech=is_leech)
     mirror_task.name = custom_name
-    mirror_task.up_dest = args["-up"]
     mirror_task.split_size = args["-sp"]
     mirror_task.as_doc = args["-doc"]
     mirror_task.as_med = args["-med"]
     mirror_task.manual_merge = True
     mirror_task.merge_custom_name = custom_name
+
+    if is_leech:
+        if up_target:
+            mirror_task.dump_dest = up_target
+            mirror_task.up_dest = up_target
+    else:
+        mirror_task.up_dest = up_target
 
     try:
         await mirror_task.before_start()
