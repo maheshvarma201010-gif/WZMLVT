@@ -37,11 +37,29 @@ class TgClient:
     IS_PREMIUM_USER = False
     MAX_SPLIT_SIZE = 2097152000
 
+    @staticmethod
+    def sanitize_proxy(proxy):
+        if not isinstance(proxy, dict) or not proxy:
+            return None
+        p = dict(proxy)
+        if not p.get("scheme"):
+            p["scheme"] = "socks5"
+        else:
+            p["scheme"] = str(p["scheme"]).lower()
+        if not p.get("hostname") or not p.get("port"):
+            return None
+        try:
+            p["port"] = int(p["port"])
+        except (ValueError, TypeError):
+            return None
+        return p
+
     @classmethod
     def wztgClient(cls, *args, proxy=None, **kwargs):
         kwargs["api_id"] = Config.TELEGRAM_API
         kwargs["api_hash"] = Config.TELEGRAM_HASH
-        kwargs["proxy"] = Config.TG_PROXY if proxy is None else proxy
+        target_proxy = Config.TG_PROXY if proxy is None else proxy
+        kwargs["proxy"] = cls.sanitize_proxy(target_proxy)
         kwargs["parse_mode"] = enums.ParseMode.HTML
         kwargs["in_memory"] = True
         for param, value in {
@@ -64,7 +82,7 @@ class TgClient:
                 continue
             try:
                 parsed = literal_eval(line)
-                proxies.append(parsed if isinstance(parsed, dict) else None)
+                proxies.append(cls.sanitize_proxy(parsed) if isinstance(parsed, dict) else None)
             except (ValueError, SyntaxError):
                 proxies.append(None)
         return proxies

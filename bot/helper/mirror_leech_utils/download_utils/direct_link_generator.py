@@ -10,7 +10,13 @@ from niquests import Session, post, get
 from niquests.adapters import HTTPAdapter
 from time import sleep, time
 from urllib.parse import parse_qs, quote, urlparse
-from niquests.packages.urllib3.util.retry import Retry
+try:
+    from urllib3.util.retry import Retry
+except ImportError:
+    try:
+        from niquests.packages.urllib3.util.retry import Retry
+    except ImportError:
+        Retry = None
 from uuid import uuid4
 from base64 import b64decode, b64encode
 from curl_cffi import Session as CurlSession

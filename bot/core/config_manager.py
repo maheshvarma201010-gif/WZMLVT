@@ -1,7 +1,12 @@
 from ast import literal_eval
 from importlib import import_module
 from os import getenv
-from wz_bin import bin_name
+try:
+    from wz_bin import bin_name
+except ImportError:
+    def bin_name(idx):
+        names = ["aria2c", "qbittorrent-nox", "ffmpeg", "rclone", "sabnzbdplus"]
+        return names[idx] if 0 <= idx < len(names) else "unknown"
 
 
 class Config:
@@ -257,6 +262,19 @@ class Config:
 
     @classmethod
     def _convert_env_type(cls, key, value):
+        if key == "TG_PROXY":
+            if isinstance(value, dict):
+                return value
+            if isinstance(value, str):
+                if not value.strip():
+                    return None
+                try:
+                    parsed = literal_eval(value)
+                    if isinstance(parsed, dict):
+                        return parsed
+                except (ValueError, SyntaxError):
+                    pass
+            return None
         original_value = getattr(cls, key, None)
         if original_value is None:
             return value
