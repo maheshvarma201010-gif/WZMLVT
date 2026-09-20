@@ -45,6 +45,12 @@ class FFmpegStatus:
             return MirrorStatus.STATUS_SAMVID
         elif self._cstatus == "Merge":
             return MirrorStatus.STATUS_MERGE
+        elif self._cstatus == "Encode":
+            return MirrorStatus.STATUS_ENCODE
+        elif self._cstatus == "Compress":
+            return MirrorStatus.STATUS_COMPRESS
+        elif self._cstatus == "Watermark":
+            return MirrorStatus.STATUS_WATERMARK
         else:
             return MirrorStatus.STATUS_FFMPEG
 
