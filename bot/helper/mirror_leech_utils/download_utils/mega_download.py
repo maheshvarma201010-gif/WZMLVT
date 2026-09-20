@@ -4,7 +4,10 @@ from contextlib import suppress
 from secrets import token_hex
 
 from aiofiles.os import makedirs
-from mega import MegaApi, MegaCancelToken
+try:
+    from mega import MegaApi, MegaCancelToken
+except ImportError:
+    MegaApi = MegaCancelToken = None
 
 from .... import LOGGER, task_dict, task_dict_lock, user_data
 from ....core.config_manager import Config

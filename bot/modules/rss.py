@@ -250,8 +250,9 @@ async def rss_sub(_, message, pre_event):
             cmd = None
             stv = False
         try:
-            async with AsyncSession(headers=headers, timeout=60) as client:
-                res = await client.get(feed_link, allow_redirects=True)
+            async with AsyncSession() as client:
+                client.headers.update(headers)
+                res = await client.get(feed_link, allow_redirects=True, timeout=60)
             html = res.text
             rss_d = _parse_feed(html)
             last_link = ""
@@ -463,8 +464,9 @@ async def rss_get(_, message, pre_event):
                 msg = await send_message(
                     message, f"<b>Fetching last {count} items from <code>{title}</code>...</b>"
                 )
-                async with AsyncSession(headers=headers, timeout=60) as client:
-                    res = await client.get(data["link"], allow_redirects=True)
+                async with AsyncSession() as client:
+                    client.headers.update(headers)
+                    res = await client.get(data["link"], allow_redirects=True, timeout=60)
                 html = res.text
                 rss_d = _parse_feed(html)
                 item_info = f"<b>📡 RSS Items: {title}</b>\n\n"
@@ -823,11 +825,9 @@ async def rss_monitor():
                 tries = 0
                 while True:
                     try:
-                        async with AsyncSession(
-                            headers=headers,
-                            timeout=60,
-                        ) as client:
-                            res = await client.get(data["link"], allow_redirects=True)
+                        async with AsyncSession() as client:
+                            client.headers.update(headers)
+                            res = await client.get(data["link"], allow_redirects=True, timeout=60)
                         html = res.text
                         break
                     except Exception:

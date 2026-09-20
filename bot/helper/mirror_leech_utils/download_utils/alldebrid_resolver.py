@@ -80,7 +80,8 @@ async def _call_api(method, url, params=None, data=None, files=None):
         kwargs["data"] = data
     if files is not None:
         kwargs["files"] = files
-    async with AsyncSession(headers={"User-Agent": _USER_AGENT}) as client:
+    async with AsyncSession() as client:
+        client.headers.update({"User-Agent": _USER_AGENT})
         try:
             response = await client.request(method, url, **kwargs)
             response.raise_for_status()

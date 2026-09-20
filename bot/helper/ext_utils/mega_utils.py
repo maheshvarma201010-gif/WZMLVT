@@ -1,7 +1,12 @@
 from shutil import rmtree as shutil_rmtree
 from tempfile import mkdtemp
 
-from mega import MegaApi, MegaError, MegaListener, MegaRequest
+try:
+    from mega import MegaApi, MegaError, MegaListener, MegaRequest
+except ImportError:
+    MegaApi = MegaError = MegaRequest = None
+    class MegaListener:
+        pass
 
 from .bot_utils import sync_to_async
 from .status_utils import get_readable_file_size
@@ -163,6 +168,9 @@ class MegaAccountListener(MegaListener):
 
 def _get_mega_account_info_sync(email: str, password: str) -> str:
     from time import sleep, gmtime, strftime
+
+    if MegaApi is None:
+        return "⌬ <b>Mega Account Info</b>\n│\n┖ <i>MEGA SDK is not installed on this system.</i>"
 
     if not email or not password:
         return "⌬ <b>Mega Account Info</b>\n│\n┖ <i>No credentials configured.</i>"

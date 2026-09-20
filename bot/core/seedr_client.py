@@ -52,8 +52,8 @@ class SeedrClient:
         return result
 
     async def _token_request(self, payload):
-        async with AsyncSession(timeout=30) as client:
-            resp = await client.post(TOKEN_URL, data=payload)
+        async with AsyncSession() as client:
+            resp = await client.post(TOKEN_URL, data=payload, timeout=30)
             return resp.json()
 
     async def _refresh(self):
@@ -78,19 +78,21 @@ class SeedrClient:
         return True
 
     async def _api(self, func, payload):
-        async with AsyncSession(timeout=30) as client:
+        async with AsyncSession() as client:
             resp = await client.post(
                 RESOURCE_URL,
                 params={"access_token": self._access_token, "func": func},
                 data=payload,
+                timeout=30,
             )
             result = resp.json()
         if result.get("error") == "expired_token" and await self._refresh():
-            async with AsyncSession(timeout=30) as client:
+            async with AsyncSession() as client:
                 resp = await client.post(
                     RESOURCE_URL,
                     params={"access_token": self._access_token, "func": func},
                     data=payload,
+                    timeout=30,
                 )
                 result = resp.json()
         return result

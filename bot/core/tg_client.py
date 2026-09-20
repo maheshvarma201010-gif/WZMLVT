@@ -42,10 +42,12 @@ class TgClient:
         if not isinstance(proxy, dict) or not proxy:
             return None
         p = dict(proxy)
-        if not p.get("scheme"):
-            p["scheme"] = "socks5"
-        else:
-            p["scheme"] = str(p["scheme"]).lower()
+        scheme = str(p.get("scheme") or "").lower()
+        if not scheme:
+            scheme = "socks5"
+        elif scheme in ("socks5h", "socks4a"):
+            scheme = scheme[:-1]
+        p["scheme"] = scheme
         if not p.get("hostname") or not p.get("port"):
             return None
         try:

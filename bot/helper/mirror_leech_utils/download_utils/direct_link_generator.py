@@ -13,10 +13,7 @@ from urllib.parse import parse_qs, quote, urlparse
 try:
     from urllib3.util.retry import Retry
 except ImportError:
-    try:
-        from niquests.packages.urllib3.util.retry import Retry
-    except ImportError:
-        Retry = None
+    Retry = None
 from uuid import uuid4
 from base64 import b64decode, b64encode
 from curl_cffi import Session as CurlSession

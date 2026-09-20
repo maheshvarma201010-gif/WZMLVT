@@ -497,7 +497,8 @@ async def download_image_url(url):
     image_name = url.split("/")[-1].split("?")[0]
     des_dir = ospath.join(path, image_name)
     try:
-        async with AsyncSession(headers={"User-Agent": "Mozilla/5.0"}) as client:
+        async with AsyncSession() as client:
+            client.headers.update({"User-Agent": "Mozilla/5.0"})
             resp = await client.get(url, allow_redirects=True, timeout=15)
             if resp.status_code == 200:
                 async with aiopen(des_dir, "wb") as f:
@@ -590,9 +591,8 @@ async def search_images():
     new_images = []
 
     try:
-        async with AsyncSession(
-            headers={"User-Agent": "Mozilla/5.0"},
-        ) as client:
+        async with AsyncSession() as client:
+            client.headers.update({"User-Agent": "Mozilla/5.0"})
             if "wallpaperflare" in sources:
                 for query in query_list:
                     for page in range(1, total_pages + 1):

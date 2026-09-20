@@ -196,8 +196,9 @@ class Telegraph:
     def __init__(self, access_token=None, domain="graph.org"):
         self.access_token = access_token
         self.domain = domain
-        self.session = AsyncSession(
-            headers={"Content-Type": "application/x-www-form-urlencoded"}
+        self.session = AsyncSession()
+        self.session.headers.update(
+            {"Content-Type": "application/x-www-form-urlencoded"}
         )
 
     async def _method(self, method, values=None, path=""):

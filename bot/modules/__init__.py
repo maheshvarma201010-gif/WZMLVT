@@ -35,6 +35,7 @@ from .mirror_leech import (
     seedr_link,
     uphoster,
     merge_command,
+    ht_merge_callback,
 )
 from .restart import (
     restart_bot,
@@ -83,6 +84,7 @@ __all__ = [
     "arg_usage",
     "uphoster",
     "merge_command",
+    "ht_merge_callback",
     "mirror",
     "leech",
     "qb_leech",

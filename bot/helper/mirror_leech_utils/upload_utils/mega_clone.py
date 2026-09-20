@@ -3,7 +3,10 @@ from asyncio import sleep as asleep
 from secrets import token_hex
 
 from aiofiles.os import makedirs
-from mega import MegaApi
+try:
+    from mega import MegaApi
+except ImportError:
+    MegaApi = None
 
 from .... import LOGGER, task_dict, task_dict_lock
 from ...telegram_helper.message_utils import update_status_message

@@ -7,11 +7,8 @@ from cloudscraper import create_scraper
 try:
     from urllib3 import disable_warnings
 except ImportError:
-    try:
-        from niquests.packages.urllib3 import disable_warnings
-    except ImportError:
-        def disable_warnings(*args, **kwargs):
-            pass
+    def disable_warnings(*args, **kwargs):
+        pass
 
 from ... import LOGGER, shortener_dict
 from ...core.config_manager import Config

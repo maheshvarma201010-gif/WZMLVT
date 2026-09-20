@@ -61,6 +61,8 @@ cat <<EOF > /etc/systemd/system/${SERVICE_NAME}.service
 [Unit]
 Description=WZML Mirror Leech Bot Service
 After=network.target
+StartLimitIntervalSec=60
+StartLimitBurst=5
 
 [Service]
 Type=simple

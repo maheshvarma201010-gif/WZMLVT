@@ -11,14 +11,19 @@ from concurrent.futures import Future
 from re import match as rematch
 from time import time
 
-from mega import (
-    MegaApi,
-    MegaError,
-    MegaListener,
-    MegaRequest,
-    MegaTransfer,
-    MegaUploadOptions,
-)
+try:
+    from mega import (
+        MegaApi,
+        MegaError,
+        MegaListener,
+        MegaRequest,
+        MegaTransfer,
+        MegaUploadOptions,
+    )
+except ImportError:
+    MegaApi = MegaError = MegaRequest = MegaTransfer = MegaUploadOptions = None
+    class MegaListener:
+        pass
 
 from ... import LOGGER, bot_loop
 from ..ext_utils.bot_utils import async_to_sync, sync_to_async
