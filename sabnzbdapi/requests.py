@@ -6,14 +6,10 @@ try:
     from urllib3 import disable_warnings
     from urllib3.exceptions import InsecureRequestWarning
 except ImportError:
-    try:
-        from niquests.packages.urllib3 import disable_warnings
-        from niquests.packages.urllib3.exceptions import InsecureRequestWarning
-    except ImportError:
-        def disable_warnings(*args, **kwargs):
-            pass
-        class InsecureRequestWarning(Warning):
-            pass
+    def disable_warnings(*args, **kwargs):
+        pass
+    class InsecureRequestWarning(Warning):
+        pass
 
 from .exception import APIConnectionError, APIResponseError
 from .job_functions import JobFunctions

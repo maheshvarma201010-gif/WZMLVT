@@ -117,8 +117,8 @@ async def get_tmdb_poster_link(title, year=None, as_doc=False):
 
     for attempt in range(3):
         try:
-            async with AsyncSession(timeout=15) as client:
-                resp = await client.get(TMDB_SEARCH_URL, params=params, headers=headers)
+            async with AsyncSession() as client:
+                resp = await client.get(TMDB_SEARCH_URL, params=params, headers=headers, timeout=15)
                 if resp.status_code == 401:
                     LOGGER.warning("TMDb authentication failed, check TMDB_ACCESS_TOKEN")
                     return None

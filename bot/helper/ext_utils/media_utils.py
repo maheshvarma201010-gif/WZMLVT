@@ -77,7 +77,7 @@ async def download_image_thumb(url):
     await makedirs(path, exist_ok=True)
 
     try:
-        async with AsyncSession(timeout=30) as client:
+        async with AsyncSession() as client:
             try:
                 head_resp = await client.head(url, allow_redirects=True)
                 ct = head_resp.headers.get("content-type", "")
@@ -87,7 +87,7 @@ async def download_image_thumb(url):
             except Exception:
                 pass
 
-            resp = await client.get(url, allow_redirects=True)
+            resp = await client.get(url, allow_redirects=True, timeout=30)
             if resp.status_code != 200:
                 LOGGER.error(f"Failed to download thumb URL: HTTP {resp.status_code}")
                 return ""

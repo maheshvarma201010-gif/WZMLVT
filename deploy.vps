@@ -69,6 +69,8 @@ WorkingDirectory=$APP_DIR
 ExecStart=$PYTHON_EXEC -m bot
 Restart=always
 RestartSec=5
+StartLimitIntervalSec=60
+StartLimitBurst=5
 Environment=PYTHONUNBUFFERED=1
 
 [Install]
