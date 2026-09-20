@@ -1,6 +1,8 @@
 from asyncio import Lock, sleep
+from os import path as ospath
 from time import time
 from secrets import token_hex
+from aiofiles.os import makedirs
 from pyrogram.errors import FloodWait, PeerIdInvalid, ChannelInvalid
 
 from bot.helper.ext_utils.hyperdl_utils import HypertgDownload
@@ -99,6 +101,8 @@ class TelegramDownloadHelper:
 
     async def _download(self, message, path):
         try:
+            if dir_path := ospath.dirname(path):
+                await makedirs(dir_path, exist_ok=True)
             # TODO : Add support for user session ( Huh ??)
             if self._hyper_dl:
                 try:

@@ -7,7 +7,7 @@ from re import match as re_match
 from time import time
 
 from aiofiles import open as aiopen
-from aiofiles.os import path as aiopath
+from aiofiles.os import makedirs, path as aiopath
 from bot.core.config_manager import Config
 
 from .. import DOWNLOAD_DIR, LOGGER, bot_loop, task_dict_lock, user_data
@@ -68,9 +68,11 @@ from ..helper.mirror_leech_utils.download_utils.telegram_download import (
 )
 from ..helper.telegram_helper.button_build import ButtonMaker
 from ..helper.telegram_helper.bot_commands import BotCommands
+from ..helper.ext_utils.files_utils import clean_download
 from ..helper.telegram_helper.message_utils import (
     auto_delete_message,
     delete_links,
+    delete_message,
     edit_message,
     get_tg_link_message,
     send_message,
