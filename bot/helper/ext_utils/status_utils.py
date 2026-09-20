@@ -34,7 +34,7 @@ class MirrorStatus:
     STATUS_SEED = "Seed"
     STATUS_SAMVID = "SamVid"
     STATUS_CONVERT = "Convert"
-    STATUS_MERGE = "Merge"
+    STATUS_MERGE = "Merging"
     STATUS_FFMPEG = "FFmpeg"
     STATUS_YT = "YouTube"
     STATUS_METADATA = "Metadata"
