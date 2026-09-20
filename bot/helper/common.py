@@ -1243,6 +1243,127 @@ class TaskConfig:
                         return new_folder
         return dl_path
 
+    async def proceed_encode(self, dl_path, gid):
+        all_files = [dl_path] if self.is_file else []
+        if not self.is_file:
+            for dirpath, _, files in await sync_to_async(walk, dl_path, topdown=False):
+                for file_ in files:
+                    f_path = ospath.join(dirpath, file_)
+                    if (await get_document_type(f_path))[0]:
+                        all_files.append(f_path)
+
+        if not all_files:
+            return dl_path
+
+        ffmpeg = FFMpeg(self)
+        async with task_dict_lock:
+            task_dict[self.mid] = FFmpegStatus(self, ffmpeg, gid, "Encode")
+
+        self.progress = True
+        eq = self.user_dict.get("ENC_QUALITY", "")
+        ec = self.user_dict.get("ENC_CRF", "")
+        ep = self.user_dict.get("ENC_PRESET", "")
+        eco = self.user_dict.get("ENC_CODEC", "")
+        er = self.user_dict.get("ENC_RESOLUTION", "")
+        ef = self.user_dict.get("ENC_FPS", "")
+
+        for f_path in all_files:
+            if self.is_cancelled:
+                return False
+            LOGGER.info(f"Encoding video: {f_path}")
+            res = await ffmpeg.encode_video(f_path, quality=eq, crf=ec, preset=ep, codec=eco, resolution=er, fps=ef)
+            if res:
+                await remove(f_path)
+                await move(res, f_path)
+
+        return dl_path
+
+    async def proceed_compress_video(self, dl_path, gid):
+        all_files = [dl_path] if self.is_file else []
+        if not self.is_file:
+            for dirpath, _, files in await sync_to_async(walk, dl_path, topdown=False):
+                for file_ in files:
+                    f_path = ospath.join(dirpath, file_)
+                    if (await get_document_type(f_path))[0]:
+                        all_files.append(f_path)
+
+        if not all_files:
+            return dl_path
+
+        ffmpeg = FFMpeg(self)
+        async with task_dict_lock:
+            task_dict[self.mid] = FFmpegStatus(self, ffmpeg, gid, "Compress")
+
+        self.progress = True
+        cq = self.user_dict.get("COM_QUALITY", "")
+        cc = self.user_dict.get("COM_CRF", "")
+        cp = self.user_dict.get("COM_PRESET", "")
+        ca = self.user_dict.get("COM_AUDIO_BITRATE", "")
+        cac = self.user_dict.get("COM_AUDIO_CODEC", "")
+
+        for f_path in all_files:
+            if self.is_cancelled:
+                return False
+            LOGGER.info(f"Compressing video: {f_path}")
+            res = await ffmpeg.compress_video(f_path, quality=cq, crf=cc, preset=cp, audio_bitrate=ca, audio_codec=cac)
+            if res:
+                await remove(f_path)
+                await move(res, f_path)
+
+        return dl_path
+
+    async def proceed_watermark(self, dl_path, gid):
+        all_files = [dl_path] if self.is_file else []
+        if not self.is_file:
+            for dirpath, _, files in await sync_to_async(walk, dl_path, topdown=False):
+                for file_ in files:
+                    f_path = ospath.join(dirpath, file_)
+                    if (await get_document_type(f_path))[0]:
+                        all_files.append(f_path)
+
+        if not all_files:
+            return dl_path
+
+        wm_user = self.user_dict.get("WM_USERNAME", "")
+        wm_text = self.user_dict.get("WM_TEXT", "")
+        wm_img = self.user_dict.get("WM_IMAGE", "")
+        wm_color = self.user_dict.get("WM_COLOR", "white")
+        wm_pos = self.user_dict.get("WM_POSITION", "Top-Left")
+
+        disp_text = wm_text or (f"@{wm_user}" if wm_user else "")
+        img_path = ""
+
+        if wm_img:
+            if wm_img.startswith(("http://", "https://")):
+                downloaded = await download_image_thumb(wm_img)
+                if downloaded and await aiopath.exists(downloaded):
+                    img_path = downloaded
+            elif await aiopath.exists(wm_img):
+                img_path = wm_img
+
+        if not disp_text and not img_path:
+            return dl_path
+
+        ffmpeg = FFMpeg(self)
+        async with task_dict_lock:
+            task_dict[self.mid] = FFmpegStatus(self, ffmpeg, gid, "Watermark")
+
+        self.progress = True
+        for f_path in all_files:
+            if self.is_cancelled:
+                return False
+            LOGGER.info(f"Applying watermark to: {f_path}")
+            res = await ffmpeg.apply_watermark(f_path, text=disp_text, image_path=img_path, position=wm_pos, color=wm_color)
+            if res:
+                await remove(f_path)
+                await move(res, f_path)
+
+        if img_path and img_path.startswith(f"{DOWNLOAD_DIR}thumbnails"):
+            with suppress(Exception):
+                await remove(img_path)
+
+        return dl_path
+
     async def proceed_compress(self, dl_path, gid):
         pswd = self.compress if isinstance(self.compress, str) else ""
         if self.is_leech and self.is_file:

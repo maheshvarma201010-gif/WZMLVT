@@ -320,6 +320,11 @@ user_settings_text = {
         "FFmpeg encoding preset.",
         "<blockquote>Send Preset (e.g. ultrafast, fast, medium, slow).\n⏱️ <b>Time Left:</b> <code>60 sec</code></blockquote>",
     ),
+    "ENC_CODEC": (
+        "String",
+        "Video encoder codec.",
+        "<blockquote>Send Video Codec (e.g. libx264, libx265, libvpx-vp9, copy).\n⏱️ <b>Time Left:</b> <code>60 sec</code></blockquote>",
+    ),
     "ENC_RESOLUTION": (
         "String",
         "Target video resolution.",
@@ -350,6 +355,11 @@ user_settings_text = {
         "Audio bitrate for compression.",
         "<blockquote>Send Audio Bitrate (e.g. 128k, 192k).\n⏱️ <b>Time Left:</b> <code>60 sec</code></blockquote>",
     ),
+    "COM_AUDIO_CODEC": (
+        "String",
+        "Audio codec for compression.",
+        "<blockquote>Send Audio Codec (e.g. aac, mp3, opus, copy).\n⏱️ <b>Time Left:</b> <code>60 sec</code></blockquote>",
+    ),
     "WM_USERNAME": (
         "String",
         "Watermark username text.",
@@ -364,6 +374,11 @@ user_settings_text = {
         "Photo or Image URL",
         "Watermark image overlay.",
         "<blockquote>Send photo or Image URL for watermark.\n⏱️ <b>Time Left:</b> <code>60 sec</code></blockquote>",
+    ),
+    "WM_COLOR": (
+        "String/Hex",
+        "Color for text watermark.",
+        "<blockquote>Send text watermark color name or hex code (e.g. white, yellow, #FF0000).\n⏱️ <b>Time Left:</b> <code>60 sec</code></blockquote>",
     ),
 }
 
@@ -622,6 +637,7 @@ Configure custom video encoding, compression, and watermark overlays for uploads
         buttons.data_button("Quality", f"userset {user_id} menu ENC_QUALITY")
         buttons.data_button("CRF", f"userset {user_id} menu ENC_CRF")
         buttons.data_button("Preset", f"userset {user_id} menu ENC_PRESET")
+        buttons.data_button("Codec", f"userset {user_id} menu ENC_CODEC")
         buttons.data_button("Resolution", f"userset {user_id} menu ENC_RESOLUTION")
         buttons.data_button("FPS", f"userset {user_id} menu ENC_FPS")
 
@@ -634,6 +650,7 @@ Configure custom video encoding, compression, and watermark overlays for uploads
         eq = user_dict.get("ENC_QUALITY", "Not Set")
         ec = user_dict.get("ENC_CRF", "Not Set")
         ep = user_dict.get("ENC_PRESET", "Not Set")
+        eco = user_dict.get("ENC_CODEC", "Not Set")
         er = user_dict.get("ENC_RESOLUTION", "Not Set")
         ef = user_dict.get("ENC_FPS", "Not Set")
 
@@ -643,6 +660,7 @@ Configure custom video encoding, compression, and watermark overlays for uploads
 • <b>Quality:</b> <code>{escape(str(eq))}</code>
 • <b>CRF:</b> <code>{escape(str(ec))}</code>
 • <b>Preset:</b> <code>{escape(str(ep))}</code>
+• <b>Codec:</b> <code>{escape(str(eco))}</code>
 • <b>Resolution:</b> <code>{escape(str(er))}</code>
 • <b>FPS:</b> <code>{escape(str(ef))}</code></blockquote>"""
 
@@ -651,6 +669,7 @@ Configure custom video encoding, compression, and watermark overlays for uploads
         buttons.data_button("CRF", f"userset {user_id} menu COM_CRF")
         buttons.data_button("Preset", f"userset {user_id} menu COM_PRESET")
         buttons.data_button("Audio Bitrate", f"userset {user_id} menu COM_AUDIO_BITRATE")
+        buttons.data_button("Audio Codec", f"userset {user_id} menu COM_AUDIO_CODEC")
 
         buttons.data_button("◀️ Back", f"userset {user_id} enc_com_wm", "footer")
         buttons.data_button(
@@ -662,6 +681,7 @@ Configure custom video encoding, compression, and watermark overlays for uploads
         cc = user_dict.get("COM_CRF", "Not Set")
         cp = user_dict.get("COM_PRESET", "Not Set")
         ca = user_dict.get("COM_AUDIO_BITRATE", "Not Set")
+        cac = user_dict.get("COM_AUDIO_CODEC", "Not Set")
 
         text = f"""<b>🗜️ Video Compression Settings</b>
 
@@ -669,16 +689,19 @@ Configure custom video encoding, compression, and watermark overlays for uploads
 • <b>Quality:</b> <code>{escape(str(cq))}</code>
 • <b>CRF:</b> <code>{escape(str(cc))}</code>
 • <b>Preset:</b> <code>{escape(str(cp))}</code>
-• <b>Audio Bitrate:</b> <code>{escape(str(ca))}</code></blockquote>"""
+• <b>Audio Bitrate:</b> <code>{escape(str(ca))}</code>
+• <b>Audio Codec:</b> <code>{escape(str(cac))}</code></blockquote>"""
 
     elif stype == "watermark_menu":
         buttons.data_button("Username", f"userset {user_id} menu WM_USERNAME")
         buttons.data_button("Text", f"userset {user_id} menu WM_TEXT")
         buttons.data_button("Photo / Image URL", f"userset {user_id} menu WM_IMAGE")
+        buttons.data_button("🎨 Text Color", f"userset {user_id} wm_color_select", position="header")
 
         wm_user = user_dict.get("WM_USERNAME")
         wm_text = user_dict.get("WM_TEXT")
         wm_img = user_dict.get("WM_IMAGE")
+        wm_color = user_dict.get("WM_COLOR", "white")
         wm_pos = user_dict.get("WM_POSITION", "Top-Left")
 
         if wm_user or wm_text or wm_img:
@@ -700,6 +723,7 @@ Configure custom video encoding, compression, and watermark overlays for uploads
 • <b>Username:</b> <code>{escape(str(wm_user or 'Not Set'))}</code>
 • <b>Text:</b> <code>{escape(str(wm_text or 'Not Set'))}</code>
 • <b>Photo/Image URL:</b> <code>{escape(str(wm_img or 'Not Set'))}</code>
+• <b>Text Color:</b> <code>{escape(str(wm_color))}</code>
 • <b>Selected Position:</b> <b>{escape(str(wm_pos))}</b></blockquote>"""
 
     elif stype == "vtools":
@@ -1837,6 +1861,25 @@ async def edit_user_settings(client, query):
     elif data[2] == "yttools":
         await query.answer()
         await update_user_settings(query, data[2])
+    elif data[2] == "wm_color_select":
+        await query.answer()
+        user_dict = user_data.get(user_id, {})
+        if len(data) > 3:
+            new_color = data[3]
+            update_user_ldata(user_id, "WM_COLOR", new_color)
+            await database.update_user_data(user_id)
+            await update_user_settings(query, "watermark_menu")
+        else:
+            curr_color = user_dict.get("WM_COLOR", "white")
+            buttons = ButtonMaker()
+            colors = ["white", "black", "red", "green", "blue", "yellow", "cyan", "magenta"]
+            for col in colors:
+                state = "✓ " if col == curr_color else ""
+                buttons.data_button(f"{state}{col.capitalize()}", f"userset {user_id} wm_color_select {col}")
+            buttons.data_button("Custom Hex Color", f"userset {user_id} menu WM_COLOR", "header")
+            buttons.data_button("◀️ Back", f"userset {user_id} watermark_menu", "footer")
+            buttons.data_button("❌ Close", f"userset {user_id} close", "footer", style=ButtonStyle.DANGER)
+            await edit_message(message, "<b>🎨 Select Text Watermark Color:</b>", buttons.build_menu(2))
     elif data[2] == "wm_pos_select":
         await query.answer()
         user_dict = user_data.get(user_id, {})

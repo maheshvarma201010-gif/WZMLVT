@@ -932,6 +932,183 @@ class FFMpeg:
             i += 1
         return True
 
+    async def encode_video(self, video_file, quality="", crf="", preset="", codec="", resolution="", fps=""):
+        cores, threads = ffmpeg_layout()
+        self.clear()
+        self._total_time = (await get_media_info(video_file))[0]
+        base_name, ext = ospath.splitext(video_file)
+        output = f"{base_name}_encoded{ext}"
+
+        cmd = [
+            "taskset",
+            "-c",
+            f"{cores}",
+            BinConfig.FFMPEG_NAME,
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            "-progress",
+            "pipe:1",
+            "-i",
+            video_file,
+            "-map",
+            "0",
+        ]
+
+        if codec:
+            cmd.extend(["-c:v", codec])
+        else:
+            cmd.extend(["-c:v", "libx264"])
+
+        cmd.extend(["-c:a", "copy", "-c:s", "copy"])
+
+        if crf:
+            cmd.extend(["-crf", str(crf)])
+        if preset:
+            cmd.extend(["-preset", str(preset)])
+        if resolution and "x" in str(resolution):
+            cmd.extend(["-s", str(resolution)])
+        if fps:
+            cmd.extend(["-r", str(fps)])
+
+        cmd.extend(["-threads", f"{threads}", output])
+
+        if self._listener.is_cancelled:
+            return False
+        self._listener.subproc = await create_subprocess_exec(*cmd, stdout=PIPE, stderr=PIPE)
+        await self._ffmpeg_progress()
+        _, stderr = await self._listener.subproc.communicate()
+        code = self._listener.subproc.returncode
+
+        if code == 0 and await aiopath.exists(output):
+            return output
+        if await aiopath.exists(output):
+            await remove(output)
+        return False
+
+    async def compress_video(self, video_file, quality="", crf="", preset="", audio_bitrate="", audio_codec=""):
+        cores, threads = ffmpeg_layout()
+        self.clear()
+        self._total_time = (await get_media_info(video_file))[0]
+        base_name, ext = ospath.splitext(video_file)
+        output = f"{base_name}_compressed{ext}"
+
+        cmd = [
+            "taskset",
+            "-c",
+            f"{cores}",
+            BinConfig.FFMPEG_NAME,
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            "-progress",
+            "pipe:1",
+            "-i",
+            video_file,
+            "-map",
+            "0",
+            "-c:v",
+            "libx264",
+        ]
+
+        cmd.extend(["-crf", str(crf) if crf else "28"])
+        cmd.extend(["-preset", str(preset) if preset else "faster"])
+
+        if audio_codec:
+            cmd.extend(["-c:a", str(audio_codec)])
+        else:
+            cmd.extend(["-c:a", "aac"])
+
+        if audio_bitrate:
+            cmd.extend(["-b:a", str(audio_bitrate)])
+
+        cmd.extend(["-c:s", "copy", "-threads", f"{threads}", output])
+
+        if self._listener.is_cancelled:
+            return False
+        self._listener.subproc = await create_subprocess_exec(*cmd, stdout=PIPE, stderr=PIPE)
+        await self._ffmpeg_progress()
+        _, stderr = await self._listener.subproc.communicate()
+        code = self._listener.subproc.returncode
+
+        if code == 0 and await aiopath.exists(output):
+            return output
+        if await aiopath.exists(output):
+            await remove(output)
+        return False
+
+    async def apply_watermark(self, video_file, text="", image_path="", position="Top-Left", color="white"):
+        cores, threads = ffmpeg_layout()
+        self.clear()
+        self._total_time = (await get_media_info(video_file))[0]
+        base_name, ext = ospath.splitext(video_file)
+        output = f"{base_name}_wm{ext}"
+
+        pos_map_text = {
+            "Top-Left": "x=10:y=10",
+            "Top-Center": "x=(w-text_w)/2:y=10",
+            "Top-Right": "x=w-text_w-10:y=10",
+            "Center-Left": "x=10:y=(h-text_h)/2",
+            "Center": "x=(w-text_w)/2:y=(h-text_h)/2",
+            "Center-Right": "x=w-text_w-10:y=(h-text_h)/2",
+            "Bottom-Left": "x=10:y=h-text_h-10",
+            "Bottom-Center": "x=(w-text_w)/2:y=h-text_h-10",
+            "Bottom-Right": "x=w-text_w-10:y=h-text_h-10",
+        }
+
+        pos_map_img = {
+            "Top-Left": "10:10",
+            "Top-Center": "(main_w-overlay_w)/2:10",
+            "Top-Right": "main_w-overlay_w-10:10",
+            "Center-Left": "10:(main_h-overlay_h)/2",
+            "Center": "(main_w-overlay_w)/2:(main_h-overlay_h)/2",
+            "Center-Right": "main_w-overlay_w-10:(main_h-overlay_h)/2",
+            "Bottom-Left": "10:main_h-overlay_h-10",
+            "Bottom-Center": "(main_w-overlay_w)/2:main_h-overlay_h-10",
+            "Bottom-Right": "main_w-overlay_w-10:main_h-overlay_h-10",
+        }
+
+        if image_path and await aiopath.exists(image_path):
+            overlay_pos = pos_map_img.get(position, "10:10")
+            filter_str = f"[0:v][1:v]overlay={overlay_pos}[outv]"
+            cmd = [
+                "taskset", "-c", f"{cores}", BinConfig.FFMPEG_NAME,
+                "-hide_banner", "-loglevel", "error", "-progress", "pipe:1",
+                "-i", video_file, "-i", image_path,
+                "-filter_complex", filter_str,
+                "-map", "[outv]", "-map", "0:a?", "-map", "0:s?",
+                "-c:v", "libx264", "-c:a", "copy", "-c:s", "copy",
+                "-threads", f"{threads}", output
+            ]
+        elif text:
+            escaped_text = text.replace(":", r"\:").replace("'", r"'\''")
+            text_pos = pos_map_text.get(position, "x=10:y=10")
+            font_color = color or "white"
+            vf = f"drawtext=text='{escaped_text}':fontcolor={font_color}:fontsize=24:{text_pos}"
+            cmd = [
+                "taskset", "-c", f"{cores}", BinConfig.FFMPEG_NAME,
+                "-hide_banner", "-loglevel", "error", "-progress", "pipe:1",
+                "-i", video_file,
+                "-vf", vf,
+                "-map", "0", "-c:v", "libx264", "-c:a", "copy", "-c:s", "copy",
+                "-threads", f"{threads}", output
+            ]
+        else:
+            return video_file
+
+        if self._listener.is_cancelled:
+            return False
+        self._listener.subproc = await create_subprocess_exec(*cmd, stdout=PIPE, stderr=PIPE)
+        await self._ffmpeg_progress()
+        _, stderr = await self._listener.subproc.communicate()
+        code = self._listener.subproc.returncode
+
+        if code == 0 and await aiopath.exists(output):
+            return output
+        if await aiopath.exists(output):
+            await remove(output)
+        return False
+
     async def merge_videos(self, video_files, output_file, gid):
         cores, threads = ffmpeg_layout()
         self.clear()

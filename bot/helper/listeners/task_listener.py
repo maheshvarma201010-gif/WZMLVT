@@ -236,6 +236,43 @@ class TaskListener(TaskConfig):
             self.name = up_path.replace(f"{up_dir}/", "").split("/", 1)[0]
             self.size = await get_path_size(up_dir)
             self.clear()
+
+        # Automatic Pipeline Order: Encode -> Compress -> Watermark
+        if Config.ENABLE_ENCODE or any(k.startswith("ENC_") for k in self.user_dict):
+            try:
+                up_path = await self.proceed_encode(up_path, gid)
+            except Exception as e:
+                LOGGER.error(f"Encode processing error: {e}")
+            if self.is_cancelled:
+                return
+            self.is_file = await aiopath.isfile(up_path)
+            self.name = up_path.replace(f"{up_dir}/", "").split("/", 1)[0]
+            self.size = await get_path_size(up_dir)
+            self.clear()
+
+        if Config.ENABLE_COMPRESS or any(k.startswith("COM_") for k in self.user_dict):
+            try:
+                up_path = await self.proceed_compress_video(up_path, gid)
+            except Exception as e:
+                LOGGER.error(f"Compress processing error: {e}")
+            if self.is_cancelled:
+                return
+            self.is_file = await aiopath.isfile(up_path)
+            self.name = up_path.replace(f"{up_dir}/", "").split("/", 1)[0]
+            self.size = await get_path_size(up_dir)
+            self.clear()
+
+        if Config.ENABLE_WATERMARK or any(k.startswith("WM_") for k in self.user_dict):
+            try:
+                up_path = await self.proceed_watermark(up_path, gid)
+            except Exception as e:
+                LOGGER.error(f"Watermark processing error: {e}")
+            if self.is_cancelled:
+                return
+            self.is_file = await aiopath.isfile(up_path)
+            self.name = up_path.replace(f"{up_dir}/", "").split("/", 1)[0]
+            self.size = await get_path_size(up_dir)
+            self.clear()
             await remove_excluded_files(up_dir, self.excluded_extensions)
 
             if getattr(self, "auto_merge", False) or getattr(self, "manual_merge", False):

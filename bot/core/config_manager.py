@@ -48,6 +48,7 @@ class Config:
     ENABLE_ENCODE = False
     ENABLE_COMPRESS = False
     ENABLE_WATERMARK = False
+    THUMBNAIL = ""
     PLUGIN_INDEXES = []
     EQUAL_SPLITS = False
     EXCLUDED_EXTENSIONS = ""
