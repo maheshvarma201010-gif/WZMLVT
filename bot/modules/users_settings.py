@@ -29,7 +29,7 @@ from ..helper.ext_utils.bot_utils import (
 )
 from ..helper.ext_utils.db_handler import database
 from ..helper.ext_utils.mega_utils import get_mega_account_info
-from ..helper.ext_utils.media_utils import create_thumb
+from ..helper.ext_utils.media_utils import create_thumb, download_image_thumb
 from ..helper.ext_utils.status_utils import get_readable_file_size
 from ..helper.telegram_helper.button_build import ButtonMaker
 from ..helper.telegram_helper.message_utils import (
@@ -305,6 +305,66 @@ user_settings_text = {
         "User-defined GDrive categories dictionary.",
         "<blockquote>Send drive category dictionary.\n⏱️ <b>Time Left:</b> <code>60 sec</code></blockquote>",
     ),
+    "ENC_QUALITY": (
+        "String/Number",
+        "Video encoding quality setting.",
+        "<blockquote>Send Encoding Quality (e.g. 1080p, 720p, High).\n⏱️ <b>Time Left:</b> <code>60 sec</code></blockquote>",
+    ),
+    "ENC_CRF": (
+        "Number",
+        "Constant Rate Factor for encoding.",
+        "<blockquote>Send CRF value (e.g. 18, 23, 28).\n⏱️ <b>Time Left:</b> <code>60 sec</code></blockquote>",
+    ),
+    "ENC_PRESET": (
+        "String",
+        "FFmpeg encoding preset.",
+        "<blockquote>Send Preset (e.g. ultrafast, fast, medium, slow).\n⏱️ <b>Time Left:</b> <code>60 sec</code></blockquote>",
+    ),
+    "ENC_RESOLUTION": (
+        "String",
+        "Target video resolution.",
+        "<blockquote>Send Resolution (e.g. 1920x1080, 1280x720).\n⏱️ <b>Time Left:</b> <code>60 sec</code></blockquote>",
+    ),
+    "ENC_FPS": (
+        "Number",
+        "Target frames per second.",
+        "<blockquote>Send FPS value (e.g. 24, 30, 60).\n⏱️ <b>Time Left:</b> <code>60 sec</code></blockquote>",
+    ),
+    "COM_QUALITY": (
+        "String/Number",
+        "Video compression quality setting.",
+        "<blockquote>Send Compression Quality (e.g. Medium, High).\n⏱️ <b>Time Left:</b> <code>60 sec</code></blockquote>",
+    ),
+    "COM_CRF": (
+        "Number",
+        "Constant Rate Factor for compression.",
+        "<blockquote>Send Compression CRF value (e.g. 26, 28, 30).\n⏱️ <b>Time Left:</b> <code>60 sec</code></blockquote>",
+    ),
+    "COM_PRESET": (
+        "String",
+        "FFmpeg compression preset.",
+        "<blockquote>Send Preset (e.g. faster, fast, medium).\n⏱️ <b>Time Left:</b> <code>60 sec</code></blockquote>",
+    ),
+    "COM_AUDIO_BITRATE": (
+        "String",
+        "Audio bitrate for compression.",
+        "<blockquote>Send Audio Bitrate (e.g. 128k, 192k).\n⏱️ <b>Time Left:</b> <code>60 sec</code></blockquote>",
+    ),
+    "WM_USERNAME": (
+        "String",
+        "Watermark username text.",
+        "<blockquote>Send Watermark Username text.\n⏱️ <b>Time Left:</b> <code>60 sec</code></blockquote>",
+    ),
+    "WM_TEXT": (
+        "String",
+        "Watermark display text.",
+        "<blockquote>Send Watermark Text.\n⏱️ <b>Time Left:</b> <code>60 sec</code></blockquote>",
+    ),
+    "WM_IMAGE": (
+        "Photo or Image URL",
+        "Watermark image overlay.",
+        "<blockquote>Send photo or Image URL for watermark.\n⏱️ <b>Time Left:</b> <code>60 sec</code></blockquote>",
+    ),
 }
 
 
@@ -322,6 +382,7 @@ async def get_user_settings(from_user, stype="main"):
         )
         buttons.data_button("☁️ Mirror Settings", f"userset {user_id} mirror")
         buttons.data_button("📦 Leech Settings", f"userset {user_id} leech")
+        buttons.data_button("🎬 ENC & COM & WATERMARK", f"userset {user_id} enc_com_wm")
         buttons.data_button("🎬 Video Tools", f"userset {user_id} vtools")
         buttons.data_button("🌐 Uphoster Settings", f"userset {user_id} uphoster")
         buttons.data_button("🎞️ FF Media Settings", f"userset {user_id} ffset")
@@ -541,6 +602,105 @@ async def get_user_settings(from_user, stype="main"):
 • <b>Grid Layout:</b> <b>{thumb_layout}</b>
 • <b>Split Mode:</b> <b>{split_mode.capitalize()}</b>
 • <b>Auto Thumbnail:</b> <b>{auto_thumb}</b></blockquote>"""
+
+    elif stype == "enc_com_wm":
+        buttons.data_button("🎞️ Encode Settings", f"userset {user_id} encode_menu")
+        buttons.data_button("🗜️ Compress Settings", f"userset {user_id} compress_menu")
+        buttons.data_button("🖼️ Watermark Settings", f"userset {user_id} watermark_menu")
+        buttons.data_button("◀️ Back", f"userset {user_id} back", "footer")
+        buttons.data_button(
+            "❌ Close", f"userset {user_id} close", "footer", style=ButtonStyle.DANGER
+        )
+        btns = buttons.build_menu(1)
+
+        text = f"""<b>🎬 Encode & Compress & Watermark Settings</b>
+
+<blockquote>• <b>User:</b> {user_name}
+Configure custom video encoding, compression, and watermark overlays for uploads.</blockquote>"""
+
+    elif stype == "encode_menu":
+        buttons.data_button("Quality", f"userset {user_id} menu ENC_QUALITY")
+        buttons.data_button("CRF", f"userset {user_id} menu ENC_CRF")
+        buttons.data_button("Preset", f"userset {user_id} menu ENC_PRESET")
+        buttons.data_button("Resolution", f"userset {user_id} menu ENC_RESOLUTION")
+        buttons.data_button("FPS", f"userset {user_id} menu ENC_FPS")
+
+        buttons.data_button("◀️ Back", f"userset {user_id} enc_com_wm", "footer")
+        buttons.data_button(
+            "❌ Close", f"userset {user_id} close", "footer", style=ButtonStyle.DANGER
+        )
+        btns = buttons.build_menu(2)
+
+        eq = user_dict.get("ENC_QUALITY", "Not Set")
+        ec = user_dict.get("ENC_CRF", "Not Set")
+        ep = user_dict.get("ENC_PRESET", "Not Set")
+        er = user_dict.get("ENC_RESOLUTION", "Not Set")
+        ef = user_dict.get("ENC_FPS", "Not Set")
+
+        text = f"""<b>🎞️ Video Encoding Settings</b>
+
+<blockquote>• <b>User:</b> {user_name}
+• <b>Quality:</b> <code>{escape(str(eq))}</code>
+• <b>CRF:</b> <code>{escape(str(ec))}</code>
+• <b>Preset:</b> <code>{escape(str(ep))}</code>
+• <b>Resolution:</b> <code>{escape(str(er))}</code>
+• <b>FPS:</b> <code>{escape(str(ef))}</code></blockquote>"""
+
+    elif stype == "compress_menu":
+        buttons.data_button("Quality", f"userset {user_id} menu COM_QUALITY")
+        buttons.data_button("CRF", f"userset {user_id} menu COM_CRF")
+        buttons.data_button("Preset", f"userset {user_id} menu COM_PRESET")
+        buttons.data_button("Audio Bitrate", f"userset {user_id} menu COM_AUDIO_BITRATE")
+
+        buttons.data_button("◀️ Back", f"userset {user_id} enc_com_wm", "footer")
+        buttons.data_button(
+            "❌ Close", f"userset {user_id} close", "footer", style=ButtonStyle.DANGER
+        )
+        btns = buttons.build_menu(2)
+
+        cq = user_dict.get("COM_QUALITY", "Not Set")
+        cc = user_dict.get("COM_CRF", "Not Set")
+        cp = user_dict.get("COM_PRESET", "Not Set")
+        ca = user_dict.get("COM_AUDIO_BITRATE", "Not Set")
+
+        text = f"""<b>🗜️ Video Compression Settings</b>
+
+<blockquote>• <b>User:</b> {user_name}
+• <b>Quality:</b> <code>{escape(str(cq))}</code>
+• <b>CRF:</b> <code>{escape(str(cc))}</code>
+• <b>Preset:</b> <code>{escape(str(cp))}</code>
+• <b>Audio Bitrate:</b> <code>{escape(str(ca))}</code></blockquote>"""
+
+    elif stype == "watermark_menu":
+        buttons.data_button("Username", f"userset {user_id} menu WM_USERNAME")
+        buttons.data_button("Text", f"userset {user_id} menu WM_TEXT")
+        buttons.data_button("Photo / Image URL", f"userset {user_id} menu WM_IMAGE")
+
+        wm_user = user_dict.get("WM_USERNAME")
+        wm_text = user_dict.get("WM_TEXT")
+        wm_img = user_dict.get("WM_IMAGE")
+        wm_pos = user_dict.get("WM_POSITION", "Top-Left")
+
+        if wm_user or wm_text or wm_img:
+            if Config.BASE_URL:
+                app_url = f"{Config.BASE_URL.rstrip('/')}/app/watermark"
+                buttons.web_app_button("📍 Position (Mini App)", app_url, position="header")
+            else:
+                buttons.data_button("📍 Position", f"userset {user_id} wm_pos_select", position="header")
+
+        buttons.data_button("◀️ Back", f"userset {user_id} enc_com_wm", "footer")
+        buttons.data_button(
+            "❌ Close", f"userset {user_id} close", "footer", style=ButtonStyle.DANGER
+        )
+        btns = buttons.build_menu(2)
+
+        text = f"""<b>🖼️ Watermark Settings</b>
+
+<blockquote>• <b>User:</b> {user_name}
+• <b>Username:</b> <code>{escape(str(wm_user or 'Not Set'))}</code>
+• <b>Text:</b> <code>{escape(str(wm_text or 'Not Set'))}</code>
+• <b>Photo/Image URL:</b> <code>{escape(str(wm_img or 'Not Set'))}</code>
+• <b>Selected Position:</b> <b>{escape(str(wm_pos))}</b></blockquote>"""
 
     elif stype == "vtools":
         auto_merge = user_dict.get("AUTO_MERGE", False) or (
@@ -1223,7 +1383,18 @@ async def add_file(_, message, ftype, rfunc):
     user_id = message.from_user.id
     handler_dict[user_id] = False
     if ftype == "THUMBNAIL":
-        des_dir = await create_thumb(message, user_id)
+        if message.text and message.text.startswith(("http://", "https://")):
+            url = message.text.strip()
+            downloaded = await download_image_thumb(url)
+            if downloaded and await aiopath.exists(downloaded):
+                des_dir = f"thumbnails/{user_id}.jpg"
+                await makedirs("thumbnails", exist_ok=True)
+                os.replace(downloaded, des_dir)
+            else:
+                await send_message(message, "Failed to download thumbnail from Image URL!")
+                return
+        else:
+            des_dir = await create_thumb(message, user_id)
     elif ftype == "RCLONE_CONFIG":
         rpath = f"{getcwd()}/rclone/"
         await makedirs(rpath, exist_ok=True)
@@ -1436,10 +1607,12 @@ async def get_menu(option, message, user_id):
     }
 
     buttons = ButtonMaker()
-    if option in ["THUMBNAIL", "RCLONE_CONFIG", "TOKEN_PICKLE", "USER_COOKIE_FILE"]:
+    if option in ["THUMBNAIL", "RCLONE_CONFIG", "TOKEN_PICKLE", "USER_COOKIE_FILE", "WM_IMAGE"]:
         key = "file"
     else:
         key = "set"
+    if option == "WM_IMAGE":
+        buttons.data_button("Set Image URL / Text", f"userset {user_id} set WM_IMAGE")
     buttons.data_button(
         "Change" if user_dict.get(option, False) else "Set",
         f"userset {user_id} {key} {option}",
@@ -1479,6 +1652,12 @@ async def get_menu(option, message, user_id):
         back_to = "mega"
     elif option in seedr_options:
         back_to = "seedr"
+    elif option.startswith("ENC_"):
+        back_to = "encode_menu"
+    elif option.startswith("COM_"):
+        back_to = "compress_menu"
+    elif option.startswith("WM_"):
+        back_to = "watermark_menu"
     else:
         back_to = "back"
     buttons.data_button("◀️ Back", f"userset {user_id} {back_to}", "footer")
@@ -1544,7 +1723,7 @@ async def event_handler(client, query, pfunc, rfunc, photo=False, document=False
 
     async def event_filter(_, __, event):
         if photo:
-            mtype = event.photo or event.document
+            mtype = event.photo or event.document or (event.text and event.text.startswith(("http://", "https://")))
         elif document:
             mtype = event.document
         else:
@@ -1608,6 +1787,10 @@ async def edit_user_settings(client, query):
         "advanced",
         "gdrive",
         "rclone",
+        "enc_com_wm",
+        "encode_menu",
+        "compress_menu",
+        "watermark_menu",
     ]:
         await query.answer()
         await update_user_settings(query, data[2])
@@ -1654,6 +1837,28 @@ async def edit_user_settings(client, query):
     elif data[2] == "yttools":
         await query.answer()
         await update_user_settings(query, data[2])
+    elif data[2] == "wm_pos_select":
+        await query.answer()
+        user_dict = user_data.get(user_id, {})
+        if len(data) > 3:
+            new_pos = data[3]
+            update_user_ldata(user_id, "WM_POSITION", new_pos)
+            await database.update_user_data(user_id)
+            await update_user_settings(query, "watermark_menu")
+        else:
+            curr_pos = user_dict.get("WM_POSITION", "Top-Left")
+            buttons = ButtonMaker()
+            positions = [
+                "Top-Left", "Top-Center", "Top-Right",
+                "Center-Left", "Center", "Center-Right",
+                "Bottom-Left", "Bottom-Center", "Bottom-Right"
+            ]
+            for pos in positions:
+                state = "✓ " if pos == curr_pos else ""
+                buttons.data_button(f"{state}{pos}", f"userset {user_id} wm_pos_select {pos}")
+            buttons.data_button("◀️ Back", f"userset {user_id} watermark_menu", "footer")
+            buttons.data_button("❌ Close", f"userset {user_id} close", "footer", style=ButtonStyle.DANGER)
+            await edit_message(message, "<b>📍 Select Watermark Position:</b>", buttons.build_menu(3))
     elif data[2] == "uphoster_destinations":
         await query.answer()
         user_dict = user_data.get(user_id, {})

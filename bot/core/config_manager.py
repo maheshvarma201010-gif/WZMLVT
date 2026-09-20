@@ -45,6 +45,9 @@ class Config:
     DISABLE_SEARCH = False
     DISABLE_STREAM = False
     DISABLE_YTDLP = False
+    ENABLE_ENCODE = False
+    ENABLE_COMPRESS = False
+    ENABLE_WATERMARK = False
     PLUGIN_INDEXES = []
     EQUAL_SPLITS = False
     EXCLUDED_EXTENSIONS = ""

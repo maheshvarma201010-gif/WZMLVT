@@ -262,6 +262,15 @@ async def files(request: Request):
     return response
 
 
+@app.get("/app/watermark", response_class=HTMLResponse)
+async def watermark_picker(request: Request):
+    response = templates.TemplateResponse(request, "watermark.html")
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
+
+
 @app.api_route(
     "/app/files/torrent", methods=["GET", "POST"], response_class=HTMLResponse
 )
