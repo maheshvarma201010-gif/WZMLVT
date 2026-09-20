@@ -1,17 +1,17 @@
 # REQUIRED CONFIG
-BOT_TOKEN = ""
-OWNER_ID = 0
-TELEGRAM_API = 0
-TELEGRAM_HASH = ""
-DATABASE_URL = ""
+BOT_TOKEN = "8696030791:AAEODuirrh-zd_hSJeDYprft1dG6w6dmrD8"
+OWNER_ID = 8663988850
+TELEGRAM_API = 22266643
+TELEGRAM_HASH = "7d0b85b4146034511b8776ed7ff99de4"
+DATABASE_URL = "mongodb+srv://hemanthbreaker2027:9550399779htr@cluster0.haybbxg.mongodb.net/?appName=Cluster0"
 
 # OPTIONAL CONFIG
 DEFAULT_LANG = "en"
 TG_PROXY = {}  # {"scheme": ”socks5”, "hostname": ””, "port": 1234, "username": ”user”, "password": ”pass”}
 USER_SESSION_STRING = ""
-CMD_SUFFIX = ""
+CMD_SUFFIX = "1"
 AUTHORIZED_CHATS = ""
-SUDO_USERS = ""
+SUDO_USERS = "8670475328"
 STATUS_LIMIT = 10
 DEFAULT_UPLOAD = "rc"
 STATUS_UPDATE_INTERVAL = 15
