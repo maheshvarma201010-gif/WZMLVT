@@ -460,31 +460,36 @@ class TaskConfig:
         else:
             gc_used = False
 
-        if self.ffmpeg_cmds and not isinstance(self.ffmpeg_cmds, list):
-            if self.user_dict.get("FFMPEG_CMDS", None):
-                ffmpeg_dict = self.user_dict["FFMPEG_CMDS"]
-            elif "FFMPEG_CMDS" not in self.user_dict and Config.FFMPEG_CMDS:
-                ffmpeg_dict = Config.FFMPEG_CMDS
-            else:
-                ffmpeg_dict = {}
-            valid = (
-                {
-                    key: cmds
-                    for key, cmds in ffmpeg_dict.items()
-                    if isinstance(cmds, (list, tuple))
-                }
-                if isinstance(ffmpeg_dict, dict)
-                else {}
-            )
-            keys = list(self.ffmpeg_cmds)
+        if self.ffmpeg_cmds is not None:
+            raw_keys = self.ffmpeg_cmds if isinstance(self.ffmpeg_cmds, (list, set, tuple)) else [self.ffmpeg_cmds]
+            ffmpeg_dict = Config.FFMPEG_CMDS or {}
+            valid = {
+                str(key).lower(): (cmds if isinstance(cmds, (list, tuple)) else [cmds])
+                for key, cmds in ffmpeg_dict.items()
+            } if isinstance(ffmpeg_dict, dict) else {}
+
+            keys = [str(k).lower().strip() for k in raw_keys]
             if missing := [key for key in keys if key not in valid]:
                 await send_message(
                     self.message,
-                    f"Unknown FFmpeg Cmds key(s): {', '.join(map(str, missing))}. Check FF Media Settings in /usetting.",
+                    f"Unknown FFmpeg Cmds key(s): {', '.join(map(str, missing))}. Check FF Media Settings in /bsetting.",
                 )
             self.ffmpeg_cmds = [
                 value for key in keys if key in valid for value in valid[key]
             ] or None
+
+            user_dump = self.user_dict.get("FFMPEG_DUMP") or {}
+            global_dump = Config.FFMPEG_DUMP or {}
+            key_dump_dest = None
+            for k in keys:
+                if k in user_dump:
+                    key_dump_dest = user_dump[k]
+                    break
+                elif k in global_dump:
+                    key_dump_dest = global_dump[k]
+                    break
+            if key_dump_dest:
+                self.dump_dest = key_dump_dest
 
         self.metadata_title = self.user_dict.get("METADATA")
 

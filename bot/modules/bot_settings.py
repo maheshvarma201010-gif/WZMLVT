@@ -409,8 +409,39 @@ async def get_buttons(key=None, edit_type=None, edit_mode=False):
         buttons.data_button("Aria2c Settings", "botset aria")
         buttons.data_button("Sabnzbd Settings", "botset nzb")
         buttons.data_button("JDownloader Sync", "botset syncjd")
+        buttons.data_button("FFmpeg CMDs", "botset ffmpegcmds")
+        buttons.data_button("DUMP", "botset dumpcmds")
         buttons.data_button("Close", "botset close", style=ButtonStyle.DANGER)
         msg = "<b>⚙️ Global Bot Settings Dashboard</b>\n\n<blockquote>Select a category to configure global bot settings.</blockquote>"
+    elif key == "ffmpegcmds":
+        buttons.data_button("Add/Edit FFmpeg Cmds", "botset editff edit")
+        buttons.data_button("Reset FFmpeg Cmds", "botset resetff")
+        buttons.data_button("Back", "botset back")
+        buttons.data_button("Close", "botset close", style=ButtonStyle.DANGER)
+        ff_display = ""
+        if Config.FFMPEG_CMDS and isinstance(Config.FFMPEG_CMDS, dict):
+            for k, v in Config.FFMPEG_CMDS.items():
+                cmds_str = "\n".join([f"    • <code>{cmd}</code>" for cmd in (v if isinstance(v, list) else [v])])
+                ff_display += f"• <b>{k}:</b>\n{cmds_str}\n"
+        if not ff_display:
+            ff_display = "<i>No FFmpeg commands configured.</i>"
+        msg = f"<b>🎬 Global FFmpeg Commands</b>\n\n<blockquote>{ff_display}</blockquote>"
+        if edit_mode:
+            msg += "\n\n<blockquote>Send dict format: <code>{'tel': ['cmd1', 'cmd2']}</code> or single entry format: <code>KEY: command</code>\n⏱️ <b>Time Left:</b> <code>60 sec</code></blockquote>"
+    elif key == "dumpcmds":
+        buttons.data_button("Add/Edit DUMP", "botset editdump edit")
+        buttons.data_button("Reset DUMP", "botset resetdump")
+        buttons.data_button("Back", "botset back")
+        buttons.data_button("Close", "botset close", style=ButtonStyle.DANGER)
+        dump_display = ""
+        if Config.FFMPEG_DUMP and isinstance(Config.FFMPEG_DUMP, dict):
+            for k, v in Config.FFMPEG_DUMP.items():
+                dump_display += f"• <b>{k.upper()}:</b> <code>{v}</code>\n"
+        if not dump_display:
+            dump_display = "<i>No DUMP destinations configured.</i>"
+        msg = f"<b>📦 Global Key DUMP Destinations</b>\n\n<blockquote>{dump_display}</blockquote>"
+        if edit_mode:
+            msg += "\n\n<blockquote>Send format: <code>KEY: DUMP_CHANNEL/GROUP_ID</code> (e.g. <code>TEL: -100123456789</code>) or dict: <code>{'TEL': '-100123456789'}</code>\n⏱️ <b>Time Left:</b> <code>60 sec</code></blockquote>"
     elif edit_type is not None:
         if edit_type == "ariavar":
             buttons.data_button("Back", "botset aria", style=ButtonStyle.PRIMARY)
@@ -1039,6 +1070,52 @@ async def _handle_service_toggle(key, disabled):
         else:
             await manager.boot()
             LOGGER.info("Plugins loaded via Module Settings")
+
+
+@new_task
+async def edit_ff_or_dump(_, message, pre_message, target_var, key):
+    handler_dict[message.chat.id] = False
+    value = message.text.strip()
+    current_dict = dict(Config.get(target_var) or {})
+    if value.startswith("{") and value.endswith("}"):
+        try:
+            parsed = literal_eval(value)
+            if not isinstance(parsed, dict):
+                raise ValueError("Expected a dict")
+            if target_var == "FFMPEG_CMDS":
+                for k, cmds in parsed.items():
+                    if isinstance(cmds, str):
+                        cmds = [cmds]
+                    if not isinstance(cmds, list):
+                        raise ValueError("Command list must be a list of strings")
+                    current_dict[k.lower().strip()] = cmds
+            else:
+                for k, dest in parsed.items():
+                    current_dict[k.lower().strip()] = str(dest).strip()
+        except Exception as e:
+            await send_message(message, f"Invalid format: {e}")
+            await update_buttons(pre_message, key)
+            return
+    elif ":" in value:
+        parts = value.split(":", 1)
+        k = parts[0].strip().lower()
+        val = parts[1].strip()
+        if target_var == "FFMPEG_CMDS":
+            if k in current_dict and isinstance(current_dict[k], list):
+                current_dict[k].append(val)
+            else:
+                current_dict[k] = [val]
+        else:
+            current_dict[k] = val
+    else:
+        await send_message(message, "Invalid input format! Must be 'KEY: value' or a Python dict '{}'")
+        await update_buttons(pre_message, key)
+        return
+
+    Config.set(target_var, current_dict)
+    await database.update_config({target_var: current_dict})
+    await update_buttons(pre_message, key)
+    await delete_message(message)
 
 
 @new_task
@@ -1679,6 +1756,25 @@ async def edit_bot_settings(client, query):
         if start != int(data[3]):
             globals()["start"] = int(data[3])
             await update_buttons(message, data[2])
+    elif data[1] in ("editff", "editdump"):
+        await query.answer()
+        key = "ffmpegcmds" if data[1] == "editff" else "dumpcmds"
+        await update_buttons(message, key, edit_mode=True)
+        pfunc = partial(
+            edit_ff_or_dump,
+            pre_message=message,
+            target_var="FFMPEG_CMDS" if data[1] == "editff" else "FFMPEG_DUMP",
+            key=key,
+        )
+        rfunc = partial(update_buttons, message, key)
+        await event_handler(client, query, pfunc, rfunc)
+    elif data[1] in ("resetff", "resetdump"):
+        await query.answer()
+        target_var = "FFMPEG_CMDS" if data[1] == "resetff" else "FFMPEG_DUMP"
+        key = "ffmpegcmds" if data[1] == "resetff" else "dumpcmds"
+        Config.set(target_var, {})
+        await database.update_config({target_var: {}})
+        await update_buttons(message, key)
     elif data[1] == "push":
         await query.answer()
         filename = data[2].rsplit(".zip", 1)[0]

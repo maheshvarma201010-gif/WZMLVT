@@ -51,6 +51,15 @@ class ButtonMaker:
         )
 
     def data_button(self, key, data, position=None, style=None):
+        if isinstance(data, str):
+            encoded = data.encode("utf-8")
+            if len(encoded) > 64:
+                from ... import LOGGER
+
+                LOGGER.error(
+                    f"Callback data exceeds 64 bytes limit ({len(encoded)}): {data}"
+                )
+                data = encoded[:64].decode("utf-8", errors="ignore")
         self.buttons[position if position in self.buttons else "default"].append(
             InlineKeyboardButton(text=key, callback_data=data, style=_btn_style(style))
         )

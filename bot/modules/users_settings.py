@@ -175,9 +175,14 @@ user_settings_text = {
         "<blockquote>Send yt-dlp options dictionary.\n⏱️ <b>Time Left:</b> <code>60 sec</code></blockquote>",
     ),
     "FFMPEG_CMDS": (
-        "Dict of commands",
-        "Pre-processing FFmpeg commands dictionary.",
-        "<blockquote>Send FFmpeg commands dictionary.\n⏱️ <b>Time Left:</b> <code>60 sec</code></blockquote>",
+        "Configured Language / Command keys",
+        "Available FFmpeg command presets.",
+        "<blockquote>Select or view configured FFmpeg keys.\n⏱️ <b>Time Left:</b> <code>60 sec</code></blockquote>",
+    ),
+    "FFMPEG_DUMP": (
+        "Key-Value mapping (KEY: DUMP_ID)",
+        "Separate dump destination per key.",
+        "<blockquote>Send key and dump destination (e.g., <code>TEL: -100123456789</code>).\n⏱️ <b>Time Left:</b> <code>60 sec</code></blockquote>",
     ),
     "METADATA_CMDS": (
         "Text",
@@ -1388,20 +1393,21 @@ Configure custom video encoding, compression, and watermark overlays for uploads
             buttons.data_button(
                 "FFmpeg Cmds", f"userset {user_id} menu FFMPEG_CMDS", "header"
             )
-        if user_dict.get("FFMPEG_CMDS", False):
-            ffc = user_dict["FFMPEG_CMDS"]
-        elif "FFMPEG_CMDS" not in user_dict and Config.FFMPEG_CMDS:
-            ffc = Config.FFMPEG_CMDS
-        else:
-            ffc = "<b>Not Set</b>"
-
-        if isinstance(ffc, dict):
-            ffc = "\n" + "\n".join(
-                [
-                    f"{no}. <b>{escape(str(key))}</b>: <code>{escape(str(value[0] if isinstance(value, (list, tuple)) and value else value))}</code>"
-                    for no, (key, value) in enumerate(ffc.items(), start=1)
-                ]
+            buttons.data_button(
+                "DUMP", f"userset {user_id} menu FFMPEG_DUMP", "header"
             )
+
+        avail_keys = list(Config.FFMPEG_CMDS.keys()) if isinstance(Config.FFMPEG_CMDS, dict) else []
+        if avail_keys:
+            ffc_display = "\n" + "\n".join([f"• <code>-ff {escape(str(k))}</code>" for k in avail_keys])
+        else:
+            ffc_display = "<b>None Configured</b>"
+
+        user_dump_dict = user_dict.get("FFMPEG_DUMP") or Config.FFMPEG_DUMP or {}
+        if isinstance(user_dump_dict, dict) and user_dump_dict:
+            dump_display = "\n" + "\n".join([f"• <b>{escape(str(k)).upper()}:</b> <code>{escape(str(v))}</code>" for k, v in user_dump_dict.items()])
+        else:
+            dump_display = "<b>Not Set (Default DM)</b>"
 
         set_all_enabled = user_dict.get("SET_ALL_METADATA_ENABLE", False)
 
@@ -1473,7 +1479,8 @@ Configure custom video encoding, compression, and watermark overlays for uploads
         text = f"""<b>🎞️ FFmpeg & Media Metadata Settings</b>
 
 <blockquote>• <b>User:</b> {user_name}
-• <b>FFmpeg Commands:</b> {ffc}
+• <b>Available FFmpeg Flags:</b> {ffc_display}
+• <b>Configured Key DUMP Destinations:</b> {dump_display}
 • <b>Global Metadata Override:</b> <b>{set_all_status}</b>
 • <b>Global Metadata:</b> {display_set_all_meta}
 • <b>Default Metadata:</b> {display_meta_val if not set_all_enabled else '(Disabled)'}
@@ -1810,6 +1817,29 @@ async def set_option(_, message, option, rfunc, target_user_id=None):
         else:
             value = {}
 
+    elif option == "FFMPEG_DUMP":
+        user_dump = user_dict.get("FFMPEG_DUMP", {})
+        if not isinstance(user_dump, dict):
+            user_dump = {}
+        if value.startswith("{") and value.endswith("}"):
+            try:
+                parsed = literal_eval(value)
+                if not isinstance(parsed, dict):
+                    raise ValueError("Expected a dict")
+                for k, dest in parsed.items():
+                    user_dump[k.lower().strip()] = str(dest).strip()
+            except Exception as e:
+                await send_message(message, f"Invalid dict format: {e}")
+                return
+        elif ":" in value:
+            parts = value.split(":", 1)
+            k = parts[0].strip().lower()
+            dest = parts[1].strip()
+            user_dump[k] = dest
+        else:
+            await send_message(message, "Format must be KEY: DUMP_DEST or a dict {'KEY': 'DUMP_DEST'}")
+            return
+        value = user_dump
     elif option in ["UPLOAD_PATHS", "FFMPEG_CMDS", "YT_DLP_OPTIONS", "DRIVE_CAT"]:
         if value.startswith("{") and value.endswith("}"):
             try:
@@ -1961,7 +1991,19 @@ async def get_menu(option, message, user_id):
         elif not val:
             val = "<b>Not Set</b>"
 
-    elif option in ["FFMPEG_CMDS", "YT_DLP_OPTIONS", "UPLOAD_PATHS"]:
+    elif option == "FFMPEG_CMDS":
+        avail_keys = list(Config.FFMPEG_CMDS.keys()) if isinstance(Config.FFMPEG_CMDS, dict) else []
+        if avail_keys:
+            val = "\n" + "\n".join([f"• <code>-ff {escape(str(k))}</code>" for k in avail_keys])
+        else:
+            val = "<b>No commands configured by Bot Owner/Sudo.</b>"
+    elif option == "FFMPEG_DUMP":
+        user_dump = user_dict.get("FFMPEG_DUMP") or Config.FFMPEG_DUMP or {}
+        if isinstance(user_dump, dict) and user_dump:
+            val = "\n" + "\n".join([f"• <b>{escape(str(k)).upper()}:</b> <code>{escape(str(v))}</code>" for k, v in user_dump.items()])
+        else:
+            val = "<b>Not Set (Output sent to default DM)</b>"
+    elif option in ["YT_DLP_OPTIONS", "UPLOAD_PATHS"]:
         val = f"<code>{escape(str(val))}</code>" if val else "<b>Not Set</b>"
 
     text = f"""<b>⚙️ Setting Configuration: {option}</b>
