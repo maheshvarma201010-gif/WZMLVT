@@ -1471,9 +1471,9 @@ async def send_user_settings(_, message):
 
 
 @new_task
-async def add_file(_, message, ftype, rfunc):
+async def add_file(_, message, ftype, rfunc, target_user_id=None):
     user = message.from_user or message.sender_chat
-    user_id = user.id if user else 0
+    user_id = target_user_id or (user.id if user else 0)
     if not user_id:
         return
     handler_dict[user_id] = False
@@ -1527,8 +1527,9 @@ def validate_ffmpeg_cmds(value):
 
 
 @new_task
-async def add_one(_, message, option, rfunc):
-    user_id = message.from_user.id
+async def add_one(_, message, option, rfunc, target_user_id=None):
+    user = message.from_user or message.sender_chat
+    user_id = target_user_id or (user.id if user else 0)
     handler_dict[user_id] = False
     user_dict = user_data.get(user_id, {})
     value = message.text
@@ -1567,8 +1568,9 @@ async def add_one(_, message, option, rfunc):
 
 
 @new_task
-async def remove_one(_, message, option, rfunc):
-    user_id = message.from_user.id
+async def remove_one(_, message, option, rfunc, target_user_id=None):
+    user = message.from_user or message.sender_chat
+    user_id = target_user_id or (user.id if user else 0)
     handler_dict[user_id] = False
     user_dict = user_data.get(user_id, {})
     names = [name.strip() for name in message.text.split("/") if name.strip()]
@@ -1582,8 +1584,9 @@ async def remove_one(_, message, option, rfunc):
 
 
 @new_task
-async def set_option(_, message, option, rfunc):
-    user_id = message.from_user.id
+async def set_option(_, message, option, rfunc, target_user_id=None):
+    user = message.from_user or message.sender_chat
+    user_id = target_user_id or (user.id if user else 0)
     handler_dict[user_id] = False
     value = message.text
     if option == "LEECH_SPLIT_SIZE":
@@ -2069,7 +2072,7 @@ async def edit_user_settings(client, query):
         new_message_text = f"<b>Upload {prompt_title}</b>\n\n{text}"
         await edit_message(message, new_message_text, buttons.build_menu(1))
         rfunc = partial(get_menu, data[3], message, user_id)
-        pfunc = partial(add_file, ftype=data[3], rfunc=rfunc)
+        pfunc = partial(add_file, ftype=data[3], rfunc=rfunc, target_user_id=user_id)
         await event_handler(
             client,
             query,
@@ -2099,7 +2102,7 @@ async def edit_user_settings(client, query):
             message, message.text.html + "\n\n" + text, buttons.build_menu(1)
         )
         rfunc = partial(get_menu, data[3], message, user_id)
-        pfunc = partial(func, option=data[3], rfunc=rfunc)
+        pfunc = partial(func, option=data[3], rfunc=rfunc, target_user_id=user_id)
         await event_handler(client, query, pfunc, rfunc)
     elif data[2] == "remove":
         await query.answer("Removed configuration!", show_alert=True)

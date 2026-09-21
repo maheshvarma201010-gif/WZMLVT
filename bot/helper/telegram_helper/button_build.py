@@ -5,7 +5,9 @@ URL_SCHEMES = ("http://", "https://", "tg://")
 
 
 def _btn_style(style=None):
-    return style or ButtonStyle.DEFAULT
+    if style in (ButtonStyle.DANGER, ButtonStyle.SUCCESS, ButtonStyle.PRIMARY):
+        return style
+    return ButtonStyle.PRIMARY
 
 
 def valid_url(link):

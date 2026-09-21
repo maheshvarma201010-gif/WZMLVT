@@ -1,5 +1,41 @@
-from asyncio import Event, gather
+from asyncio import Event, Lock, gather
 from time import time
+from ... import LOGGER
+
+active_tasks = {}
+active_tasks_lock = Lock()
+
+
+def get_task_key(source, user_id=None):
+    if not source:
+        return f"task_{time()}_{user_id}"
+    cleaned = str(source).strip().split("?bytes=")[0].split("?")[0].strip()
+    return f"{cleaned}_{user_id}" if user_id else cleaned
+
+
+async def check_and_register_task(key, state="QUEUED"):
+    async with active_tasks_lock:
+        if key in active_tasks:
+            curr_state = active_tasks[key].get("state", "UNKNOWN")
+            if curr_state in ("QUEUED", "DOWNLOADING", "PROCESSING", "UPLOADING", "COMPLETED"):
+                LOGGER.info(f"Duplicate task detected and skipped: {key} (Current State: {curr_state})")
+                return False, f"Duplicate task detected and skipped! (State: {curr_state})"
+        active_tasks[key] = {"state": state, "time": time()}
+        return True, None
+
+
+async def update_task_state(key, state):
+    async with active_tasks_lock:
+        if key in active_tasks:
+            active_tasks[key]["state"] = state
+            active_tasks[key]["time"] = time()
+        else:
+            active_tasks[key] = {"state": state, "time": time()}
+
+
+async def clear_task_state(key):
+    async with active_tasks_lock:
+        active_tasks.pop(key, None)
 
 from ... import (
     LOGGER,

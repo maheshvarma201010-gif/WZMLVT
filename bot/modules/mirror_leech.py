@@ -239,6 +239,16 @@ class Mirror(TaskListener):
         self.is_yt = args["-yt"]
         self.ht_flag = args["-ht"]
 
+        task_source = self.link or (self.message.reply_to_message.text if self.message.reply_to_message and self.message.reply_to_message.text else "") or self.name
+        from ..helper.ext_utils.task_manager import get_task_key, check_and_register_task
+        self.task_key = get_task_key(task_source, self.user_id)
+        can_start, dup_msg = await check_and_register_task(self.task_key, "QUEUED")
+        if not can_start:
+            await send_message(self.message, f"<b>⚠️ Duplicate Task Skipped:</b>\n{dup_msg}")
+            await clean_download(f"{DOWNLOAD_DIR}{self.mid}")
+            await delete_links(self.message)
+            return
+
         if self.is_seedr and not await seedr_guard(self.message, self.user_id):
             return
 
@@ -340,24 +350,55 @@ class Mirror(TaskListener):
             ht_tasks[self.mid] = {
                 "merge": False,
                 "rm_stream": False,
+                "reorder": False,
+                "reorder_aud": [],
+                "reorder_sub": [],
+                "trim": False,
+                "trim_range": "",
+                "extract": False,
+                "extract_types": [],
                 "user_id": user_id,
                 "future": event_done,
             }
-            buttons = ButtonMaker()
-            buttons.data_button("Merge: OFF", f"htmerge merge {self.mid}")
-            buttons.data_button("Remove Stream: OFF", f"htmerge rm_stream {self.mid}")
-            buttons.data_button("Done", f"htmerge done {self.mid}", position="footer")
+
+            def build_ht_menu(mid):
+                t_info = ht_tasks.get(mid, {})
+                m_on = "✓ ON" if t_info.get("merge") else "OFF"
+                rm_on = "✓ ON" if t_info.get("rm_stream") else "OFF"
+                ro_on = "✓ ON" if t_info.get("reorder") else "OFF"
+                tr_on = "✓ ON" if t_info.get("trim") else "OFF"
+                ex_on = "✓ ON" if t_info.get("extract") else "OFF"
+
+                buttons = ButtonMaker()
+                buttons.data_button(f"Merge: {m_on}", f"htmerge merge {mid}")
+                buttons.data_button(f"Remove Stream: {rm_on}", f"htmerge rm_stream {mid}")
+                buttons.data_button(f"Reorder: {ro_on}", f"htmerge reorder {mid}")
+                buttons.data_button(f"Trim: {tr_on}", f"htmerge trim {mid}")
+                buttons.data_button(f"Extract: {ex_on}", f"htmerge extract {mid}")
+                buttons.data_button("Done", f"htmerge done {mid}", position="footer")
+                return buttons
+
             prompt_msg = await send_message(
                 self.message,
-                f"<b>Task Received with -ht flag.</b>\nChoose options before uploading:\n\n• <b>Merge Status:</b> OFF\n• <b>Remove Stream:</b> OFF",
-                buttons.build_menu(2),
+                f"<b>Task Received with -ht flag.</b>\nChoose pre-upload options:\n\n• <b>Merge:</b> OFF\n• <b>Remove Stream:</b> OFF\n• <b>Reorder:</b> OFF\n• <b>Trim:</b> OFF\n• <b>Extract:</b> OFF",
+                build_ht_menu(self.mid).build_menu(2),
             )
             try:
                 await event_done
             except Exception:
                 pass
-            self.manual_merge = ht_tasks.get(self.mid, {}).get("merge", False)
-            self.manual_rm_stream = ht_tasks.get(self.mid, {}).get("rm_stream", False)
+
+            saved_ht = ht_tasks.get(self.mid, {})
+            self.manual_merge = saved_ht.get("merge", False)
+            self.manual_rm_stream = saved_ht.get("rm_stream", False)
+            self.manual_reorder = saved_ht.get("reorder", False)
+            self.reorder_aud = saved_ht.get("reorder_aud", [])
+            self.reorder_sub = saved_ht.get("reorder_sub", [])
+            self.manual_trim = saved_ht.get("trim", False)
+            self.trim_range = saved_ht.get("trim_range", "")
+            self.manual_extract = saved_ht.get("extract", False)
+            self.extract_types = saved_ht.get("extract_types", [])
+
             ht_tasks.pop(self.mid, None)
             await delete_message(prompt_msg)
 
@@ -593,7 +634,7 @@ class Mirror(TaskListener):
 
 
 @new_task
-async def ht_merge_callback(_, query):
+async def ht_merge_callback(client, query):
     data = query.data.split()
     mid = int(data[2])
     task_info = ht_tasks.get(mid)
@@ -602,21 +643,165 @@ async def ht_merge_callback(_, query):
     if query.from_user.id != task_info["user_id"]:
         return await query.answer("This menu is not for you!", show_alert=True)
 
+    def render_ht_menu(mid):
+        t_info = ht_tasks.get(mid, {})
+        buttons = ButtonMaker()
+        buttons.data_button(f"Merge: {'✓ ON' if t_info.get('merge') else 'OFF'}", f"htmerge merge {mid}")
+        buttons.data_button(f"Remove Stream: {'✓ ON' if t_info.get('rm_stream') else 'OFF'}", f"htmerge rm_stream {mid}")
+        buttons.data_button(f"Reorder: {'✓ ON' if t_info.get('reorder') else 'OFF'}", f"htmerge reorder {mid}")
+        buttons.data_button(f"Trim: {'✓ ON' if t_info.get('trim') else 'OFF'}", f"htmerge trim {mid}")
+        buttons.data_button(f"Extract: {'✓ ON' if t_info.get('extract') else 'OFF'}", f"htmerge extract {mid}")
+        buttons.data_button("Done", f"htmerge done {mid}", position="footer")
+        return buttons
+
+    def render_ht_text(mid):
+        t_info = ht_tasks.get(mid, {})
+        return (
+            f"<b>Task Received with -ht flag.</b>\nChoose pre-upload options:\n\n"
+            f"• <b>Merge:</b> {'✓ ON' if t_info.get('merge') else 'OFF'}\n"
+            f"• <b>Remove Stream:</b> {'✓ ON' if t_info.get('rm_stream') else 'OFF'}\n"
+            f"• <b>Reorder:</b> {'✓ ON' if t_info.get('reorder') else 'OFF'}\n"
+            f"• <b>Trim:</b> {'✓ ON' if t_info.get('trim') else 'OFF'} ({t_info.get('trim_range') or 'Not Set'})\n"
+            f"• <b>Extract:</b> {'✓ ON' if t_info.get('extract') else 'OFF'} ({', '.join(t_info.get('extract_types', [])) or 'Not Set'})"
+        )
+
     if data[1] in ["merge", "rm_stream"]:
         key = data[1]
         task_info[key] = not task_info[key]
-        await query.answer(f"{'Merge' if key == 'merge' else 'Remove Stream'} turned {'ON' if task_info[key] else 'OFF'}")
+        await query.answer(f"{key.replace('_', ' ').title()} turned {'ON' if task_info[key] else 'OFF'}")
+        await edit_message(query.message, render_ht_text(mid), render_ht_menu(mid).build_menu(2))
+    elif data[1] == "trim":
+        await query.answer()
+        buttons = ButtonMaker()
+        buttons.data_button("◀️ Back", f"htmerge back {mid}", position="footer")
+        prompt = "<b>✂️ Trim Media:</b>\nPlease send trim range in format: <code>HH:MM:SS - HH:MM:SS</code>\nExample: <code>00:20:07 - 00:30:08</code>\n⏱️ <i>Timeout: 30s</i>"
+        await edit_message(query.message, prompt, buttons.build_menu(1))
 
-        m_on = task_info["merge"]
-        rm_on = task_info["rm_stream"]
+        event_done = bot_loop.create_future()
+        user_input = []
+
+        async def trim_filter(_, __, event):
+            u = event.from_user or event.sender_chat
+            return bool(u and u.id == task_info["user_id"] and event.chat.id == query.message.chat.id and event.text)
+
+        async def trim_handler(_, msg):
+            user_input.append(msg.text.strip())
+            await delete_message(msg)
+            if not event_done.done():
+                event_done.set_result(True)
+
+        from pyrogram.handlers import MessageHandler
+        from pyrogram.filters import create
+        from asyncio import wait_for
+        h = client.add_handler(MessageHandler(trim_handler, filters=create(trim_filter)), group=-1)
+        try:
+            await wait_for(event_done, timeout=30)
+            if user_input and "-" in user_input[0]:
+                task_info["trim"] = True
+                task_info["trim_range"] = user_input[0]
+        except Exception:
+            pass
+        finally:
+            client.remove_handler(*h)
+            await edit_message(query.message, render_ht_text(mid), render_ht_menu(mid).build_menu(2))
+    elif data[1] == "reorder":
+        await query.answer()
+        buttons = ButtonMaker()
+        buttons.data_button("Change Order", f"htmerge chorder {mid}")
+        buttons.data_button("◀️ Back", f"htmerge back {mid}", position="footer")
+
+        caption = (
+            "<b>🔀 Track Reorder Configuration:</b>\n\n"
+            "<b>Audio Tracks</b>\n1. Telugu\n2. Tamil\n3. Hindi\n\n"
+            "<b>Subtitle Tracks</b>\n1. English\n2. Telugu\n\n"
+            "Click <b>Change Order</b> below to reorder streams!"
+        )
+        await edit_message(query.message, caption, buttons.build_menu(1))
+    elif data[1] == "chorder":
+        await query.answer()
+        buttons = ButtonMaker()
+        buttons.data_button("◀️ Back", f"htmerge back {mid}", position="footer")
+        prompt = (
+            "<b>🔀 Send new track order format:</b>\n"
+            "• <code>aud=1:2</code> — Swap audio track 1 with track 2\n"
+            "• <code>sub=1:2</code> — Swap subtitle track 1 with track 2\n"
+            "• Multiple: <code>aud=1:2,3:4, sub=1:2</code>\n⏱️ <i>Timeout: 30s</i>"
+        )
+        await edit_message(query.message, prompt, buttons.build_menu(1))
+
+        event_done = bot_loop.create_future()
+        user_input = []
+
+        async def reorder_filter(_, __, event):
+            u = event.from_user or event.sender_chat
+            return bool(u and u.id == task_info["user_id"] and event.chat.id == query.message.chat.id and event.text)
+
+        async def reorder_handler(_, msg):
+            user_input.append(msg.text.strip())
+            await delete_message(msg)
+            if not event_done.done():
+                event_done.set_result(True)
+
+        from pyrogram.handlers import MessageHandler
+        from pyrogram.filters import create
+        from asyncio import wait_for
+        h = client.add_handler(MessageHandler(reorder_handler, filters=create(reorder_filter)), group=-1)
+        try:
+            await wait_for(event_done, timeout=30)
+            if user_input:
+                inp = user_input[0]
+                aud_swaps, sub_swaps = [], []
+                for item in inp.split(","):
+                    item = item.strip()
+                    if item.startswith("aud="):
+                        val = item.split("=", 1)[1]
+                        nums = [int(x) for x in val.split(":") if x.isdigit()]
+                        for k in range(0, len(nums) - 1, 2):
+                            aud_swaps.append([nums[k], nums[k+1]])
+                    elif item.startswith("sub="):
+                        val = item.split("=", 1)[1]
+                        nums = [int(x) for x in val.split(":") if x.isdigit()]
+                        for k in range(0, len(nums) - 1, 2):
+                            sub_swaps.append([nums[k], nums[k+1]])
+                task_info["reorder"] = True
+                task_info["reorder_aud"] = aud_swaps
+                task_info["reorder_sub"] = sub_swaps
+        except Exception:
+            pass
+        finally:
+            client.remove_handler(*h)
+            await edit_message(query.message, render_ht_text(mid), render_ht_menu(mid).build_menu(2))
+    elif data[1] == "extract":
+        await query.answer()
+        selected_ext = task_info.get("extract_types", [])
+
+        if len(data) > 3:
+            ex_type = data[3]
+            if ex_type == "all":
+                selected_ext = ["video", "audio", "subtitle"]
+            elif ex_type in selected_ext:
+                selected_ext.remove(ex_type)
+            else:
+                selected_ext.append(ex_type)
+            task_info["extract_types"] = selected_ext
+            task_info["extract"] = bool(selected_ext)
 
         buttons = ButtonMaker()
-        buttons.data_button(f"Merge: {'✓ ON' if m_on else 'OFF'}", f"htmerge merge {mid}")
-        buttons.data_button(f"Remove Stream: {'✓ ON' if rm_on else 'OFF'}", f"htmerge rm_stream {mid}")
-        buttons.data_button("Done", f"htmerge done {mid}", position="footer")
+        v_st = "✓ " if "video" in selected_ext else ""
+        a_st = "✓ " if "audio" in selected_ext else ""
+        s_st = "✓ " if "subtitle" in selected_ext else ""
 
-        msg_text = f"<b>Task Received with -ht flag.</b>\nChoose options before uploading:\n\n• <b>Merge Status:</b> {'✓ ON' if m_on else 'OFF'}\n• <b>Remove Stream:</b> {'✓ ON' if rm_on else 'OFF'}"
-        await edit_message(query.message, msg_text, buttons.build_menu(2))
+        buttons.data_button(f"{v_st}Video/File", f"htmerge extract {mid} video")
+        buttons.data_button(f"{a_st}Audio", f"htmerge extract {mid} audio")
+        buttons.data_button(f"{s_st}Subtitle", f"htmerge extract {mid} subtitle")
+        buttons.data_button("All", f"htmerge extract {mid} all")
+        buttons.data_button("Done", f"htmerge back {mid}", position="footer")
+
+        caption = f"<b>📦 Select Extraction Types:</b>\nActive: {', '.join(selected_ext) or 'None'}"
+        await edit_message(query.message, caption, buttons.build_menu(2))
+    elif data[1] == "back":
+        await query.answer()
+        await edit_message(query.message, render_ht_text(mid), render_ht_menu(mid).build_menu(2))
     elif data[1] == "done":
         await query.answer("Starting task...")
         fut = task_info.get("future")

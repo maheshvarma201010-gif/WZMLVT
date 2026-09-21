@@ -16,7 +16,7 @@ from asyncio.subprocess import PIPE
 from os import path as ospath
 from re import search as re_search, escape
 from time import time
-from aioshutil import rmtree
+from aioshutil import move, rmtree
 from langcodes import Language
 from niquests import AsyncSession
 
@@ -485,6 +485,9 @@ class FFMpeg:
     @property
     def eta_raw(self):
         return self._eta_raw
+
+    async def get_streams(self, file):
+        return await get_streams(file)
 
     def clear(self):
         self._start_time = time()
@@ -1210,3 +1213,106 @@ class FFMpeg:
 
     async def merge_videos(self, video_files, output_file, gid):
         return await self.merge_tracks(video_files, [], [], output_file, gid)
+
+    async def remove_streams(self, f_path, selected_indices):
+        out_path = f"{f_path}.rm_stream.mkv"
+        cmd = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", f_path]
+        for idx in selected_indices:
+            cmd.extend(["-map", f"0:{idx}"])
+        cmd.extend(["-c", "copy", out_path])
+        res, err, code = await cmd_exec(cmd)
+        if code == 0 and await aiopath.exists(out_path):
+            return out_path
+        return None
+
+    async def reorder_tracks(self, f_path, aud_swaps, sub_swaps):
+        streams = await self.get_streams(f_path)
+        if not streams:
+            return None
+        out_path = f"{f_path}.reorder.mkv"
+        audio_streams = [s for s in streams if s.get("codec_type") == "audio"]
+        sub_streams = [s for s in streams if s.get("codec_type") == "subtitle"]
+        video_streams = [s for s in streams if s.get("codec_type") == "video"]
+
+        for swap in aud_swaps:
+            if len(swap) == 2:
+                i1, i2 = swap[0] - 1, swap[1] - 1
+                if 0 <= i1 < len(audio_streams) and 0 <= i2 < len(audio_streams):
+                    audio_streams[i1], audio_streams[i2] = audio_streams[i2], audio_streams[i1]
+
+        for swap in sub_swaps:
+            if len(swap) == 2:
+                i1, i2 = swap[0] - 1, swap[1] - 1
+                if 0 <= i1 < len(sub_streams) and 0 <= i2 < len(sub_streams):
+                    sub_streams[i1], sub_streams[i2] = sub_streams[i2], sub_streams[i1]
+
+        cmd = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", f_path]
+        for v in video_streams:
+            cmd.extend(["-map", f"0:{v.get('index')}"])
+        for a in audio_streams:
+            cmd.extend(["-map", f"0:{a.get('index')}"])
+        for s in sub_streams:
+            cmd.extend(["-map", f"0:{s.get('index')}"])
+        cmd.extend(["-c", "copy", out_path])
+
+        res, err, code = await cmd_exec(cmd)
+        if code == 0 and await aiopath.exists(out_path):
+            await remove(f_path)
+            await move(out_path, f_path)
+            return f_path
+        return None
+
+    async def trim_media(self, f_path, start_time, end_time):
+        out_path = f"{f_path}.trim.mkv"
+        cmd = [
+            "ffmpeg",
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            "-y",
+            "-ss",
+            start_time,
+            "-to",
+            end_time,
+            "-i",
+            f_path,
+            "-c",
+            "copy",
+            out_path,
+        ]
+        res, err, code = await cmd_exec(cmd)
+        if code == 0 and await aiopath.exists(out_path):
+            await remove(f_path)
+            await move(out_path, f_path)
+            return f_path
+        return None
+
+    async def extract_tracks(self, f_path, extract_types):
+        streams = await self.get_streams(f_path)
+        if not streams:
+            return None
+        dir_name = ospath.dirname(f_path)
+        base_name = ospath.splitext(ospath.basename(f_path))[0]
+
+        for st in streams:
+            st_type = st.get("codec_type")
+            st_idx = st.get("index")
+            lang = st.get("tags", {}).get("language", "und")
+
+            if st_type == "video" and ("video" in extract_types or "file" in extract_types):
+                ext = st.get("codec_name", "mkv")
+                out_file = ospath.join(dir_name, f"{base_name}_video_{st_idx}_{lang}.{ext}")
+                cmd = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", f_path, "-map", f"0:{st_idx}", "-c", "copy", out_file]
+                await cmd_exec(cmd)
+            elif st_type == "audio" and "audio" in extract_types:
+                ext = st.get("codec_name", "m4a")
+                out_file = ospath.join(dir_name, f"{base_name}_audio_{st_idx}_{lang}.{ext}")
+                cmd = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", f_path, "-map", f"0:{st_idx}", "-c", "copy", out_file]
+                await cmd_exec(cmd)
+            elif st_type == "subtitle" and "subtitle" in extract_types:
+                ext = "srt" if st.get("codec_name") in ["subrip", "srt"] else "ass"
+                out_file = ospath.join(dir_name, f"{base_name}_sub_{st_idx}_{lang}.{ext}")
+                cmd = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", f_path, "-map", f"0:{st_idx}", "-c", "copy", out_file]
+                await cmd_exec(cmd)
+
+        return f_path

@@ -26,6 +26,7 @@ from ..core.config_manager import Config, BinConfig
 from ..core.cpu import ffmpeg_layout
 from ..core.tg_client import TgClient
 from ..helper.ext_utils.bot_lock import ff_lock
+from .telegram_helper.button_build import ButtonMaker
 from .ext_utils.bot_utils import (
     fetch_drive_cat,
     get_size_bytes,
@@ -1502,6 +1503,90 @@ class TaskConfig:
                     await remove(f_path)
                     await move(res, f_path)
 
+        return dl_path
+
+    async def proceed_reorder(self, dl_path, gid):
+        if not dl_path or not await aiopath.exists(dl_path):
+            return dl_path
+        all_files = [dl_path] if self.is_file else []
+        if not self.is_file:
+            for dirpath, _, files in await sync_to_async(walk, dl_path, topdown=False):
+                for file_ in files:
+                    fp = ospath.join(dirpath, file_)
+                    if (await get_document_type(fp))[0]:
+                        all_files.append(fp)
+        if not all_files:
+            return dl_path
+
+        ffmpeg = FFMpeg(self)
+        aud_swaps = getattr(self, "reorder_aud", [])
+        sub_swaps = getattr(self, "reorder_sub", [])
+        if aud_swaps or sub_swaps:
+            for f_path in all_files:
+                if self.is_cancelled:
+                    return False
+                async with task_dict_lock:
+                    task_dict[self.mid] = FFmpegStatus(self, ffmpeg, gid, "Reorder Streams")
+                await ffmpeg.reorder_tracks(f_path, aud_swaps, sub_swaps)
+        return dl_path
+
+    async def proceed_trim(self, dl_path, gid):
+        if not dl_path or not await aiopath.exists(dl_path):
+            return dl_path
+        trim_range = getattr(self, "trim_range", "")
+        if not trim_range or "-" not in trim_range:
+            return dl_path
+        parts = trim_range.split("-")
+        start_t = parts[0].strip()
+        end_t = parts[1].strip()
+
+        all_files = [dl_path] if self.is_file else []
+        if not self.is_file:
+            for dirpath, _, files in await sync_to_async(walk, dl_path, topdown=False):
+                for file_ in files:
+                    fp = ospath.join(dirpath, file_)
+                    if (await get_document_type(fp))[0]:
+                        all_files.append(fp)
+        if not all_files:
+            return dl_path
+
+        ffmpeg = FFMpeg(self)
+        for f_path in all_files:
+            if self.is_cancelled:
+                return False
+            async with task_dict_lock:
+                task_dict[self.mid] = FFmpegStatus(self, ffmpeg, gid, "Trimming")
+            await ffmpeg.trim_media(f_path, start_t, end_t)
+        return dl_path
+
+    async def proceed_extract_content(self, dl_path, gid):
+        if not dl_path or not await aiopath.exists(dl_path):
+            return dl_path
+        extract_types = getattr(self, "extract_types", [])
+        if not extract_types:
+            return dl_path
+
+        all_files = [dl_path] if self.is_file else []
+        if not self.is_file:
+            for dirpath, _, files in await sync_to_async(walk, dl_path, topdown=False):
+                for file_ in files:
+                    fp = ospath.join(dirpath, file_)
+                    if (await get_document_type(fp))[0]:
+                        all_files.append(fp)
+        if not all_files:
+            return dl_path
+
+        ffmpeg = FFMpeg(self)
+        for f_path in all_files:
+            if self.is_cancelled:
+                return False
+            async with task_dict_lock:
+                task_dict[self.mid] = FFmpegStatus(self, ffmpeg, gid, "Extracting")
+            await ffmpeg.extract_tracks(f_path, extract_types)
+
+        if self.is_file:
+            self.is_file = False
+            return ospath.dirname(dl_path)
         return dl_path
 
     async def proceed_merge(self, dl_path, gid, custom_name=""):
