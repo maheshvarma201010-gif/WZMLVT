@@ -132,6 +132,8 @@ class HypertgUpload(HypertgTransfer):
         if self._listener.up_dest:
             upload_chat_id = self._listener.up_dest
             thread_id = self._listener.chat_thread_id
+            if not isinstance(upload_chat_id, int):
+                upload_chat_id, thread_id = parse_dest(upload_chat_id)
         elif Config.LEECH_LOG_CHAT:
             upload_chat_id, thread_id = parse_dest(Config.LEECH_LOG_CHAT)
         else:
