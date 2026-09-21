@@ -527,24 +527,23 @@ class TaskListener(TaskConfig):
                 msg += f"• <b>Corrupted Files:</b> {mime_type}\n"
             msg += f"• <b>User:</b> {self.tag}</blockquote>\n\n"
 
-            if self.bot_pm:
-                pmsg = msg
-                pmsg += "<b>✅ Action Performed:</b>\n"
-                pmsg += "<blockquote>File(s) sent to User PM.</blockquote>\n\n"
-                if self.is_super_chat:
-                    await send_message(self.message, pmsg)
+            log_chats = [self.user_id]
+            if Config.LEECH_LOG_CHAT and Config.LEECH_LOG_CHAT != self.user_id:
+                log_chats.append(Config.LEECH_LOG_CHAT)
 
-            if not files and not self.is_super_chat:
-                await send_message(self.message, msg)
+            if self.is_super_chat and self.message.chat.id not in log_chats:
+                pmsg = msg + "<b>✅ Action Performed:</b>\n<blockquote>File(s) sent to User PM / Dump Channel.</blockquote>\n\n"
+                await send_message(self.message, pmsg)
+
+            if not files:
+                for lchat in log_chats:
+                    await send_message(lchat, msg)
             else:
-                log_chat = self.user_id if self.bot_pm else self.message
                 msg += "<b>📁 Files List:</b>\n"
                 fmsg = ""
                 for index, (link, name) in enumerate(files.items(), start=1):
                     fmsg += f"{index}. <a href='{link}'>{name}</a>"
-                    if Config.MEDIA_STORE and (
-                        self.is_super_chat or Config.LEECH_LOG_CHAT
-                    ):
+                    if Config.MEDIA_STORE:
                         parts = link.split("/")[-2:]
                         if len(parts) == 2:
                             chat_id, msg_id = parts
@@ -559,11 +558,13 @@ class TaskListener(TaskConfig):
                                 fmsg += f"\n  ↳ <a href='{slinks[0]}'>Stream</a> | <a href='{slinks[1]}'>Download</a>"
                     fmsg += "\n"
                     if len(fmsg.encode() + msg.encode()) > 4000:
-                        await send_message(log_chat, msg + fmsg)
+                        for lchat in log_chats:
+                            await send_message(lchat, msg + fmsg)
                         await sleep(1)
                         fmsg = ""
                 if fmsg != "":
-                    await send_message(log_chat, msg + fmsg)
+                    for lchat in log_chats:
+                        await send_message(lchat, msg + fmsg)
         else:
             msg += f"\n<blockquote>• <b>Type:</b> {mime_type}"
             if mime_type == "Folder":

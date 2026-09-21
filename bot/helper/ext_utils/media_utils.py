@@ -486,6 +486,9 @@ class FFMpeg:
     def eta_raw(self):
         return self._eta_raw
 
+    async def get_streams(self, file):
+        return await get_streams(file)
+
     def clear(self):
         self._start_time = time()
         self._processed_bytes = 0

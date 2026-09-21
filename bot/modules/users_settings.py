@@ -2069,7 +2069,7 @@ async def edit_user_settings(client, query):
         new_message_text = f"<b>Upload {prompt_title}</b>\n\n{text}"
         await edit_message(message, new_message_text, buttons.build_menu(1))
         rfunc = partial(get_menu, data[3], message, user_id)
-        pfunc = partial(add_file, ftype=data[3], rfunc=rfunc)
+        pfunc = partial(add_file, ftype=data[3], rfunc=rfunc, target_user_id=user_id)
         await event_handler(
             client,
             query,
@@ -2099,7 +2099,7 @@ async def edit_user_settings(client, query):
             message, message.text.html + "\n\n" + text, buttons.build_menu(1)
         )
         rfunc = partial(get_menu, data[3], message, user_id)
-        pfunc = partial(func, option=data[3], rfunc=rfunc)
+        pfunc = partial(func, option=data[3], rfunc=rfunc, target_user_id=user_id)
         await event_handler(client, query, pfunc, rfunc)
     elif data[2] == "remove":
         await query.answer("Removed configuration!", show_alert=True)
