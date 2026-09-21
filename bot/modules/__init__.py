@@ -34,7 +34,6 @@ from .mirror_leech import (
     nzb_mirror,
     seedr_link,
     uphoster,
-    merge_command,
     ht_merge_callback,
 )
 from .restart import (
@@ -83,7 +82,6 @@ __all__ = [
     "select_type",
     "arg_usage",
     "uphoster",
-    "merge_command",
     "ht_merge_callback",
     "mirror",
     "leech",

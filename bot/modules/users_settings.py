@@ -13,6 +13,7 @@ import zipfile
 
 from aiofiles.os import makedirs, remove
 from aiofiles.os import path as aiopath
+from aioshutil import move
 from langcodes import Language
 from pyrogram.filters import create
 from pyrogram.handlers import MessageHandler
@@ -821,10 +822,16 @@ Configure custom video encoding, compression, and watermark overlays for uploads
         else:
             pdtoken = "None"
 
+        pdtoken_disp = (
+            pdtoken[:2] + "****" + pdtoken[-2:]
+            if pdtoken and pdtoken != "None" and len(pdtoken) > 6
+            else ("****" if pdtoken and pdtoken != "None" else "None")
+        )
+
         text = f"""<b>PixelDrain Settings</b>
 
 <blockquote>• <b>User:</b> {user_name}
-• <b>API Key:</b> <code>{pdtoken}</code></blockquote>"""
+• <b>API Key:</b> <code>{pdtoken_disp}</code></blockquote>"""
 
     elif stype == "buzzheavier":
         buttons.data_button(
@@ -846,6 +853,12 @@ Configure custom video encoding, compression, and watermark overlays for uploads
         else:
             bztoken = "None"
 
+        bztoken_disp = (
+            bztoken[:2] + "****" + bztoken[-2:]
+            if bztoken and bztoken != "None" and len(bztoken) > 6
+            else ("****" if bztoken and bztoken != "None" else "None")
+        )
+
         if user_dict.get("BUZZHEAVIER_FOLDER_ID", False):
             bzfolder = user_dict["BUZZHEAVIER_FOLDER_ID"]
         else:
@@ -854,7 +867,7 @@ Configure custom video encoding, compression, and watermark overlays for uploads
         text = f"""<b>BuzzHeavier Settings</b>
 
 <blockquote>• <b>User:</b> {user_name}
-• <b>API Token:</b> <code>{bztoken}</code>
+• <b>API Token:</b> <code>{bztoken_disp}</code>
 • <b>Folder ID:</b> <code>{bzfolder}</code></blockquote>"""
 
     elif stype == "devuploads":
@@ -871,6 +884,11 @@ Configure custom video encoding, compression, and watermark overlays for uploads
         btns = buttons.build_menu(1)
 
         dukey = user_dict.get("DEVUPLOADS_KEY") or Config.DEVUPLOADS_KEY or "None"
+        dukey_disp = (
+            dukey[:2] + "****" + dukey[-2:]
+            if dukey and dukey != "None" and len(dukey) > 6
+            else ("****" if dukey and dukey != "None" else "None")
+        )
         dufolder = (
             user_dict.get("DEVUPLOADS_FOLDER")
             or Config.DEVUPLOADS_FOLDER
@@ -879,7 +897,7 @@ Configure custom video encoding, compression, and watermark overlays for uploads
         text = f"""<b>DevUploads Settings</b>
 
 <blockquote>• <b>User:</b> {user_name}
-• <b>API Key:</b> <code>{dukey}</code>
+• <b>API Key:</b> <code>{dukey_disp}</code>
 • <b>Folder ID:</b> <code>{dufolder}</code></blockquote>"""
 
     elif stype == "vikingfile":
@@ -896,6 +914,11 @@ Configure custom video encoding, compression, and watermark overlays for uploads
         btns = buttons.build_menu(1)
 
         vfkey = user_dict.get("VIKINGFILE_HASH") or Config.VIKINGFILE_HASH or "None"
+        vfkey_disp = (
+            vfkey[:2] + "****" + vfkey[-2:]
+            if vfkey and vfkey != "None" and len(vfkey) > 6
+            else ("****" if vfkey and vfkey != "None" else "None")
+        )
         vffolder = (
             user_dict.get("VIKINGFILE_FOLDER")
             or Config.VIKINGFILE_FOLDER
@@ -904,7 +927,7 @@ Configure custom video encoding, compression, and watermark overlays for uploads
         text = f"""<b>VikingFile Settings</b>
 
 <blockquote>• <b>User:</b> {user_name}
-• <b>User Hash:</b> <code>{vfkey}</code>
+• <b>User Hash:</b> <code>{vfkey_disp}</code>
 • <b>Folder Path:</b> <code>{vffolder}</code></blockquote>"""
 
     elif stype == "gofile":
@@ -935,6 +958,12 @@ Configure custom video encoding, compression, and watermark overlays for uploads
         else:
             gftoken = "None"
 
+        gftoken_disp = (
+            gftoken[:2] + "****" + gftoken[-2:]
+            if gftoken and gftoken != "None" and len(gftoken) > 6
+            else ("****" if gftoken and gftoken != "None" else "None")
+        )
+
         if user_dict.get("GOFILE_FOLDER_ID", False):
             gffolder = user_dict["GOFILE_FOLDER_ID"]
         elif Config.GOFILE_FOLDER_ID:
@@ -945,7 +974,7 @@ Configure custom video encoding, compression, and watermark overlays for uploads
         text = f"""<b>Gofile Settings</b>
 
 <blockquote>• <b>User:</b> {user_name}
-• <b>API Token:</b> <code>{gftoken}</code>
+• <b>API Token:</b> <code>{gftoken_disp}</code>
 • <b>Folder ID:</b> <code>{gffolder}</code>
 • <b>Auto-Create Folder:</b> <code>{"Enabled" if auto_create else "Disabled"}</code></blockquote>"""
 
@@ -1443,8 +1472,12 @@ async def send_user_settings(_, message):
 
 @new_task
 async def add_file(_, message, ftype, rfunc):
-    user_id = message.from_user.id
+    user = message.from_user or message.sender_chat
+    user_id = user.id if user else 0
+    if not user_id:
+        return
     handler_dict[user_id] = False
+    des_dir = ""
     if ftype == "THUMBNAIL":
         if message.text and message.text.startswith(("http://", "https://")):
             url = message.text.strip()
@@ -1452,9 +1485,11 @@ async def add_file(_, message, ftype, rfunc):
             if downloaded and await aiopath.exists(downloaded):
                 des_dir = f"thumbnails/{user_id}.jpg"
                 await makedirs("thumbnails", exist_ok=True)
-                os.replace(downloaded, des_dir)
+                await move(downloaded, des_dir)
             else:
+                await delete_message(message)
                 await send_message(message, "Failed to download thumbnail from Image URL!")
+                await rfunc()
                 return
         else:
             des_dir = await create_thumb(message, user_id)
@@ -1474,9 +1509,10 @@ async def add_file(_, message, ftype, rfunc):
         des_dir = f"{cpath}/cookies.txt"
         await message.download(file_name=des_dir)
     await delete_message(message)
-    update_user_ldata(user_id, ftype, des_dir)
+    if des_dir:
+        update_user_ldata(user_id, ftype, des_dir)
+        await database.update_user_doc(user_id, ftype, des_dir)
     await rfunc()
-    await database.update_user_doc(user_id, ftype, des_dir)
 
 
 def validate_ffmpeg_cmds(value):
@@ -1785,16 +1821,16 @@ async def event_handler(client, query, pfunc, rfunc, photo=False, document=False
     start_time = update_time = time()
 
     async def event_filter(_, __, event):
+        user = event.from_user or event.sender_chat
+        if not user or user.id != user_id or event.chat.id != query.message.chat.id:
+            return False
         if photo:
             mtype = event.photo or event.document or (event.text and event.text.startswith(("http://", "https://")))
         elif document:
             mtype = event.document
         else:
             mtype = event.text
-        user = event.from_user or event.sender_chat
-        return bool(
-            user.id == user_id and event.chat.id == query.message.chat.id and mtype
-        )
+        return bool(mtype)
 
     handler = client.add_handler(
         MessageHandler(pfunc, filters=create(event_filter)), group=-1

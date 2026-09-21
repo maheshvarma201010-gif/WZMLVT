@@ -1,5 +1,5 @@
 import re
-from asyncio import gather, sleep
+from asyncio import gather, sleep, wait_for
 from contextlib import suppress
 from os import path as ospath, walk
 from pyrogram.types import Message
@@ -1262,6 +1262,8 @@ class TaskConfig:
         return dl_path
 
     async def proceed_encode(self, dl_path, gid):
+        if not dl_path or not await aiopath.exists(dl_path) or is_archive(dl_path) or is_archive_split(dl_path):
+            return dl_path
         all_files = [dl_path] if self.is_file else []
         if not self.is_file:
             for dirpath, _, files in await sync_to_async(walk, dl_path, topdown=False):
@@ -1297,6 +1299,8 @@ class TaskConfig:
         return dl_path
 
     async def proceed_compress_video(self, dl_path, gid):
+        if not dl_path or not await aiopath.exists(dl_path) or is_archive(dl_path) or is_archive_split(dl_path):
+            return dl_path
         all_files = [dl_path] if self.is_file else []
         if not self.is_file:
             for dirpath, _, files in await sync_to_async(walk, dl_path, topdown=False):
@@ -1331,6 +1335,8 @@ class TaskConfig:
         return dl_path
 
     async def proceed_watermark(self, dl_path, gid):
+        if not dl_path or not await aiopath.exists(dl_path) or is_archive(dl_path) or is_archive_split(dl_path):
+            return dl_path
         all_files = [dl_path] if self.is_file else []
         if not self.is_file:
             for dirpath, _, files in await sync_to_async(walk, dl_path, topdown=False):
@@ -1403,6 +1409,8 @@ class TaskConfig:
         return await sevenz.zip(dl_path, up_path, pswd)
 
     async def proceed_remove_stream(self, dl_path, gid):
+        if not dl_path or not await aiopath.exists(dl_path) or is_archive(dl_path) or is_archive_split(dl_path):
+            return dl_path
         all_files = [dl_path] if self.is_file else []
         if not self.is_file:
             for dirpath, _, files in await sync_to_async(walk, dl_path, topdown=False):
@@ -1574,9 +1582,75 @@ class TaskConfig:
         async with task_dict_lock:
             task_dict[self.mid] = FFmpegStatus(self, ffmpeg, gid, "Merge")
 
+        a_langs = []
+        for af in a_files:
+            prompt_str = f"<b>🗣️ Track Language:</b>\nPlease send the language name for audio track: <code>{ospath.basename(af)}</code>\n⏱️ <i>Timeout: 30s</i>"
+            prompt_msg = await send_message(self.user_id, prompt_str)
+            lang = "eng"
+            if prompt_msg and isinstance(prompt_msg, Message):
+                event_done = TgClient.bot.loop.create_future()
+                user_lang = []
+
+                async def lang_filter(_, __, event):
+                    u = event.from_user or event.sender_chat
+                    return bool(u and u.id == self.user_id and event.chat.id == prompt_msg.chat.id and event.text)
+
+                async def lang_handler(_, msg):
+                    user_lang.append(msg.text.strip())
+                    await delete_message(msg)
+                    if not event_done.done():
+                        event_done.set_result(True)
+
+                from pyrogram.handlers import MessageHandler
+                from pyrogram.filters import create
+                h = TgClient.bot.add_handler(MessageHandler(lang_handler, filters=create(lang_filter)), group=-1)
+                try:
+                    await wait_for(event_done, timeout=30)
+                    if user_lang:
+                        lang = user_lang[0]
+                except Exception:
+                    pass
+                finally:
+                    TgClient.bot.remove_handler(*h)
+                    await delete_message(prompt_msg)
+            a_langs.append(lang)
+
+        s_langs = []
+        for sf in s_files:
+            prompt_str = f"<b>📝 Track Language:</b>\nPlease send the language name for subtitle track: <code>{ospath.basename(sf)}</code>\n⏱️ <i>Timeout: 30s</i>"
+            prompt_msg = await send_message(self.user_id, prompt_str)
+            lang = "eng"
+            if prompt_msg and isinstance(prompt_msg, Message):
+                event_done = TgClient.bot.loop.create_future()
+                user_lang = []
+
+                async def lang_filter(_, __, event):
+                    u = event.from_user or event.sender_chat
+                    return bool(u and u.id == self.user_id and event.chat.id == prompt_msg.chat.id and event.text)
+
+                async def lang_handler(_, msg):
+                    user_lang.append(msg.text.strip())
+                    await delete_message(msg)
+                    if not event_done.done():
+                        event_done.set_result(True)
+
+                from pyrogram.handlers import MessageHandler
+                from pyrogram.filters import create
+                h = TgClient.bot.add_handler(MessageHandler(lang_handler, filters=create(lang_filter)), group=-1)
+                try:
+                    await wait_for(event_done, timeout=30)
+                    if user_lang:
+                        lang = user_lang[0]
+                except Exception:
+                    pass
+                finally:
+                    TgClient.bot.remove_handler(*h)
+                    await delete_message(prompt_msg)
+            s_langs.append(lang)
+
         LOGGER.info(f"Merging {len(v_files)} videos, {len(a_files)} audio, {len(s_files)} subtitles into {output_file}")
         self.progress = True
-        res = await ffmpeg.merge_tracks(v_files, a_files, s_files, output_file, gid)
+        res = await ffmpeg.merge_tracks(v_files, a_files, s_files, output_file, gid, a_langs=a_langs, s_langs=s_langs)
 
         if res and await aiopath.exists(output_file):
             merged_sources = v_files + a_files + s_files

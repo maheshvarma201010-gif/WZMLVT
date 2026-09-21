@@ -68,31 +68,44 @@ async def check_running_tasks(listener, state="dl"):
         if state == "dl"
         else safe_int(Config.QUEUE_UPLOAD)
     )
+    user_dict = user_data.get(listener.user_id, {})
+    user_limit = safe_int(user_dict.get("maxtask", Config.USER_MAX_TASKS))
+
     event = None
     is_over_limit = False
     async with queue_dict_lock:
         if state == "up" and listener.mid in non_queued_dl:
             non_queued_dl.remove(listener.mid)
-        if (
-            (all_limit or state_limit)
-            and not listener.force_run
-            and not (listener.force_upload and state == "up")
-            and not (listener.force_download and state == "dl")
-        ):
+
+        if not listener.force_run and not (listener.force_upload and state == "up") and not (listener.force_download and state == "dl"):
             dl_count = len(non_queued_dl)
             up_count = len(non_queued_up)
             t_count = dl_count if state == "dl" else up_count
-            is_over_limit = (
-                all_limit
-                and dl_count + up_count >= all_limit
-                and (not state_limit or t_count >= state_limit)
-            ) or (state_limit and t_count >= state_limit)
+
+            if user_limit > 0:
+                async with task_dict_lock:
+                    user_running = sum(
+                        1 for tk in task_dict.values()
+                        if getattr(tk, "listener", None) and tk.listener.user_id == listener.user_id
+                        and (tk.listener.mid in non_queued_dl or tk.listener.mid in non_queued_up)
+                    )
+                if user_running >= user_limit:
+                    is_over_limit = True
+
+            if not is_over_limit:
+                is_over_limit = (
+                    all_limit
+                    and dl_count + up_count >= all_limit
+                    and (not state_limit or t_count >= state_limit)
+                ) or (state_limit and t_count >= state_limit)
+
             if is_over_limit:
                 event = Event()
                 if state == "dl":
                     queued_dl[listener.mid] = event
                 else:
                     queued_up[listener.mid] = event
+
         if not is_over_limit:
             if state == "up":
                 non_queued_up.add(listener.mid)
@@ -114,6 +127,24 @@ async def start_up_from_queued(mid: int):
     non_queued_up.add(mid)
 
 
+async def _can_start_user_task(mid):
+    async with task_dict_lock:
+        task = task_dict.get(mid)
+        if not task or not getattr(task, "listener", None):
+            return True
+        user_id = task.listener.user_id
+        user_dict = user_data.get(user_id, {})
+        user_limit = safe_int(user_dict.get("maxtask", Config.USER_MAX_TASKS))
+        if user_limit <= 0:
+            return True
+        user_running = sum(
+            1 for tk in task_dict.values()
+            if getattr(tk, "listener", None) and tk.listener.user_id == user_id
+            and (tk.listener.mid in non_queued_dl or tk.listener.mid in non_queued_up)
+        )
+        return user_running < user_limit
+
+
 async def start_from_queued():
     if all_limit := safe_int(Config.QUEUE_ALL):
         dl_limit = safe_int(Config.QUEUE_DOWNLOAD)
@@ -125,47 +156,56 @@ async def start_from_queued():
             if all_ < all_limit:
                 f_tasks = all_limit - all_
                 if queued_up and (not up_limit or up < up_limit):
-                    for index, mid in enumerate(list(queued_up.keys()), start=1):
-                        await start_up_from_queued(mid)
-                        f_tasks -= 1
-                        if f_tasks == 0 or (up_limit and index >= up_limit - up):
-                            break
+                    for mid in list(queued_up.keys()):
+                        if await _can_start_user_task(mid):
+                            await start_up_from_queued(mid)
+                            f_tasks -= 1
+                            up += 1
+                            if f_tasks == 0 or (up_limit and up >= up_limit):
+                                break
                 if queued_dl and (not dl_limit or dl < dl_limit) and f_tasks != 0:
-                    for index, mid in enumerate(list(queued_dl.keys()), start=1):
-                        await start_dl_from_queued(mid)
-                        if (dl_limit and index >= dl_limit - dl) or index == f_tasks:
-                            break
+                    for mid in list(queued_dl.keys()):
+                        if await _can_start_user_task(mid):
+                            await start_dl_from_queued(mid)
+                            f_tasks -= 1
+                            dl += 1
+                            if f_tasks == 0 or (dl_limit and dl >= dl_limit):
+                                break
         return
 
     if up_limit := Config.QUEUE_UPLOAD:
         async with queue_dict_lock:
             up = len(non_queued_up)
             if queued_up and up < up_limit:
-                f_tasks = up_limit - up
-                for index, mid in enumerate(list(queued_up.keys()), start=1):
-                    await start_up_from_queued(mid)
-                    if index == f_tasks:
-                        break
+                for mid in list(queued_up.keys()):
+                    if await _can_start_user_task(mid):
+                        await start_up_from_queued(mid)
+                        up += 1
+                        if up >= up_limit:
+                            break
     else:
         async with queue_dict_lock:
             if queued_up:
                 for mid in list(queued_up.keys()):
-                    await start_up_from_queued(mid)
+                    if await _can_start_user_task(mid):
+                        await start_up_from_queued(mid)
 
     if dl_limit := Config.QUEUE_DOWNLOAD:
         async with queue_dict_lock:
             dl = len(non_queued_dl)
             if queued_dl and dl < dl_limit:
-                f_tasks = dl_limit - dl
-                for index, mid in enumerate(list(queued_dl.keys()), start=1):
-                    await start_dl_from_queued(mid)
-                    if index == f_tasks:
-                        break
+                for mid in list(queued_dl.keys()):
+                    if await _can_start_user_task(mid):
+                        await start_dl_from_queued(mid)
+                        dl += 1
+                        if dl >= dl_limit:
+                            break
     else:
         async with queue_dict_lock:
             if queued_dl:
                 for mid in list(queued_dl.keys()):
-                    await start_dl_from_queued(mid)
+                    if await _can_start_user_task(mid):
+                        await start_dl_from_queued(mid)
 
 
 async def limit_checker(listener, yt_playlist=0):
@@ -301,14 +341,6 @@ async def pre_task_check(message):
         msg.append(
             f"┠ Max Concurrent Bot's Tasks Limit exceeded.\n┃ Bot Tasks Limit : {bmax_tasks} task"
         )
-    maxtask = safe_int(user_dict.get("maxtask", Config.USER_MAX_TASKS))
-    if maxtask > 0 and not getattr(message, "_is_bulk_subtask", False):
-        user_tasks = [tk for tk in all_tasks if tk.listener.user_id == user_id]
-        running_user_tasks = [tk for tk in user_tasks if tk.listener.mid in non_queued_dl or tk.listener.mid in non_queued_up]
-        if len(running_user_tasks) >= maxtask:
-            msg.append(
-                f"┠ Max Concurrent User's Task(s) Limit exceeded! \n┃ User Task Limit : {maxtask} tasks"
-            )
 
     if msg:
         return _format_result()

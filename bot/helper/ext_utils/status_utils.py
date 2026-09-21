@@ -21,27 +21,28 @@ SIZE_UNITS = ["B", "KB", "MB", "GB", "TB", "PB"]
 
 
 class MirrorStatus:
-    STATUS_UPLOAD = "Upload"
-    STATUS_DOWNLOAD = "Download"
-    STATUS_CLONE = "Clone"
-    STATUS_QUEUEDL = "QueueDl"
-    STATUS_QUEUEUP = "QueueUp"
-    STATUS_PAUSED = "Pause"
-    STATUS_ARCHIVE = "Archive"
-    STATUS_EXTRACT = "Extract"
-    STATUS_SPLIT = "Split"
-    STATUS_CHECK = "CheckUp"
-    STATUS_SEED = "Seed"
-    STATUS_SAMVID = "SamVid"
-    STATUS_CONVERT = "Convert"
+    STATUS_UPLOAD = "Uploading"
+    STATUS_DOWNLOAD = "Downloading"
+    STATUS_CLONE = "Cloning"
+    STATUS_QUEUEDL = "Queued DL"
+    STATUS_QUEUEUP = "Queued UP"
+    STATUS_PAUSED = "Paused"
+    STATUS_ARCHIVE = "Archiving"
+    STATUS_EXTRACT = "Extracting"
+    STATUS_SPLIT = "Splitting"
+    STATUS_CHECK = "Checking"
+    STATUS_SEED = "Seeding"
+    STATUS_SAMVID = "Sample Video"
+    STATUS_CONVERT = "Converting"
     STATUS_MERGE = "Merging"
     STATUS_ENCODE = "Encoding"
     STATUS_COMPRESS = "Compressing"
-    STATUS_WATERMARK = "Watermarking"
-    STATUS_FFMPEG = "FFmpeg"
-    STATUS_YT = "YouTube"
-    STATUS_METADATA = "Metadata"
-    STATUS_SEEDR = "Seedr"
+    STATUS_WATERMARK = "Applying Watermark"
+    STATUS_FFMPEG = "FFmpeg Processing"
+    STATUS_YT = "YouTube Uploading"
+    STATUS_METADATA = "Applying Metadata"
+    STATUS_SEEDR = "Seedr Downloading"
+    STATUS_COMPLETED = "Completed"
 
 
 class EngineStatus:
@@ -208,9 +209,9 @@ def get_progress_bar_string(pct):
     except Exception:
         p = 0.0
     p = min(max(p, 0), 100)
-    cFull = int(p // 10)
-    p_str = "▰" * cFull + "▱" * (10 - cFull)
-    return f"[{p_str}]"
+    filled = int(round(p / 10))
+    bar = "■" * filled + "□" * (10 - filled)
+    return f"[{bar}]"
 
 
 async def get_readable_message(sid, is_user, page_no=1, status="All", page_step=1):

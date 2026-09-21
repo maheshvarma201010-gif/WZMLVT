@@ -1109,9 +1109,11 @@ class FFMpeg:
             await remove(output)
         return False
 
-    async def merge_tracks(self, video_files, audio_files, sub_files, output_file, gid):
+    async def merge_tracks(self, video_files, audio_files, sub_files, output_file, gid, a_langs=None, s_langs=None):
         cores, threads = ffmpeg_layout()
         self.clear()
+        a_langs = a_langs or []
+        s_langs = s_langs or []
 
         total_dur = 0
         all_inputs = video_files + audio_files + sub_files
@@ -1160,6 +1162,13 @@ class FFMpeg:
         else:
             for idx in range(total_streams_num):
                 cmd.extend(["-map", f"{idx}"])
+
+        for idx, alang in enumerate(a_langs):
+            if alang:
+                cmd.extend([f"-metadata:s:a:{idx}", f"language={alang}", f"-metadata:s:a:{idx}", f"title={alang}"])
+        for idx, slang in enumerate(s_langs):
+            if slang:
+                cmd.extend([f"-metadata:s:s:{idx}", f"language={slang}", f"-metadata:s:s:{idx}", f"title={slang}"])
 
         cmd.extend(["-c", "copy", "-threads", f"{threads}", output_file])
 
