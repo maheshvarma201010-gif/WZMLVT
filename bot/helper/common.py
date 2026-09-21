@@ -289,6 +289,8 @@ class TaskConfig:
         self.is_rss = getattr(self.message, "_rss_trigger", False)
         self.progress = True
         self.ffmpeg_cmds = None
+        self.ffmpeg_cmd_tuples = []
+        self.ffmpeg_file_dumps = {}
         self.dump_chat = 0
         self.dump_msg_id = 0
         self.metadata_title = None
@@ -490,9 +492,10 @@ class TaskConfig:
                     self.message,
                     f"Unknown FFmpeg Cmds key(s): {', '.join(map(str, missing))}. Check configured commands in /bsetting.",
                 )
-            self.ffmpeg_cmds = [
-                value for key in keys if key in valid for value in valid[key]
-            ] or None
+            self.ffmpeg_cmd_tuples = [
+                (key, value) for key in keys if key in valid for value in valid[key]
+            ]
+            self.ffmpeg_cmds = [t[1] for t in self.ffmpeg_cmd_tuples] or None
 
         self.metadata_title = self.user_dict.get("METADATA")
 
@@ -1025,13 +1028,22 @@ class TaskConfig:
         cores, _ = ffmpeg_layout()
         checked = False
         lock_acquired = False
-        cmds = [
-            [part.strip() for part in split(item) if part.strip()]
-            for item in self.ffmpeg_cmds
-        ]
+        cmd_tuples = (
+            [
+                (key, [part.strip() for part in split(item) if part.strip()])
+                for key, item in self.ffmpeg_cmd_tuples
+            ]
+            if getattr(self, "ffmpeg_cmd_tuples", None)
+            else [
+                ("default", [part.strip() for part in split(item) if part.strip()])
+                for item in self.ffmpeg_cmds
+            ]
+        )
+        dumps_dict = Config.FFMPEG_DUMPS if isinstance(Config.FFMPEG_DUMPS, dict) else {}
         try:
             ffmpeg = FFMpeg(self)
-            for ffmpeg_cmd in cmds:
+            for key, ffmpeg_cmd in cmd_tuples:
+                key_dump = dumps_dict.get(key.lower()) or dumps_dict.get(key.upper()) or dumps_dict.get(key)
                 self.proceed_count = 0
                 cmd = [
                     "taskset",
@@ -1099,6 +1111,9 @@ class TaskConfig:
                     self.subsize = self.size
                     res = await ffmpeg.ffmpeg_cmds(var_cmd, file_path)
                     if res:
+                        if key_dump:
+                            for r_file in res:
+                                self.ffmpeg_file_dumps[ospath.basename(r_file)] = key_dump
                         if delete_files:
                             await remove(file_path)
                             if len(await listdir(new_folder)) == 1:
@@ -1109,12 +1124,18 @@ class TaskConfig:
                                 dl_path = ospath.join(folder, self.name)
                                 await move(res[0], dl_path)
                                 await rmtree(new_folder)
+                                if key_dump:
+                                    self.ffmpeg_file_dumps[self.name] = key_dump
                             else:
                                 dl_path = new_folder
                                 self.name = new_folder.rsplit("/", 1)[-1]
+                                if key_dump:
+                                    self.ffmpeg_file_dumps[self.name] = key_dump
                         else:
                             dl_path = new_folder
                             self.name = new_folder.rsplit("/", 1)[-1]
+                            if key_dump:
+                                self.ffmpeg_file_dumps[self.name] = key_dump
                     else:
                         await move(file_path, dl_path)
                         await rmtree(new_folder)
@@ -1156,14 +1177,20 @@ class TaskConfig:
                             self.subsize = await get_path_size(f_path)
                             self.subname = file_
                             res = await ffmpeg.ffmpeg_cmds(var_cmd, f_path)
-                            if res and delete_files:
-                                await remove(f_path)
-                                if len(res) == 1:
-                                    file_name = ospath.basename(res[0])
-                                    if file_name.startswith("ffmpeg"):
-                                        newname = file_name.split(".", 1)[-1]
-                                        newres = ospath.join(dirpath, newname)
-                                        await move(res[0], newres)
+                            if res:
+                                if key_dump:
+                                    for r_file in res:
+                                        self.ffmpeg_file_dumps[ospath.basename(r_file)] = key_dump
+                                if delete_files:
+                                    await remove(f_path)
+                                    if len(res) == 1:
+                                        file_name = ospath.basename(res[0])
+                                        if file_name.startswith("ffmpeg"):
+                                            newname = file_name.split(".", 1)[-1]
+                                            newres = ospath.join(dirpath, newname)
+                                            await move(res[0], newres)
+                                            if key_dump:
+                                                self.ffmpeg_file_dumps[newname] = key_dump
         finally:
             if lock_acquired:
                 await ff_lock.release()

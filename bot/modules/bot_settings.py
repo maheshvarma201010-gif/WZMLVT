@@ -174,6 +174,7 @@ DEFAULT_DESP = {
     "EQUAL_SPLITS": "Split files into equal parts of LEECH_SPLIT_SIZE. Default: False.",
     "EXCLUDED_EXTENSIONS": "File extensions to exclude from upload. Space-separated.",
     "FFMPEG_CMDS": "Custom FFmpeg command presets.",
+    "FFMPEG_DUMPS": "Per-key FFmpeg dump destinations dict.",
     "FILELION_API": "FileLion.cc API key.",
     "MEDIA_STORE": "Store media metadata for re-upload. Default: True.",
     "FORCE_SUB_IDS": "Channel/Group IDs for force subscription.",
@@ -410,23 +411,52 @@ async def get_buttons(key=None, edit_type=None, edit_mode=False):
         buttons.data_button("Sabnzbd Settings", "botset nzb")
         buttons.data_button("JDownloader Sync", "botset syncjd")
         buttons.data_button("FFmpeg CMDs", "botset ffcmds")
+        buttons.data_button("DUMP", "botset dumpcmds")
         buttons.data_button("Close", "botset close", style=ButtonStyle.DANGER)
         msg = "<b>⚙️ Global Bot Settings Dashboard</b>\n\n<blockquote>Select a category to configure global bot settings.</blockquote>"
     elif edit_type is not None:
         if edit_type == "ffcmdkey":
             buttons.data_button("Back", "botset ffcmds", style=ButtonStyle.PRIMARY)
             if key != "newkey":
-                buttons.data_button("Add Command", f"botset addffcmd {key}")
-                buttons.data_button("Delete Key", f"botset delffkey {key}")
+                if key.isdigit() and isinstance(Config.FFMPEG_CMDS, dict):
+                    idx = int(key)
+                    key_keys = list(Config.FFMPEG_CMDS.keys())
+                    key_name = key_keys[idx] if idx < len(key_keys) else key
+                else:
+                    key_name = key
+                    idx = list(Config.FFMPEG_CMDS.keys()).index(key) if isinstance(Config.FFMPEG_CMDS, dict) and key in Config.FFMPEG_CMDS else 0
+                buttons.data_button("Add Command", f"botset addffcmd {idx}")
+                buttons.data_button("Delete Key", f"botset delffkey {idx}")
+            else:
+                key_name = "newkey"
             buttons.data_button("Close", "botset close", style=ButtonStyle.DANGER)
             if key == "newkey":
                 msg = "<blockquote>Send new key name (e.g. <code>tel</code> or <code>tam</code>).\n⏱️ <b>Time Left:</b> <code>60 sec</code></blockquote>"
             else:
-                cmds = Config.FFMPEG_CMDS.get(key, [])
+                cmds = Config.FFMPEG_CMDS.get(key_name, [])
                 cmds_formatted = "\n\n".join(
                     [f"<b>{i+1}.</b> <code>{c}</code>" for i, c in enumerate(cmds)]
                 ) if cmds else "<i>None</i>"
-                msg = f"<b>⚙️ Configured FFmpeg Commands for key: <code>{key}</code></b>\n\n{cmds_formatted}\n\n<blockquote>Send new command list dict, OR use 'Add Command' button to append. To edit/remove specific commands, send updated command list or send dict. Format dict example:\n<code>{{\"{key}\": [\"-i ...\", \"-i ...\"]}}</code>\n⏱️ <b>Time Left:</b> <code>60 sec</code></blockquote>"
+                msg = f"<b>⚙️ Configured FFmpeg Commands for key: <code>{key_name}</code></b>\n\n{cmds_formatted}\n\n<blockquote>Send new command list dict, OR use 'Add Command' button to append. To edit/remove specific commands, send updated command list or send dict. Format dict example:\n<code>{{\"{key_name}\": [\"-i ...\", \"-i ...\"]}}</code>\n⏱️ <b>Time Left:</b> <code>60 sec</code></blockquote>"
+        elif edit_type == "dumpkey":
+            buttons.data_button("Back", "botset dumpcmds", style=ButtonStyle.PRIMARY)
+            if key != "newkey":
+                if key.isdigit() and isinstance(Config.FFMPEG_DUMPS, dict):
+                    idx = int(key)
+                    key_keys = list(Config.FFMPEG_DUMPS.keys())
+                    key_name = key_keys[idx] if idx < len(key_keys) else key
+                else:
+                    key_name = key
+                    idx = list(Config.FFMPEG_DUMPS.keys()).index(key) if isinstance(Config.FFMPEG_DUMPS, dict) and key in Config.FFMPEG_DUMPS else 0
+                buttons.data_button("Delete Key", f"botset deldump {idx}")
+            else:
+                key_name = "newkey"
+            buttons.data_button("Close", "botset close", style=ButtonStyle.DANGER)
+            if key == "newkey":
+                msg = "<blockquote>Send new key and dump ID format as <code>KEY: DUMP_ID</code> (e.g. <code>TEL: -100123456789</code>) or send dict.\n⏱️ <b>Time Left:</b> <code>60 sec</code></blockquote>"
+            else:
+                current_dump = Config.FFMPEG_DUMPS.get(key_name, "None")
+                msg = f"<b>⚙️ Dump Destination for key: <code>{key_name}</code></b>\n\n<b>Current Destination:</b> <code>{current_dump}</code>\n\n<blockquote>Send new dump channel/group ID or thread ID (e.g. <code>-100123456789</code>).\n⏱️ <b>Time Left:</b> <code>60 sec</code></blockquote>"
         elif edit_type == "ariavar":
             buttons.data_button("Back", "botset aria", style=ButtonStyle.PRIMARY)
             if key != "newkey":
@@ -731,8 +761,9 @@ async def get_buttons(key=None, edit_type=None, edit_mode=False):
     elif key == "ffcmds":
         ff_dict = Config.FFMPEG_CMDS if isinstance(Config.FFMPEG_CMDS, dict) else {}
         keys_list = list(ff_dict.keys())
-        for k in keys_list[start : 10 + start]:
-            buttons.data_button(f"{k} ({len(ff_dict[k]) if isinstance(ff_dict[k], list) else 0})", f"botset ffcmdkey {k}")
+        for i in range(start, min(10 + start, len(keys_list))):
+            k = keys_list[i]
+            buttons.data_button(f"{k} ({len(ff_dict[k]) if isinstance(ff_dict[k], list) else 0})", f"botset ffcmdkey {i}")
         buttons.data_button("Add Key", "botset ffcmdkey newkey")
         buttons.data_button("Back", "botset back")
         buttons.data_button("Close", "botset close", style=ButtonStyle.DANGER)
@@ -741,6 +772,22 @@ async def get_buttons(key=None, edit_type=None, edit_mode=False):
                 f"{int(x / 10) + 1}", f"botset start ffcmds {x}", position="footer"
             )
         msg = f"<b>⚙️ Global FFmpeg Commands Settings</b>\n\n<blockquote>Click on a language key to view or edit its configured FFmpeg commands, or click 'Add Key' to add a new key.</blockquote>"
+    elif key == "dumpcmds":
+        dumps_dict = Config.FFMPEG_DUMPS if isinstance(Config.FFMPEG_DUMPS, dict) else {}
+        Config.FFMPEG_DUMPS = dumps_dict
+        keys_list = list(dumps_dict.keys())
+        for i in range(start, min(10 + start, len(keys_list))):
+            k = keys_list[i]
+            dest_val = dumps_dict[k]
+            buttons.data_button(f"{k} → {dest_val}", f"botset dumpkey {i}")
+        buttons.data_button("Add Dump Key", "botset dumpkey newkey")
+        buttons.data_button("Back", "botset back")
+        buttons.data_button("Close", "botset close", style=ButtonStyle.DANGER)
+        for x in range(0, len(keys_list), 10):
+            buttons.data_button(
+                f"{int(x / 10) + 1}", f"botset start dumpcmds {x}", position="footer"
+            )
+        msg = f"<b>⚙️ Global Per-Key FFmpeg Dump Destinations</b>\n\n<blockquote>Configure separate dump channels/groups for output files of each FFmpeg key.\nExample entries:\n<code>TEL: -100123456789</code>\n<code>TAM: -100987654321</code></blockquote>"
     elif key == "nzbserver":
         servers = (
             Config.USENET_SERVERS if isinstance(Config.USENET_SERVERS, list) else []
@@ -1127,6 +1174,66 @@ async def edit_ffcmd(_, message, pre_message, key, mode="edit"):
 
 
 @new_task
+async def edit_dumpcmd(_, message, pre_message, key, mode="edit"):
+    handler_dict[message.chat.id] = False
+    value = message.text.strip()
+    if not isinstance(Config.FFMPEG_DUMPS, dict):
+        Config.FFMPEG_DUMPS = {}
+    dump_dict = Config.FFMPEG_DUMPS
+
+    if key == "newkey":
+        if ":" in value and not value.startswith("{"):
+            k, v = [x.strip() for x in value.split(":", 1)]
+            k = k.lower()
+            try:
+                dest, _ = parse_dest(v)
+                dump_dict[k] = dest if dest is not None else v
+            except Exception:
+                dump_dict[k] = v
+        elif value.startswith("{") and value.endswith("}"):
+            try:
+                parsed = literal_eval(value)
+                if isinstance(parsed, dict):
+                    for k, v in parsed.items():
+                        dump_dict[str(k).lower()] = v
+            except Exception:
+                await send_message(message, "Invalid dict format!")
+                await update_buttons(pre_message, "dumpcmds")
+                return
+        else:
+            dump_dict[value.lower()] = ""
+        await update_buttons(pre_message, "dumpcmds")
+    else:
+        if value.startswith("{") and value.endswith("}"):
+            try:
+                parsed = literal_eval(value)
+                if isinstance(parsed, dict):
+                    for k, v in parsed.items():
+                        dump_dict[str(k).lower()] = v
+            except Exception:
+                await send_message(message, "Invalid dict format!")
+                await update_buttons(pre_message, key, "dumpkey")
+                return
+        elif ":" in value and not value.startswith("-"):
+            k, v = [x.strip() for x in value.split(":", 1)]
+            try:
+                dest, _ = parse_dest(v)
+                dump_dict[k.lower()] = dest if dest is not None else v
+            except Exception:
+                dump_dict[k.lower()] = v
+        else:
+            try:
+                dest, _ = parse_dest(value)
+                dump_dict[key.lower()] = dest if dest is not None else value
+            except Exception:
+                dump_dict[key.lower()] = value
+        await update_buttons(pre_message, "dumpcmds")
+
+    await delete_message(message)
+    await database.update_config({"FFMPEG_DUMPS": Config.FFMPEG_DUMPS})
+
+
+@new_task
 async def show_var_value(_, query, key):
     value = f"{Config.get(key)}"
     if value == "":
@@ -1477,37 +1584,84 @@ async def edit_bot_settings(client, query):
         "nzb",
         "nzbserver",
         "ffcmds",
+        "dumpcmds",
         "setonoff",
         "settoggle",
         "setlimit",
     ] or data[
         1
     ].startswith("nzbser"):
-        if data[1] in ("nzbserver", "setlimit", "ffcmds"):
+        if data[1] in ("nzbserver", "setlimit", "ffcmds", "dumpcmds"):
             globals()["start"] = 0
         await query.answer()
         await update_buttons(message, data[1])
     elif data[1] == "ffcmdkey":
         await query.answer()
         key = data[2]
+        if key != "newkey" and key.isdigit() and isinstance(Config.FFMPEG_CMDS, dict):
+            idx = int(key)
+            k_list = list(Config.FFMPEG_CMDS.keys())
+            key_name = k_list[idx] if idx < len(k_list) else key
+        else:
+            key_name = key
         await update_buttons(message, key, "ffcmdkey")
-        pfunc = partial(edit_ffcmd, pre_message=message, key=key, mode="edit")
+        pfunc = partial(edit_ffcmd, pre_message=message, key=key_name, mode="edit")
         rfunc = partial(update_buttons, message, "ffcmds" if key == "newkey" else key, "ffcmdkey" if key != "newkey" else None)
         await event_handler(client, query, pfunc, rfunc)
     elif data[1] == "addffcmd":
         await query.answer()
         key = data[2]
+        if key.isdigit() and isinstance(Config.FFMPEG_CMDS, dict):
+            idx = int(key)
+            k_list = list(Config.FFMPEG_CMDS.keys())
+            key_name = k_list[idx] if idx < len(k_list) else key
+        else:
+            key_name = key
         await update_buttons(message, key, "ffcmdkey")
-        pfunc = partial(edit_ffcmd, pre_message=message, key=key, mode="add")
+        pfunc = partial(edit_ffcmd, pre_message=message, key=key_name, mode="add")
         rfunc = partial(update_buttons, message, key, "ffcmdkey")
         await event_handler(client, query, pfunc, rfunc)
     elif data[1] == "delffkey":
         await query.answer()
         key = data[2]
-        if isinstance(Config.FFMPEG_CMDS, dict) and key in Config.FFMPEG_CMDS:
-            del Config.FFMPEG_CMDS[key]
-            await database.update_config({"FFMPEG_CMDS": Config.FFMPEG_CMDS})
+        if isinstance(Config.FFMPEG_CMDS, dict):
+            if key.isdigit():
+                idx = int(key)
+                k_list = list(Config.FFMPEG_CMDS.keys())
+                if idx < len(k_list):
+                    del Config.FFMPEG_CMDS[k_list[idx]]
+                    await database.update_config({"FFMPEG_CMDS": Config.FFMPEG_CMDS})
+            elif key in Config.FFMPEG_CMDS:
+                del Config.FFMPEG_CMDS[key]
+                await database.update_config({"FFMPEG_CMDS": Config.FFMPEG_CMDS})
         await update_buttons(message, "ffcmds")
+    elif data[1] == "dumpkey":
+        await query.answer()
+        key = data[2]
+        if key != "newkey" and key.isdigit() and isinstance(Config.FFMPEG_DUMPS, dict):
+            idx = int(key)
+            k_list = list(Config.FFMPEG_DUMPS.keys())
+            key_name = k_list[idx] if idx < len(k_list) else key
+        else:
+            key_name = key
+        await update_buttons(message, key, "dumpkey")
+        pfunc = partial(edit_dumpcmd, pre_message=message, key=key_name, mode="edit")
+        rfunc = partial(update_buttons, message, "dumpcmds" if key == "newkey" else key, "dumpkey" if key != "newkey" else None)
+        await event_handler(client, query, pfunc, rfunc)
+    elif data[1] == "deldump":
+        await query.answer()
+        key = data[2]
+        if isinstance(Config.FFMPEG_DUMPS, dict):
+            if key.isdigit():
+                idx = int(key)
+                k_list = list(Config.FFMPEG_DUMPS.keys())
+                if idx < len(k_list):
+                    del Config.FFMPEG_DUMPS[k_list[idx]]
+                    await database.update_config({"FFMPEG_DUMPS": Config.FFMPEG_DUMPS})
+            elif key in Config.FFMPEG_DUMPS:
+                del Config.FFMPEG_DUMPS[key]
+                await database.update_config({"FFMPEG_DUMPS": Config.FFMPEG_DUMPS})
+        await update_buttons(message, "dumpcmds")
     elif data[1] == "resetvar":
         await query.answer()
         value = DEFAULT_CONFIG.get(data[2], "")

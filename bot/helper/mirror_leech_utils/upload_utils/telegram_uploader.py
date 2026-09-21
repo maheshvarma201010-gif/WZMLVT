@@ -340,32 +340,49 @@ class TelegramUploader:
 
     async def _sequence_copies(self, src_chat):
         from ...ext_utils.bot_utils import parse_dest
-        destinations = []
+        dumps_dict = Config.FFMPEG_DUMPS if isinstance(Config.FFMPEG_DUMPS, dict) else {}
+
+        default_dests = []
         # Always send to user DM
-        destinations.append((self._listener.user_id, None))
+        default_dests.append((self._listener.user_id, None))
 
         # Configured user dump for this specific user
         if self._listener.leech_dest and self._listener.leech_dest != self._listener.user_id:
             d_chat, d_thread = parse_dest(self._listener.leech_dest) if not isinstance(self._listener.leech_dest, int) else (self._listener.leech_dest, self._listener.leech_thread_id)
-            if d_chat and (d_chat, d_thread) not in destinations:
-                destinations.append((d_chat, d_thread))
+            if d_chat and (d_chat, d_thread) not in default_dests:
+                default_dests.append((d_chat, d_thread))
 
         # Global dump / leech log chat
         global_dump = self._listener.up_dest or getattr(Config, "LEECH_LOG_CHAT", None)
         if global_dump and global_dump not in (self._listener.user_id, self._listener.leech_dest):
             g_chat, g_thread = parse_dest(global_dump) if not isinstance(global_dump, int) else (global_dump, self._listener.chat_thread_id)
-            if g_chat and (g_chat, g_thread) not in destinations:
-                destinations.append((g_chat, g_thread))
+            if g_chat and (g_chat, g_thread) not in default_dests:
+                default_dests.append((g_chat, g_thread))
 
         for entry in self._upload_seq:
             if entry is None:
                 continue
             chat_id = entry["chat_id"]
             msg_id = entry["msg_id"]
+            file_name = entry.get("file_", "")
             copy_from_chat = chat_id
             copy_from_msg = msg_id
 
-            for dest_chat, thread_id in destinations:
+            entry_dests = list(default_dests)
+
+            key_dump = getattr(self._listener, "ffmpeg_file_dumps", {}).get(file_name)
+            if not key_dump:
+                for k, d in dumps_dict.items():
+                    if d and k.lower() in file_name.lower():
+                        key_dump = d
+                        break
+
+            if key_dump:
+                kd_chat, kd_thread = parse_dest(key_dump) if not isinstance(key_dump, int) else (key_dump, None)
+                if kd_chat and (kd_chat, kd_thread) not in entry_dests:
+                    entry_dests.append((kd_chat, kd_thread))
+
+            for dest_chat, thread_id in entry_dests:
                 if dest_chat == copy_from_chat and thread_id == (self._listener.chat_thread_id if dest_chat == self._listener.up_dest else None):
                     continue
                 try:

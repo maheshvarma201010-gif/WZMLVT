@@ -1465,11 +1465,23 @@ Configure custom video encoding, compression, and watermark overlays for uploads
         )
         btns = buttons.build_menu(2)
 
+        dump_dict = Config.FFMPEG_DUMPS if isinstance(Config.FFMPEG_DUMPS, dict) else {}
+        if dump_dict:
+            dumps_str = "\n" + "\n".join(
+                [
+                    f"{no}. <code>-ff {escape(str(key))}</code> → <code>{escape(str(dest))}</code>"
+                    for no, (key, dest) in enumerate(dump_dict.items(), start=1)
+                ]
+            )
+        else:
+            dumps_str = "<b>Default DM / Log Chat</b>"
+
         set_all_status = "Enabled" if set_all_enabled else "Disabled"
         text = f"""<b>🎞️ FFmpeg & Media Metadata Settings</b>
 
 <blockquote>• <b>User:</b> {user_name}
 • <b>FFmpeg Commands:</b> {ffc}
+• <b>Key Dump Destinations:</b> {dumps_str}
 • <b>Global Metadata Override:</b> <b>{set_all_status}</b>
 • <b>Global Metadata:</b> {display_set_all_meta}
 • <b>Default Metadata:</b> {display_meta_val if not set_all_enabled else '(Disabled)'}

@@ -54,6 +54,7 @@ class Config:
     EQUAL_SPLITS = False
     EXCLUDED_EXTENSIONS = ""
     FFMPEG_CMDS = {}
+    FFMPEG_DUMPS = {}
     FILELION_API = ""
     MEDIA_STORE = True
     FORCE_SUB_IDS = ""
