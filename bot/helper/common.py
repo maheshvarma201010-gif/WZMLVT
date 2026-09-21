@@ -75,6 +75,118 @@ from .telegram_helper.message_utils import (
 )
 
 
+def parse_track_selectors(config_str):
+    aud_langs, aud_positions = set(), set()
+    sub_langs, sub_positions = set(), set()
+
+    if not config_str:
+        return aud_langs, aud_positions, sub_langs, sub_positions
+
+    parts = config_str.replace("\n", ",").replace("|", ",").split(",")
+    current_mode = "aud"
+
+    for part in parts:
+        part = part.strip().lower()
+        if not part:
+            continue
+
+        if "=" in part:
+            prefix, val = part.split("=", 1)
+            prefix = prefix.strip()
+            if prefix in ("audio", "aud"):
+                current_mode = "aud"
+            elif prefix in ("subtitle", "sub"):
+                current_mode = "sub"
+            else:
+                current_mode = "aud"
+            part = val.strip()
+
+        tokens = part.split()
+        for token in tokens:
+            token = token.strip()
+            if token in ("audio", "aud"):
+                current_mode = "aud"
+                continue
+            elif token in ("subtitle", "sub"):
+                current_mode = "sub"
+                continue
+
+            if token.isdigit():
+                pos = int(token)
+                if current_mode == "aud":
+                    aud_positions.add(pos)
+                else:
+                    sub_positions.add(pos)
+            else:
+                if current_mode == "aud":
+                    aud_langs.add(token)
+                else:
+                    sub_langs.add(token)
+
+    return aud_langs, aud_positions, sub_langs, sub_positions
+
+
+def match_stream_track(stream, pos_1based, target_langs, target_positions):
+    if pos_1based in target_positions:
+        return True
+    if not target_langs:
+        return False
+    lang = stream.get("tags", {}).get("language", "").lower()
+    title = stream.get("tags", {}).get("title", "").lower()
+    for l in target_langs:
+        if l in lang or l in title:
+            return True
+        with suppress(Exception):
+            from langcodes import Language
+            display = Language.get(l).display_name().lower()
+            if display in lang or display in title or lang in display:
+                return True
+    return False
+
+
+def parse_reorder_rules(config_str):
+    aud_swaps = []
+    sub_swaps = []
+    if not config_str:
+        return aud_swaps, sub_swaps
+
+    for item in config_str.split(","):
+        item = item.strip().lower()
+        if not item:
+            continue
+        if "-" in item and item.replace("-", "").isdigit():
+            nums = [int(x) for x in item.split("-") if x.isdigit()]
+            if len(nums) == 2:
+                aud_swaps.append([nums[0], nums[1]])
+        elif item.startswith("aud="):
+            val = item.split("=", 1)[1]
+            if ":" in val:
+                for sub_item in val.split(","):
+                    parts = sub_item.split(":")
+                    if len(parts) == 2:
+                        p1 = int(parts[0]) if parts[0].strip().isdigit() else parts[0].strip()
+                        p2 = int(parts[1]) if parts[1].strip().isdigit() else parts[1].strip()
+                        aud_swaps.append([p1, p2])
+        elif item.startswith("sub="):
+            val = item.split("=", 1)[1]
+            if ":" in val:
+                for sub_item in val.split(","):
+                    parts = sub_item.split(":")
+                    if len(parts) == 2:
+                        p1 = int(parts[0]) if parts[0].strip().isdigit() else parts[0].strip()
+                        p2 = int(parts[1]) if parts[1].strip().isdigit() else parts[1].strip()
+                        sub_swaps.append([p1, p2])
+        elif ":" in item:
+            parts = item.split(":", 1)
+            pos_str = parts[0].strip()
+            val_str = parts[1].strip()
+            if pos_str.isdigit():
+                pos = int(pos_str)
+                aud_swaps.append([pos, val_str])
+
+    return aud_swaps, sub_swaps
+
+
 class TaskConfig:
     def __init__(self):
         self.mid = self.message.id
@@ -1415,9 +1527,18 @@ class TaskConfig:
             task_dict[self.mid] = SevenZStatus(self, sevenz, gid, "Zip")
         return await sevenz.zip(dl_path, up_path, pswd)
 
-    async def proceed_remove_stream(self, dl_path, gid):
+    async def proceed_auto_remove(self, dl_path, gid):
         if not dl_path or not await aiopath.exists(dl_path) or is_archive(dl_path) or is_archive_split(dl_path):
             return dl_path
+
+        auto_rem_enable = self.user_dict.get("AUTO_REMOVE_ENABLE", False)
+        kept_enable = self.user_dict.get("AUTO_REMOVE_KEPT_ENABLE", False)
+        rem_enable = self.user_dict.get("AUTO_REMOVE_REMOVE_ENABLE", False)
+        reord_enable = self.user_dict.get("AUTO_REMOVE_REORDER_ENABLE", False)
+
+        if not auto_rem_enable and not getattr(self, "manual_reorder", False) and not getattr(self, "manual_rm_stream", False):
+            return dl_path
+
         all_files = [dl_path] if self.is_file else []
         if not self.is_file:
             for dirpath, _, files in await sync_to_async(walk, dl_path, topdown=False):
@@ -1431,85 +1552,149 @@ class TaskConfig:
             return dl_path
 
         ffmpeg = FFMpeg(self)
+
+        # 1. Interactive stream removal prompt when manual_rm_stream is True
+        if getattr(self, "manual_rm_stream", False):
+            for f_path in all_files:
+                if self.is_cancelled:
+                    return False
+                streams = await ffmpeg.get_streams(f_path)
+                if not streams or len(streams) <= 1:
+                    continue
+
+                removed_indices = set()
+                event_done = TgClient.bot.loop.create_future()
+
+                async def build_rm_stream_menu():
+                    text_lines = [f"<b>🎬 Detected Tracks for:</b> <code>{ospath.basename(f_path)}</code>\n"]
+                    buttons = ButtonMaker()
+                    for idx, st in enumerate(streams):
+                        st_type = st.get("codec_type", "unknown").upper()
+                        st_lang = st.get("tags", {}).get("language", "und")
+                        st_title = st.get("tags", {}).get("title", "")
+                        title_part = f" ({st_title})" if st_title else ""
+
+                        text_lines.append(f"• Track #{idx}: <b>{st_type}</b> - [{st_lang}]{title_part}")
+                        status = "❌ Remove" if idx in removed_indices else "✅ Keep"
+                        buttons.data_button(f"#{idx} {st_type} [{st_lang}]: {status}", f"rmst toggle {self.mid} {idx}")
+
+                    buttons.data_button("▶️ Start Processing", f"rmst done {self.mid}", position="footer", style=ButtonStyle.SUCCESS)
+                    return "\n".join(text_lines), buttons.build_menu(1)
+
+                menu_text, menu_btns = await build_rm_stream_menu()
+                prompt_msg = await send_message(self.user_id, menu_text, menu_btns)
+
+                cb_handler = None
+
+                async def stream_cb(_, query):
+                    data = query.data.split()
+                    if int(data[2]) != self.mid:
+                        return
+                    if query.from_user.id != self.user_id:
+                        return await query.answer("This menu is not for you!", show_alert=True)
+
+                    if data[1] == "toggle":
+                        s_idx = int(data[3])
+                        if s_idx in removed_indices:
+                            removed_indices.remove(s_idx)
+                        else:
+                            if len(removed_indices) < len(streams) - 1:
+                                removed_indices.add(s_idx)
+                            else:
+                                return await query.answer("You must keep at least one stream!", show_alert=True)
+                        await query.answer()
+                        mt, mb = await build_rm_stream_menu()
+                        await edit_message(prompt_msg, mt, mb)
+                    elif data[1] == "done":
+                        await query.answer("Processing stream removal...")
+                        if not event_done.done():
+                            event_done.set_result(True)
+
+                from pyrogram.handlers import CallbackQueryHandler
+                from pyrogram.filters import regex
+                cb_handler = TgClient.bot.add_handler(
+                    CallbackQueryHandler(stream_cb, filters=regex(rf"^rmst (toggle|done) {self.mid}")), group=-1
+                )
+
+                try:
+                    await event_done
+                except Exception:
+                    pass
+                finally:
+                    if cb_handler:
+                        TgClient.bot.remove_handler(*cb_handler)
+                    await delete_message(prompt_msg)
+
+                if removed_indices:
+                    kept_indices = [i for i in range(len(streams)) if i not in removed_indices]
+                    if kept_indices:
+                        async with task_dict_lock:
+                            task_dict[self.mid] = FFmpegStatus(self, ffmpeg, gid, "Remove Stream")
+                        res = await ffmpeg.remove_streams(f_path, kept_indices)
+                        if res and await aiopath.exists(res):
+                            await remove(f_path)
+                            await move(res, f_path)
+
+        # 2. Auto Remove Kept/Remove settings filtering
+        kept_cfg = self.user_dict.get("AUTO_REMOVE_KEPT_CONFIG", "") if (auto_rem_enable and kept_enable) else ""
+        rem_cfg = self.user_dict.get("AUTO_REMOVE_REMOVE_CONFIG", "") if (auto_rem_enable and rem_enable) else ""
+        reord_cfg = self.user_dict.get("AUTO_REMOVE_REORDER_CONFIG", "") if (auto_rem_enable and reord_enable) else ""
+
         for f_path in all_files:
             if self.is_cancelled:
                 return False
+
             streams = await ffmpeg.get_streams(f_path)
             if not streams or len(streams) <= 1:
                 continue
 
-            removed_indices = set()
-            event_done = TgClient.bot.loop.create_future()
+            video_streams = [s for s in streams if s.get("codec_type") == "video"]
+            audio_streams = [s for s in streams if s.get("codec_type") == "audio"]
+            sub_streams = [s for s in streams if s.get("codec_type") == "subtitle"]
 
-            async def build_rm_stream_menu():
-                text_lines = [f"<b>🎬 Detected Tracks for:</b> <code>{ospath.basename(f_path)}</code>\n"]
-                buttons = ButtonMaker()
-                for idx, st in enumerate(streams):
-                    st_type = st.get("codec_type", "unknown").upper()
-                    st_lang = st.get("tags", {}).get("language", "und")
-                    st_title = st.get("tags", {}).get("title", "")
-                    title_part = f" ({st_title})" if st_title else ""
+            if kept_cfg or rem_cfg:
+                kept_indices = [v.get("index") for v in video_streams]
 
-                    text_lines.append(f"• Track #{idx}: <b>{st_type}</b> - [{st_lang}]{title_part}")
-                    status = "❌ Remove" if idx in removed_indices else "✅ Keep"
-                    buttons.data_button(f"#{idx} {st_type} [{st_lang}]: {status}", f"rmst toggle {self.mid} {idx}")
+                if kept_cfg:
+                    aud_l, aud_p, sub_l, sub_p = parse_track_selectors(kept_cfg)
+                    m_aud = [s.get("index") for i, s in enumerate(audio_streams, 1) if match_stream_track(s, i, aud_l, aud_p)]
+                    m_sub = [s.get("index") for i, s in enumerate(sub_streams, 1) if match_stream_track(s, i, sub_l, sub_p)]
 
-                buttons.data_button("▶️ Start Processing", f"rmst done {self.mid}", position="footer", style=ButtonStyle.SUCCESS)
-                return "\n".join(text_lines), buttons.build_menu(1)
+                    if not m_aud and audio_streams:
+                        m_aud = [audio_streams[0].get("index")]
 
-            menu_text, menu_btns = await build_rm_stream_menu()
-            prompt_msg = await send_message(self.user_id, menu_text, menu_btns)
+                    kept_indices.extend(m_aud)
+                    kept_indices.extend(m_sub)
 
-            cb_handler = None
+                elif rem_cfg:
+                    aud_l, aud_p, sub_l, sub_p = parse_track_selectors(rem_cfg)
+                    r_aud = {s.get("index") for i, s in enumerate(audio_streams, 1) if match_stream_track(s, i, aud_l, aud_p)}
+                    r_sub = {s.get("index") for i, s in enumerate(sub_streams, 1) if match_stream_track(s, i, sub_l, sub_p)}
 
-            async def stream_cb(_, query):
-                data = query.data.split()
-                if int(data[2]) != self.mid:
-                    return
-                if query.from_user.id != self.user_id:
-                    return await query.answer("This menu is not for you!", show_alert=True)
+                    k_aud = [s.get("index") for s in audio_streams if s.get("index") not in r_aud]
+                    k_sub = [s.get("index") for s in sub_streams if s.get("index") not in r_sub]
 
-                if data[1] == "toggle":
-                    s_idx = int(data[3])
-                    if s_idx in removed_indices:
-                        removed_indices.remove(s_idx)
-                    else:
-                        if len(removed_indices) < len(streams) - 1:
-                            removed_indices.add(s_idx)
-                        else:
-                            return await query.answer("You must keep at least one stream!", show_alert=True)
-                    await query.answer()
-                    mt, mb = await build_rm_stream_menu()
-                    await edit_message(prompt_msg, mt, mb)
-                elif data[1] == "done":
-                    await query.answer("Processing stream removal...")
-                    if not event_done.done():
-                        event_done.set_result(True)
+                    if not k_aud and audio_streams:
+                        k_aud = [audio_streams[0].get("index")]
 
-            from pyrogram.handlers import CallbackQueryHandler
-            from pyrogram.filters import regex
-            cb_handler = TgClient.bot.add_handler(
-                CallbackQueryHandler(stream_cb, filters=regex(rf"^rmst (toggle|done) {self.mid}")), group=-1
-            )
+                    kept_indices.extend(k_aud)
+                    kept_indices.extend(k_sub)
 
-            try:
-                await event_done
-            except Exception:
-                pass
-            finally:
-                if cb_handler:
-                    TgClient.bot.remove_handler(*cb_handler)
-                await delete_message(prompt_msg)
-
-            if removed_indices:
-                kept_indices = [i for i in range(len(streams)) if i not in removed_indices]
-                if kept_indices:
+                if kept_indices and len(kept_indices) < len(streams):
                     async with task_dict_lock:
-                        task_dict[self.mid] = FFmpegStatus(self, ffmpeg, gid, "Remove Stream")
+                        task_dict[self.mid] = FFmpegStatus(self, ffmpeg, gid, "Auto Remove Tracks")
                     res = await ffmpeg.remove_streams(f_path, kept_indices)
                     if res and await aiopath.exists(res):
                         await remove(f_path)
                         await move(res, f_path)
+
+            # Reorder rules
+            if reord_cfg:
+                aud_swaps, sub_swaps = parse_reorder_rules(reord_cfg)
+                if aud_swaps or sub_swaps:
+                    async with task_dict_lock:
+                        task_dict[self.mid] = FFmpegStatus(self, ffmpeg, gid, "Reorder Streams")
+                    await ffmpeg.reorder_tracks(f_path, aud_swaps, sub_swaps)
 
         return dl_path
 
@@ -1544,7 +1729,7 @@ class TaskConfig:
             if not aud_streams and not sub_streams:
                 continue
 
-            if not aud_swaps and not sub_swaps:
+            if getattr(self, "manual_reorder", False) and not aud_swaps and not sub_swaps:
                 text_lines = [f"<b>🔀 Track Reorder Configuration:</b>\n<code>{ospath.basename(f_path)}</code>\n"]
                 if aud_streams:
                     text_lines.append("<b>Audio Tracks:</b>")
@@ -1613,18 +1798,9 @@ class TaskConfig:
                             await wait_for(inp_done, timeout=30)
                             if user_input:
                                 inp = user_input[0]
-                                for item in inp.split(","):
-                                    item = item.strip()
-                                    if item.startswith("aud="):
-                                        val = item.split("=", 1)[1]
-                                        nums = [int(x) for x in val.split(":") if x.isdigit()]
-                                        for k in range(0, len(nums) - 1, 2):
-                                            aud_swaps.append([nums[k], nums[k+1]])
-                                    elif item.startswith("sub="):
-                                        val = item.split("=", 1)[1]
-                                        nums = [int(x) for x in val.split(":") if x.isdigit()]
-                                        for k in range(0, len(nums) - 1, 2):
-                                            sub_swaps.append([nums[k], nums[k+1]])
+                                a_s, s_s = parse_reorder_rules(inp)
+                                aud_swaps.extend(a_s)
+                                sub_swaps.extend(s_s)
                         except Exception:
                             pass
                         finally:
@@ -1653,6 +1829,58 @@ class TaskConfig:
                 async with task_dict_lock:
                     task_dict[self.mid] = FFmpegStatus(self, ffmpeg, gid, "Reorder Streams")
                 await ffmpeg.reorder_tracks(f_path, aud_swaps, sub_swaps)
+
+        return dl_path
+
+    async def proceed_audio_split(self, dl_path, gid):
+        if not dl_path or not await aiopath.exists(dl_path) or is_archive(dl_path) or is_archive_split(dl_path):
+            return dl_path
+
+        as_enable = self.user_dict.get("AUDIO_SPLIT_ENABLE", False)
+        as_cfg = self.user_dict.get("AUDIO_SPLIT_CONFIG", "")
+        if not as_enable or not as_cfg:
+            return dl_path
+
+        all_files = [dl_path] if self.is_file else []
+        if not self.is_file:
+            for dirpath, _, files in await sync_to_async(walk, dl_path, topdown=False):
+                for file_ in files:
+                    fp = ospath.join(dirpath, file_)
+                    is_vid, is_aud, _ = await get_document_type(fp)
+                    if is_vid or is_aud:
+                        all_files.append(fp)
+
+        if not all_files:
+            return dl_path
+
+        ffmpeg = FFMpeg(self)
+        aud_l, aud_p, _, _ = parse_track_selectors(f"aud={as_cfg}")
+
+        for f_path in all_files:
+            if self.is_cancelled:
+                return False
+
+            streams = await ffmpeg.get_streams(f_path)
+            if not streams:
+                continue
+
+            audio_streams = [s for s in streams if s.get("codec_type") == "audio"]
+            if not audio_streams:
+                continue
+
+            matched = [(i, s) for i, s in enumerate(audio_streams, 1) if match_stream_track(s, i, aud_l, aud_p)]
+            if matched:
+                async with task_dict_lock:
+                    task_dict[self.mid] = FFmpegStatus(self, ffmpeg, gid, "Splitting Audio")
+                for i, s in matched:
+                    st_idx = s.get("index")
+                    lang = s.get("tags", {}).get("language", "und")
+                    codec = s.get("codec_name", "m4a")
+                    dir_name = ospath.dirname(f_path)
+                    base_name = ospath.splitext(ospath.basename(f_path))[0]
+                    out_file = ospath.join(dir_name, f"{base_name}_audio_{i}_{lang}.{codec}")
+                    cmd = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", f_path, "-map", f"0:{st_idx}", "-c", "copy", out_file]
+                    await cmd_exec(cmd)
 
         return dl_path
 

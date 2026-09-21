@@ -250,11 +250,21 @@ async def get_streams(file):
         return None
 
     try:
-        return json.loads(stdout)["streams"]
-    except KeyError:
-        LOGGER.error(
-            f"No streams found in the ffprobe output: {stdout.decode().strip()}",
-        )
+        raw_streams = json.loads(stdout).get("streams", [])
+        valid_streams = []
+        for st in raw_streams:
+            st_type = st.get("codec_type")
+            codec_name = st.get("codec_name", "").lower()
+            if not codec_name or codec_name in ("none", "unknown", "n/a"):
+                continue
+            if st_type == "audio":
+                channels = int(st.get("channels", 0) or 0)
+                if channels <= 0 and codec_name not in ("aac", "ac3", "mp3", "eac3", "flac", "dts", "opus", "vorbis", "pcm_s16le", "truehd", "m4a", "mka", "wav"):
+                    continue
+            valid_streams.append(st)
+        return valid_streams
+    except Exception as e:
+        LOGGER.error(f"Error parsing ffprobe output: {e}")
         return None
 
 
@@ -1236,15 +1246,45 @@ class FFMpeg:
 
         for swap in aud_swaps:
             if len(swap) == 2:
-                i1, i2 = swap[0] - 1, swap[1] - 1
-                if 0 <= i1 < len(audio_streams) and 0 <= i2 < len(audio_streams):
-                    audio_streams[i1], audio_streams[i2] = audio_streams[i2], audio_streams[i1]
+                p1, p2 = swap[0], swap[1]
+                if isinstance(p1, int) and isinstance(p2, int):
+                    i1, i2 = p1 - 1, p2 - 1
+                    if 0 <= i1 < len(audio_streams) and 0 <= i2 < len(audio_streams):
+                        audio_streams[i1], audio_streams[i2] = audio_streams[i2], audio_streams[i1]
+                elif isinstance(p1, int) and isinstance(p2, str):
+                    target_pos = p1 - 1
+                    lang_query = p2.lower()
+                    found_idx = -1
+                    for idx, st in enumerate(audio_streams):
+                        st_lang = st.get("tags", {}).get("language", "").lower()
+                        st_title = st.get("tags", {}).get("title", "").lower()
+                        if lang_query in st_lang or lang_query in st_title:
+                            found_idx = idx
+                            break
+                    if found_idx != -1 and 0 <= target_pos < len(audio_streams):
+                        matched_st = audio_streams.pop(found_idx)
+                        audio_streams.insert(target_pos, matched_st)
 
         for swap in sub_swaps:
             if len(swap) == 2:
-                i1, i2 = swap[0] - 1, swap[1] - 1
-                if 0 <= i1 < len(sub_streams) and 0 <= i2 < len(sub_streams):
-                    sub_streams[i1], sub_streams[i2] = sub_streams[i2], sub_streams[i1]
+                p1, p2 = swap[0], swap[1]
+                if isinstance(p1, int) and isinstance(p2, int):
+                    i1, i2 = p1 - 1, p2 - 1
+                    if 0 <= i1 < len(sub_streams) and 0 <= i2 < len(sub_streams):
+                        sub_streams[i1], sub_streams[i2] = sub_streams[i2], sub_streams[i1]
+                elif isinstance(p1, int) and isinstance(p2, str):
+                    target_pos = p1 - 1
+                    lang_query = p2.lower()
+                    found_idx = -1
+                    for idx, st in enumerate(sub_streams):
+                        st_lang = st.get("tags", {}).get("language", "").lower()
+                        st_title = st.get("tags", {}).get("title", "").lower()
+                        if lang_query in st_lang or lang_query in st_title:
+                            found_idx = idx
+                            break
+                    if found_idx != -1 and 0 <= target_pos < len(sub_streams):
+                        matched_st = sub_streams.pop(found_idx)
+                        sub_streams.insert(target_pos, matched_st)
 
         cmd = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", f_path]
         for v in video_streams:
