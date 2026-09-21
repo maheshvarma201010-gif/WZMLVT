@@ -461,14 +461,22 @@ class TaskConfig:
             gc_used = False
 
         if self.ffmpeg_cmds is not None:
-            raw_keys = self.ffmpeg_cmds if isinstance(self.ffmpeg_cmds, (list, set, tuple)) else [self.ffmpeg_cmds]
+            raw_input = self.ffmpeg_cmds if isinstance(self.ffmpeg_cmds, (list, set, tuple)) else [self.ffmpeg_cmds]
+            keys = []
+            for item in raw_input:
+                if isinstance(item, str):
+                    for sub_k in item.split(","):
+                        if sub_k.strip():
+                            keys.append(sub_k.strip().lower())
+                else:
+                    keys.append(str(item).strip().lower())
+
             ffmpeg_dict = Config.FFMPEG_CMDS or {}
             valid = {
                 str(key).lower(): (cmds if isinstance(cmds, (list, tuple)) else [cmds])
                 for key, cmds in ffmpeg_dict.items()
             } if isinstance(ffmpeg_dict, dict) else {}
 
-            keys = [str(k).lower().strip() for k in raw_keys]
             if missing := [key for key in keys if key not in valid]:
                 await send_message(
                     self.message,
@@ -485,11 +493,15 @@ class TaskConfig:
                 if k in user_dump:
                     key_dump_dest = user_dump[k]
                     break
-                elif k in global_dump:
-                    key_dump_dest = global_dump[k]
-                    break
+            if not key_dump_dest:
+                for k in keys:
+                    if k in global_dump:
+                        key_dump_dest = global_dump[k]
+                        break
             if key_dump_dest:
                 self.dump_dest = key_dump_dest
+            else:
+                self.dump_dest = self.user_dict.get("LEECH_DUMP_CHAT") or Config.LEECH_LOG_CHAT or ""
 
         self.metadata_title = self.user_dict.get("METADATA")
 
