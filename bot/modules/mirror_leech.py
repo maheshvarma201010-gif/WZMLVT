@@ -240,7 +240,14 @@ class Mirror(TaskListener):
         self.is_alldebrid = args["-ad"]
         self.is_seedr = args["-seedr"] or self.is_seedr
         self.is_yt = args["-yt"]
-        self.ht_flag = args["-ht"] or "-ht" in self.options or "-m" in self.options or getattr(self.message, "_is_bulk_subtask", False)
+
+        user_auto_merge = self.user_dict.get("AUTO_MERGE", False) or (
+            "AUTO_MERGE" not in self.user_dict and getattr(Config, "AUTO_MERGE", False)
+        )
+        if user_auto_merge:
+            self.auto_merge = True
+
+        self.ht_flag = args["-ht"] or "-ht" in self.options
 
         from ..helper.ext_utils.task_manager import get_task_key
         task_source = self.link or (self.message.reply_to_message.text if self.message.reply_to_message and self.message.reply_to_message.text else "") or self.name
@@ -345,7 +352,7 @@ class Mirror(TaskListener):
             user_id = self.user_id
             event_done = bot_loop.create_future()
             ht_tasks[self.mid] = {
-                "merge": False,
+                "merge": self.auto_merge or self.manual_merge,
                 "rm_stream": False,
                 "reorder": False,
                 "reorder_aud": [],
@@ -662,7 +669,7 @@ async def ht_merge_callback(client, query):
             f"• <b>Extract:</b> {'✓ ON' if t_info.get('extract') else 'OFF'} ({', '.join(t_info.get('extract_types', [])) or 'Not Set'})"
         )
 
-    if data[1] in ["merge", "rm_stream"]:
+    if data[1] in ["merge", "rm_stream", "reorder"]:
         key = data[1]
         task_info[key] = not task_info[key]
         await query.answer(f"{key.replace('_', ' ').title()} turned {'ON' if task_info[key] else 'OFF'}")
@@ -701,19 +708,6 @@ async def ht_merge_callback(client, query):
         finally:
             client.remove_handler(*h)
             await edit_message(query.message, render_ht_text(mid), render_ht_menu(mid).build_menu(2))
-    elif data[1] == "reorder":
-        await query.answer()
-        buttons = ButtonMaker()
-        buttons.data_button("Change Order", f"htmerge chorder {mid}")
-        buttons.data_button("◀️ Back", f"htmerge back {mid}", position="footer")
-
-        caption = (
-            "<b>🔀 Track Reorder Configuration:</b>\n\n"
-            "<b>Audio Tracks</b>\n1. Telugu\n2. Tamil\n3. Hindi\n\n"
-            "<b>Subtitle Tracks</b>\n1. English\n2. Telugu\n\n"
-            "Click <b>Change Order</b> below to reorder streams!"
-        )
-        await edit_message(query.message, caption, buttons.build_menu(1))
     elif data[1] == "chorder":
         await query.answer()
         buttons = ButtonMaker()

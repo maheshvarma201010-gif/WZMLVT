@@ -229,6 +229,15 @@ class TaskListener(TaskConfig):
         if self.join and not self.is_file:
             await join_files(up_path)
 
+        if self.extract and not self.is_nzb:
+            up_path = await self.proceed_extract(up_path, gid)
+            if self.is_cancelled:
+                return
+            self.is_file = await aiopath.isfile(up_path)
+            self.name = up_path.replace(f"{up_dir}/", "").split("/", 1)[0]
+            self.size = await get_path_size(up_dir)
+            self.clear()
+
         if getattr(self, "manual_reorder", False):
             up_path = await self.proceed_reorder(up_path, gid)
             if self.is_cancelled or not up_path:
@@ -262,15 +271,6 @@ class TaskListener(TaskConfig):
         if remove_stream or getattr(self, "manual_rm_stream", False):
             up_path = await self.proceed_remove_stream(up_path, gid)
             if self.is_cancelled or not up_path:
-                return
-            self.is_file = await aiopath.isfile(up_path)
-            self.name = up_path.replace(f"{up_dir}/", "").split("/", 1)[0]
-            self.size = await get_path_size(up_dir)
-            self.clear()
-
-        if self.extract and not self.is_nzb:
-            up_path = await self.proceed_extract(up_path, gid)
-            if self.is_cancelled:
                 return
             self.is_file = await aiopath.isfile(up_path)
             self.name = up_path.replace(f"{up_dir}/", "").split("/", 1)[0]
