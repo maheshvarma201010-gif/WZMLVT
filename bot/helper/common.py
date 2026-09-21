@@ -9,7 +9,7 @@ from shlex import split
 
 from aiofiles.os import listdir, makedirs, remove, path as aiopath
 from aioshutil import move, rmtree
-from pyrogram.enums import ChatAction, ChatType
+from pyrogram.enums import ButtonStyle, ChatAction, ChatType
 
 from .. import (
     DOWNLOAD_DIR,
@@ -642,9 +642,11 @@ class TaskConfig:
                 dump_chats = Config.LEECH_DUMP_CHATS or {}
                 self.up_dest = dump_chats.get(self.dump_dest)
                 if self.up_dest is None:
-                    raw_id = str(self.dump_dest).lstrip("-").isdigit()
-                    if raw_id or self.dump_dest.startswith("@"):
-                        self.up_dest = self.dump_dest
+                    chat, thread = parse_dest(self.dump_dest)
+                    if isinstance(chat, int) or (isinstance(chat, str) and chat.startswith("@")):
+                        self.up_dest = chat
+                        if thread is not None:
+                            self.chat_thread_id = thread
                     elif dump_chats:
                         up_dest, is_cancelled = await open_dump_chat_btns(
                             self.message, dump_chats, self.dump_dest

@@ -782,14 +782,22 @@ Configure custom video encoding, compression, and watermark overlays for uploads
         )
         buttons.data_button(
             f"Auto Merge: {'✓ ON' if auto_merge else 'OFF'}",
-            f"userset {user_id} tog AUTO_MERGE {'f' if auto_merge else 't'}",
+            f"userset {user_id} tog AUTO_MERGE {'f' if auto_merge else 't'} vtools",
         )
 
         auto_remove_enable = user_dict.get("AUTO_REMOVE_ENABLE", False)
-        buttons.data_button("Auto Remove Tools", f"userset {user_id} auto_remove_menu")
+        buttons.data_button(
+            f"Auto Remove: {'✓ ON' if auto_remove_enable else 'OFF'}",
+            f"userset {user_id} tog AUTO_REMOVE_ENABLE {'f' if auto_remove_enable else 't'} vtools",
+        )
+        buttons.data_button("Auto Remove Config", f"userset {user_id} auto_remove_menu")
 
         audio_split_enable = user_dict.get("AUDIO_SPLIT_ENABLE", False)
-        buttons.data_button("Audio Split Tools", f"userset {user_id} audio_split_menu")
+        buttons.data_button(
+            f"Audio Split: {'✓ ON' if audio_split_enable else 'OFF'}",
+            f"userset {user_id} tog AUDIO_SPLIT_ENABLE {'f' if audio_split_enable else 't'} vtools",
+        )
+        buttons.data_button("Audio Split Config", f"userset {user_id} audio_split_menu")
 
         buttons.data_button("◀️ Back", f"userset {user_id} back", "footer")
         buttons.data_button(
@@ -808,36 +816,30 @@ Configure custom video encoding, compression, and watermark overlays for uploads
         ar_enable = user_dict.get("AUTO_REMOVE_ENABLE", False)
         buttons.data_button(
             f"Auto Remove Master: {'✓ ON' if ar_enable else 'OFF'}",
-            f"userset {user_id} tog AUTO_REMOVE_ENABLE {'f' if ar_enable else 't'}",
+            f"userset {user_id} tog AUTO_REMOVE_ENABLE {'f' if ar_enable else 't'} auto_remove_menu",
             position="header",
         )
-        buttons.data_button("Kept", f"userset {user_id} kept_menu")
-        buttons.data_button("Remove", f"userset {user_id} remove_menu")
-        buttons.data_button("Reorder", f"userset {user_id} reorder_menu")
+        buttons.data_button("Kept Settings", f"userset {user_id} kept_menu")
 
         buttons.data_button("◀️ Back", f"userset {user_id} vtools", "footer")
         buttons.data_button(
             "❌ Close", f"userset {user_id} close", "footer", style=ButtonStyle.DANGER
         )
-        btns = buttons.build_menu(3)
+        btns = buttons.build_menu(1)
 
         kept_en = user_dict.get("AUTO_REMOVE_KEPT_ENABLE", False)
-        rem_en = user_dict.get("AUTO_REMOVE_REMOVE_ENABLE", False)
-        reord_en = user_dict.get("AUTO_REMOVE_REORDER_ENABLE", False)
 
         text = f"""<b>✂️ Auto Remove Settings</b>
 
 <blockquote>• <b>User:</b> {user_name}
 • <b>Master Status:</b> <b>{'Enabled' if ar_enable else 'Disabled'}</b>
-• <b>Kept Status:</b> <b>{'Enabled' if kept_en else 'Disabled'}</b>
-• <b>Remove Status:</b> <b>{'Enabled' if rem_en else 'Disabled'}</b>
-• <b>Reorder Status:</b> <b>{'Enabled' if reord_en else 'Disabled'}</b></blockquote>"""
+• <b>Kept Status:</b> <b>{'Enabled' if kept_en else 'Disabled'}</b></blockquote>"""
 
     elif stype == "kept_menu":
         kept_en = user_dict.get("AUTO_REMOVE_KEPT_ENABLE", False)
         buttons.data_button(
             f"Kept Feature: {'✓ ON' if kept_en else 'OFF'}",
-            f"userset {user_id} tog AUTO_REMOVE_KEPT_ENABLE {'f' if kept_en else 't'}",
+            f"userset {user_id} tog AUTO_REMOVE_KEPT_ENABLE {'f' if kept_en else 't'} kept_menu",
             position="header",
         )
         buttons.data_button("Configure Tracks to Keep", f"userset {user_id} menu AUTO_REMOVE_KEPT_CONFIG")
@@ -903,7 +905,7 @@ Configure custom video encoding, compression, and watermark overlays for uploads
         as_en = user_dict.get("AUDIO_SPLIT_ENABLE", False)
         buttons.data_button(
             f"Audio Split Feature: {'✓ ON' if as_en else 'OFF'}",
-            f"userset {user_id} tog AUDIO_SPLIT_ENABLE {'f' if as_en else 't'}",
+            f"userset {user_id} tog AUDIO_SPLIT_ENABLE {'f' if as_en else 't'} audio_split_menu",
             position="header",
         )
         buttons.data_button("Configure Audio Split Tracks", f"userset {user_id} menu AUDIO_SPLIT_CONFIG")
@@ -2191,40 +2193,35 @@ async def edit_user_settings(client, query):
     elif data[2] == "tog":
         await query.answer()
         update_user_ldata(user_id, data[3], data[4] == "t")
-        if data[3] == "STOP_DUPLICATE":
-            back_to = "gdrive"
-        elif data[3] == "drive_cat_mode":
-            back_to = "mirror"
-        elif data[3] in ["USER_TOKENS", "USE_DEFAULT_COOKIE"]:
-            back_to = "general"
-        elif data[3] == "GOFILE_AUTO_CREATE_FOLDER":
-            back_to = "gofile"
-        elif data[3] == "SEEDR_DELETE_FOLDER":
-            back_to = "seedr"
-        elif data[3] == "AUTO_MERGE":
-            back_to = "vtools"
-        elif data[3] == "AUTO_REMOVE_ENABLE":
-            back_to = "auto_remove_menu"
-        elif data[3] == "AUTO_REMOVE_KEPT_ENABLE":
-            back_to = "kept_menu"
-        elif data[3] == "AUTO_REMOVE_REMOVE_ENABLE":
-            back_to = "remove_menu"
-        elif data[3] == "AUTO_REMOVE_REORDER_ENABLE":
-            back_to = "reorder_menu"
-        elif data[3] == "AUDIO_SPLIT_ENABLE":
-            back_to = "audio_split_menu"
-        elif data[3] == "SET_ALL_METADATA_ENABLE":
-            back_to = "ffset"
-        elif data[3] == "ENABLE_ENCODE":
-            back_to = "encode_menu"
-        elif data[3] == "ENABLE_COMPRESS":
-            back_to = "compress_menu"
-        elif data[3] == "ENABLE_WATERMARK":
-            back_to = "watermark_menu"
-        elif data[3] == "ENABLE_FFMPEG_CMDS":
-            back_to = "ffset"
+        if len(data) > 5:
+            back_to = data[5]
         else:
-            back_to = "leech"
+            if data[3] == "STOP_DUPLICATE":
+                back_to = "gdrive"
+            elif data[3] == "drive_cat_mode":
+                back_to = "mirror"
+            elif data[3] in ["USER_TOKENS", "USE_DEFAULT_COOKIE"]:
+                back_to = "general"
+            elif data[3] == "GOFILE_AUTO_CREATE_FOLDER":
+                back_to = "gofile"
+            elif data[3] == "SEEDR_DELETE_FOLDER":
+                back_to = "seedr"
+            elif data[3] in ["AUTO_MERGE", "AUTO_REMOVE_ENABLE", "AUDIO_SPLIT_ENABLE"]:
+                back_to = "vtools"
+            elif data[3] == "AUTO_REMOVE_KEPT_ENABLE":
+                back_to = "kept_menu"
+            elif data[3] == "SET_ALL_METADATA_ENABLE":
+                back_to = "ffset"
+            elif data[3] == "ENABLE_ENCODE":
+                back_to = "encode_menu"
+            elif data[3] == "ENABLE_COMPRESS":
+                back_to = "compress_menu"
+            elif data[3] == "ENABLE_WATERMARK":
+                back_to = "watermark_menu"
+            elif data[3] == "ENABLE_FFMPEG_CMDS":
+                back_to = "ffset"
+            else:
+                back_to = "leech"
         await update_user_settings(query, stype=back_to)
         await database.update_user_data(user_id)
     elif data[2] == "file":

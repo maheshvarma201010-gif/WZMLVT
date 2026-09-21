@@ -369,15 +369,11 @@ class Mirror(TaskListener):
             def build_ht_menu(mid):
                 t_info = ht_tasks.get(mid, {})
                 m_on = "✓ ON" if t_info.get("merge") else "OFF"
-                rm_on = "✓ ON" if t_info.get("rm_stream") else "OFF"
-                ro_on = "✓ ON" if t_info.get("reorder") else "OFF"
                 tr_on = "✓ ON" if t_info.get("trim") else "OFF"
                 ex_on = "✓ ON" if t_info.get("extract") else "OFF"
 
                 buttons = ButtonMaker()
                 buttons.data_button(f"Merge: {m_on}", f"htmerge merge {mid}")
-                buttons.data_button(f"Remove Stream: {rm_on}", f"htmerge rm_stream {mid}")
-                buttons.data_button(f"Reorder: {ro_on}", f"htmerge reorder {mid}")
                 buttons.data_button(f"Trim: {tr_on}", f"htmerge trim {mid}")
                 buttons.data_button(f"Extract: {ex_on}", f"htmerge extract {mid}")
                 buttons.data_button("Done", f"htmerge done {mid}", position="footer")
@@ -385,7 +381,7 @@ class Mirror(TaskListener):
 
             prompt_msg = await send_message(
                 self.message,
-                f"<b>Task Received with -ht flag.</b>\nChoose pre-upload options:\n\n• <b>Merge:</b> OFF\n• <b>Remove Stream:</b> OFF\n• <b>Reorder:</b> OFF\n• <b>Trim:</b> OFF\n• <b>Extract:</b> OFF",
+                f"<b>Task Received with -ht flag.</b>\nChoose pre-upload options:\n\n• <b>Merge:</b> OFF\n• <b>Trim:</b> OFF\n• <b>Extract:</b> OFF",
                 build_ht_menu(self.mid).build_menu(2),
             )
             try:
@@ -652,8 +648,6 @@ async def ht_merge_callback(client, query):
         t_info = ht_tasks.get(mid, {})
         buttons = ButtonMaker()
         buttons.data_button(f"Merge: {'✓ ON' if t_info.get('merge') else 'OFF'}", f"htmerge merge {mid}")
-        buttons.data_button(f"Remove Stream: {'✓ ON' if t_info.get('rm_stream') else 'OFF'}", f"htmerge rm_stream {mid}")
-        buttons.data_button(f"Reorder: {'✓ ON' if t_info.get('reorder') else 'OFF'}", f"htmerge reorder {mid}")
         buttons.data_button(f"Trim: {'✓ ON' if t_info.get('trim') else 'OFF'}", f"htmerge trim {mid}")
         buttons.data_button(f"Extract: {'✓ ON' if t_info.get('extract') else 'OFF'}", f"htmerge extract {mid}")
         buttons.data_button("Done", f"htmerge done {mid}", position="footer")
@@ -664,13 +658,11 @@ async def ht_merge_callback(client, query):
         return (
             f"<b>Task Received with -ht flag.</b>\nChoose pre-upload options:\n\n"
             f"• <b>Merge:</b> {'✓ ON' if t_info.get('merge') else 'OFF'}\n"
-            f"• <b>Remove Stream:</b> {'✓ ON' if t_info.get('rm_stream') else 'OFF'}\n"
-            f"• <b>Reorder:</b> {'✓ ON' if t_info.get('reorder') else 'OFF'}\n"
             f"• <b>Trim:</b> {'✓ ON' if t_info.get('trim') else 'OFF'} ({t_info.get('trim_range') or 'Not Set'})\n"
             f"• <b>Extract:</b> {'✓ ON' if t_info.get('extract') else 'OFF'} ({', '.join(t_info.get('extract_types', [])) or 'Not Set'})"
         )
 
-    if data[1] in ["merge", "rm_stream", "reorder"]:
+    if data[1] in ["merge"]:
         key = data[1]
         task_info[key] = not task_info[key]
         await query.answer(f"{key.replace('_', ' ').title()} turned {'ON' if task_info[key] else 'OFF'}")

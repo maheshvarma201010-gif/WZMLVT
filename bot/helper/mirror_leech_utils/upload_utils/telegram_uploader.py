@@ -339,18 +339,23 @@ class TelegramUploader:
                     LOGGER.error(f"Failed To Send in BotPM:\n{err_msg}")
 
     async def _sequence_copies(self, src_chat):
+        from ...ext_utils.bot_utils import parse_dest
         destinations = []
         # Always send to user DM
         destinations.append((self._listener.user_id, None))
 
         # Configured user dump for this specific user
         if self._listener.leech_dest and self._listener.leech_dest != self._listener.user_id:
-            destinations.append((self._listener.leech_dest, self._listener.leech_thread_id))
+            d_chat, d_thread = parse_dest(self._listener.leech_dest) if not isinstance(self._listener.leech_dest, int) else (self._listener.leech_dest, self._listener.leech_thread_id)
+            if d_chat and (d_chat, d_thread) not in destinations:
+                destinations.append((d_chat, d_thread))
 
         # Global dump / leech log chat
         global_dump = self._listener.up_dest or getattr(Config, "LEECH_LOG_CHAT", None)
         if global_dump and global_dump not in (self._listener.user_id, self._listener.leech_dest):
-            destinations.append((global_dump, self._listener.chat_thread_id))
+            g_chat, g_thread = parse_dest(global_dump) if not isinstance(global_dump, int) else (global_dump, self._listener.chat_thread_id)
+            if g_chat and (g_chat, g_thread) not in destinations:
+                destinations.append((g_chat, g_thread))
 
         for entry in self._upload_seq:
             if entry is None:
