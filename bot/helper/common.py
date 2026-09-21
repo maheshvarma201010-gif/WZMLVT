@@ -65,6 +65,8 @@ from .mirror_leech_utils.status_utils.ffmpeg_status import FFmpegStatus
 from .mirror_leech_utils.status_utils.sevenz_status import SevenZStatus
 from .telegram_helper.bot_commands import BotCommands
 from .telegram_helper.message_utils import (
+    delete_message,
+    edit_message,
     get_tg_link_message,
     open_category_btns,
     open_dump_chat_btns,
@@ -542,6 +544,12 @@ class TaskConfig:
                             f"Unknown dump chat '{self.dump_dest}'! "
                             f"Configured dumps: none"
                         )
+            if not self.up_dest and self.leech_dest:
+                self.up_dest = self.leech_dest
+                self.chat_thread_id = self.leech_thread_id
+            elif not self.up_dest:
+                self.up_dest = self.user_id
+
             if self.up_dest:
                 if not isinstance(self.up_dest, int):
                     self.up_dest, self.chat_thread_id = parse_dest(self.up_dest)
@@ -579,9 +587,7 @@ class TaskConfig:
                     chat = None
                 if chat is None:
                     if self.transmission_mode == "bot":
-                        raise ValueError(
-                            "Chat not found! Try adding the bot to the chat and try again!"
-                        )
+                        self.transmission_mode = "user" if TgClient.user else "bot"
                 else:
                     uploader_id = self.client.me.id
                     if chat.type in [
@@ -1435,7 +1441,7 @@ class TaskConfig:
             event_done = TgClient.bot.loop.create_future()
 
             async def build_rm_stream_menu():
-                text_lines = [f"<b>🎬 Remove Streams for:</b> <code>{ospath.basename(f_path)}</code>\n"]
+                text_lines = [f"<b>🎬 Detected Tracks for:</b> <code>{ospath.basename(f_path)}</code>\n"]
                 buttons = ButtonMaker()
                 for idx, st in enumerate(streams):
                     st_type = st.get("codec_type", "unknown").upper()
@@ -1443,11 +1449,11 @@ class TaskConfig:
                     st_title = st.get("tags", {}).get("title", "")
                     title_part = f" ({st_title})" if st_title else ""
 
-                    text_lines.append(f"• Track {idx}: <b>{st_type}</b> - {st_lang}{title_part}")
+                    text_lines.append(f"• Track #{idx}: <b>{st_type}</b> - [{st_lang}]{title_part}")
                     status = "✅ Keep" if idx in selected else "❌ Remove"
                     buttons.data_button(f"#{idx} {st_type} [{st_lang}]: {status}", f"rmst toggle {self.mid} {idx}")
 
-                buttons.data_button("Done / Process", f"rmst done {self.mid}", position="footer")
+                buttons.data_button("▶️ Start Processing", f"rmst done {self.mid}", position="footer", style=ButtonStyle.SUCCESS)
                 return "\n".join(text_lines), buttons.build_menu(1)
 
             menu_text, menu_btns = await build_rm_stream_menu()

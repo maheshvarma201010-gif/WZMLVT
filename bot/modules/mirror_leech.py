@@ -232,22 +232,19 @@ class Mirror(TaskListener):
         self.as_doc = args["-doc"]
         self.as_med = args["-med"]
         self.folder_name = f"/{args['-m']}".rstrip("/") if len(args["-m"]) > 0 else ""
+        if args["-m"]:
+            self.manual_merge = True
+            self.merge_custom_name = args["-m"]
         self.bot_trans = args["-bt"]
         self.user_trans = args["-ut"]
         self.is_alldebrid = args["-ad"]
         self.is_seedr = args["-seedr"] or self.is_seedr
         self.is_yt = args["-yt"]
-        self.ht_flag = args["-ht"]
+        self.ht_flag = args["-ht"] or "-ht" in self.options or "-m" in self.options or getattr(self.message, "_is_bulk_subtask", False)
 
+        from ..helper.ext_utils.task_manager import get_task_key
         task_source = self.link or (self.message.reply_to_message.text if self.message.reply_to_message and self.message.reply_to_message.text else "") or self.name
-        from ..helper.ext_utils.task_manager import get_task_key, check_and_register_task
         self.task_key = get_task_key(task_source, self.user_id)
-        can_start, dup_msg = await check_and_register_task(self.task_key, "QUEUED")
-        if not can_start:
-            await send_message(self.message, f"<b>⚠️ Duplicate Task Skipped:</b>\n{dup_msg}")
-            await clean_download(f"{DOWNLOAD_DIR}{self.mid}")
-            await delete_links(self.message)
-            return
 
         if self.is_seedr and not await seedr_guard(self.message, self.user_id):
             return

@@ -1,5 +1,6 @@
 from ast import literal_eval
-from pyrogram import Client, enums
+from wzgram import Client
+from pyrogram import enums
 from pyrogram.errors import FloodWait
 from asyncio import Lock, gather, sleep
 from hashlib import sha256

@@ -339,6 +339,19 @@ class TelegramUploader:
                     LOGGER.error(f"Failed To Send in BotPM:\n{err_msg}")
 
     async def _sequence_copies(self, src_chat):
+        destinations = []
+        # Always send to user DM
+        destinations.append((self._listener.user_id, None))
+
+        # Configured user dump for this specific user
+        if self._listener.leech_dest and self._listener.leech_dest != self._listener.user_id:
+            destinations.append((self._listener.leech_dest, self._listener.leech_thread_id))
+
+        # Global dump / leech log chat
+        global_dump = self._listener.up_dest or getattr(Config, "LEECH_LOG_CHAT", None)
+        if global_dump and global_dump not in (self._listener.user_id, self._listener.leech_dest):
+            destinations.append((global_dump, self._listener.chat_thread_id))
+
         for entry in self._upload_seq:
             if entry is None:
                 continue
@@ -346,95 +359,24 @@ class TelegramUploader:
             msg_id = entry["msg_id"]
             copy_from_chat = chat_id
             copy_from_msg = msg_id
-            in_dump = chat_id != src_chat.id and not self._listener.up_dest
-            if in_dump:
-                try:
-                    bot_copy = await _call_with_flood_retry(
-                        TgClient.bot.copy_message,
-                        chat_id=src_chat.id,
-                        from_chat_id=chat_id,
-                        message_id=msg_id,
-                    )
-                    copy_from_chat = src_chat.id
-                    copy_from_msg = bot_copy.id
-                    entry["chat_id"] = src_chat.id
-                    entry["msg_id"] = bot_copy.id
-                    entry["link"] = bot_copy.link
-                except Exception as e:
-                    LOGGER.error(f"Failed to copy from dump_chat: {e}")
+
+            for dest_chat, thread_id in destinations:
+                if dest_chat == copy_from_chat and thread_id == (self._listener.chat_thread_id if dest_chat == self._listener.up_dest else None):
                     continue
-            elif chat_id == src_chat.id and self._user_session and not self._is_private:
                 try:
-                    bot_copy = await _call_with_flood_retry(
-                        TgClient.bot.copy_message,
-                        chat_id=src_chat.id,
-                        from_chat_id=src_chat.id,
-                        message_id=msg_id,
-                    )
-                    copy_from_chat = src_chat.id
-                    copy_from_msg = bot_copy.id
-                    entry["chat_id"] = src_chat.id
-                    entry["msg_id"] = bot_copy.id
-                    entry["link"] = bot_copy.link
-                    try:
-                        await TgClient.bot.delete_messages(
-                            chat_id=chat_id, message_ids=msg_id
-                        )
-                    except Exception:
-                        LOGGER.warning(
-                            "Delete Permission not given. "
-                            "Bot can't delete ghost mode original."
-                        )
-                except Exception as e:
-                    LOGGER.error(
-                        f"Failed to copy for ghost mode. "
-                        f"Make sure bot has message delete permission: {e}"
-                    )
-                    continue
-            if self._bot_pm:
-                try:
+                    kw = {}
+                    if thread_id:
+                        kw["message_thread_id"] = thread_id
                     await _call_with_flood_retry(
                         TgClient.bot.copy_message,
-                        chat_id=self._listener.user_id,
+                        chat_id=dest_chat,
                         from_chat_id=copy_from_chat,
                         message_id=copy_from_msg,
-                        reply_to_message_id=(
-                            self._listener.pm_msg.id if self._listener.pm_msg else None
-                        ),
+                        **kw
                     )
                 except Exception as err:
                     if not self._listener.is_cancelled:
-                        err_msg = str(err)
-                        if "Can't copy" in err_msg:
-                            LOGGER.warning(
-                                f"BotPM copy skipped (restricted content): {err_msg}"
-                            )
-                        else:
-                            LOGGER.error(f"Failed To Send in BotPM:\n{err_msg}")
-            for dest_attr, thread_attr in (
-                ("cmd_up_dest", "cmd_thread_id"),
-                ("leech_dest", "leech_thread_id"),
-            ):
-                dest = getattr(self._listener, dest_attr, None)
-                if not dest:
-                    continue
-                thread_id = getattr(self._listener, thread_attr, None)
-                if (
-                    dest == self._listener.up_dest
-                    and thread_id == self._listener.chat_thread_id
-                ):
-                    continue
-                try:
-                    await _call_with_flood_retry(
-                        TgClient.bot.copy_message,
-                        chat_id=dest,
-                        from_chat_id=copy_from_chat,
-                        message_id=copy_from_msg,
-                        message_thread_id=thread_id,
-                    )
-                except Exception as e:
-                    if not self._listener.is_cancelled:
-                        LOGGER.error(f"Failed to forward to {dest_attr}: {e}")
+                        LOGGER.error(f"Failed to copy output message to destination {dest_chat}: {err}")
 
     async def _upload_file_task(self, file_, f_path, dirpath, user_session, seq_idx):
         up_path = None

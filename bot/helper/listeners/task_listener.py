@@ -229,15 +229,6 @@ class TaskListener(TaskConfig):
         if self.join and not self.is_file:
             await join_files(up_path)
 
-        if self.extract and not self.is_nzb:
-            up_path = await self.proceed_extract(up_path, gid)
-            if self.is_cancelled:
-                return
-            self.is_file = await aiopath.isfile(up_path)
-            self.name = up_path.replace(f"{up_dir}/", "").split("/", 1)[0]
-            self.size = await get_path_size(up_dir)
-            self.clear()
-
         if getattr(self, "manual_reorder", False):
             up_path = await self.proceed_reorder(up_path, gid)
             if self.is_cancelled or not up_path:
@@ -271,6 +262,15 @@ class TaskListener(TaskConfig):
         if remove_stream or getattr(self, "manual_rm_stream", False):
             up_path = await self.proceed_remove_stream(up_path, gid)
             if self.is_cancelled or not up_path:
+                return
+            self.is_file = await aiopath.isfile(up_path)
+            self.name = up_path.replace(f"{up_dir}/", "").split("/", 1)[0]
+            self.size = await get_path_size(up_dir)
+            self.clear()
+
+        if self.extract and not self.is_nzb:
+            up_path = await self.proceed_extract(up_path, gid)
+            if self.is_cancelled:
                 return
             self.is_file = await aiopath.isfile(up_path)
             self.name = up_path.replace(f"{up_dir}/", "").split("/", 1)[0]
@@ -555,17 +555,27 @@ class TaskListener(TaskConfig):
                 msg += f"• <b>Corrupted Files:</b> {mime_type}\n"
             msg += f"• <b>User:</b> {self.tag}</blockquote>\n\n"
 
-            log_chats = [self.user_id]
-            if Config.LEECH_LOG_CHAT and Config.LEECH_LOG_CHAT != self.user_id:
-                log_chats.append(Config.LEECH_LOG_CHAT)
+            dest_chats = []
 
-            if self.is_super_chat and self.message.chat.id not in log_chats:
+            # 1. User DM (always included)
+            dest_chats.append((self.user_id, None))
+
+            # 2. Configured user dump (if configured for this user)
+            if self.leech_dest and self.leech_dest != self.user_id:
+                dest_chats.append((self.leech_dest, self.leech_thread_id))
+
+            # 3. Configured leech/mirror/link dump (if configured)
+            global_dump = self.up_dest or Config.LEECH_LOG_CHAT
+            if global_dump and global_dump not in (self.user_id, self.leech_dest):
+                dest_chats.append((global_dump, self.chat_thread_id))
+
+            if self.is_super_chat:
                 pmsg = msg + "<b>✅ Action Performed:</b>\n<blockquote>File(s) sent to User PM / Dump Channel.</blockquote>\n\n"
                 await send_message(self.message, pmsg)
 
             if not files:
-                for lchat in log_chats:
-                    await send_message(lchat, msg)
+                for d_chat, thread_id in dest_chats:
+                    await send_message(d_chat, msg, message_thread_id=thread_id)
             else:
                 msg += "<b>📁 Files List:</b>\n"
                 fmsg = ""
@@ -586,13 +596,13 @@ class TaskListener(TaskConfig):
                                 fmsg += f"\n  ↳ <a href='{slinks[0]}'>Stream</a> | <a href='{slinks[1]}'>Download</a>"
                     fmsg += "\n"
                     if len(fmsg.encode() + msg.encode()) > 4000:
-                        for lchat in log_chats:
-                            await send_message(lchat, msg + fmsg)
+                        for d_chat, thread_id in dest_chats:
+                            await send_message(d_chat, msg + fmsg, message_thread_id=thread_id)
                         await sleep(1)
                         fmsg = ""
                 if fmsg != "":
-                    for lchat in log_chats:
-                        await send_message(lchat, msg + fmsg)
+                    for d_chat, thread_id in dest_chats:
+                        await send_message(d_chat, msg + fmsg, message_thread_id=thread_id)
         else:
             msg += f"\n<blockquote>• <b>Type:</b> {mime_type}"
             if mime_type == "Folder":

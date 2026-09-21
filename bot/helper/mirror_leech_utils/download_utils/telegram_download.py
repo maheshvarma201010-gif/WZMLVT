@@ -1,3 +1,4 @@
+import re
 from asyncio import Lock, sleep
 from os import path as ospath
 from time import time
@@ -26,6 +27,35 @@ from ...telegram_helper.message_utils import send_status_message
 
 global_lock = Lock()
 GLOBAL_GID = dict()
+
+
+def clean_caption_filename(caption: str, fallback_filename: str) -> str:
+    if not caption or not caption.strip():
+        return fallback_filename
+
+    ext = ospath.splitext(fallback_filename)[1] if fallback_filename and "." in fallback_filename else ""
+    lines = [line.strip() for line in caption.split("\n") if line.strip()]
+    cleaned_title = ""
+
+    for line in lines:
+        line_clean = re.sub(r"[^\w\s\.\-\_\(\)\[\]]", "", line).strip()
+        if not line_clean:
+            continue
+
+        if re.search(r"\b(size|duration|languages|language|audio|subtitles|subtitle|quality|codec|fps)\b\s*:", line_clean, re.IGNORECASE):
+            continue
+
+        cleaned_title = line_clean
+        break
+
+    if not cleaned_title:
+        return fallback_filename
+
+    if ext and not cleaned_title.lower().endswith(ext.lower()):
+        if not re.search(r"\.[a-zA-Z0-9]{2,4}$", cleaned_title):
+            cleaned_title += ext
+
+    return cleaned_title
 
 
 class TelegramDownloadHelper:
@@ -197,20 +227,22 @@ class TelegramDownloadHelper:
                 download = media.file_unique_id not in GLOBAL_GID
 
             if download:
-                if not self._listener.name:
-                    if hasattr(media, "file_name") and media.file_name:
-                        self._listener.name = media.file_name.rsplit("/", 1)[-1]
-                    else:
-                        self._listener.name = f"file_{self._listener.mid}"
+                fallback_name = (
+                    media.file_name.rsplit("/", 1)[-1]
+                    if hasattr(media, "file_name") and media.file_name
+                    else f"file_{self._listener.mid}"
+                )
+                name_source = self._listener.user_dict.get("NAME_SOURCE", "caption")
+                if name_source == "caption" and message.caption:
+                    self._listener.name = clean_caption_filename(message.caption, fallback_name)
+                elif not self._listener.name:
+                    self._listener.name = fallback_name
+
                 if path.endswith("/"):
                     path = path + self._listener.name
                 self._listener.size = media.file_size
                 gid = token_hex(5)
 
-                msg, button = await stop_duplicate_check(self._listener)
-                if msg:
-                    await self._listener.on_download_error(msg, button)
-                    return
 
                 add_to_queue, event = await check_running_tasks(self._listener)
                 if add_to_queue:

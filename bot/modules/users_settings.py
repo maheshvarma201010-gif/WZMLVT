@@ -1344,6 +1344,15 @@ Configure custom video encoding, compression, and watermark overlays for uploads
 • <b>Subtitle Metadata:</b> {display_subtitle_meta if not set_all_enabled else '(Disabled)'}</blockquote>"""
 
     elif stype == "advanced":
+        name_source = user_dict.get("NAME_SOURCE", "caption")
+        ns_label = "File Caption" if name_source == "caption" else "Filename"
+        next_ns = "filename" if name_source == "caption" else "caption"
+        buttons.data_button(
+            f"Name Source: {ns_label}",
+            f"userset {user_id} name_source {next_ns}",
+            position="header",
+        )
+
         buttons.data_button(
             "Excluded Extensions", f"userset {user_id} menu EXCLUDED_EXTENSIONS"
         )
@@ -2305,6 +2314,11 @@ async def edit_user_settings(client, query):
         await query.answer()
         update_user_ldata(user_id, "SPLIT_MODE", data[3])
         await update_user_settings(query, stype="leech")
+        await database.update_user_data(user_id)
+    elif data[2] == "name_source":
+        await query.answer()
+        update_user_ldata(user_id, "NAME_SOURCE", data[3])
+        await update_user_settings(query, stype="advanced")
         await database.update_user_data(user_id)
     elif data[2] in ["gd", "rc"]:
         await query.answer()
