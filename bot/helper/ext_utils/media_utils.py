@@ -259,7 +259,7 @@ async def get_streams(file):
                 continue
             if st_type == "audio":
                 channels = int(st.get("channels", 0) or 0)
-                if channels <= 0 and codec_name not in ("aac", "ac3", "mp3", "eac3", "flac", "dts", "opus", "vorbis", "pcm_s16le", "truehd", "m4a", "mka", "wav"):
+                if channels <= 0:
                     continue
             valid_streams.append(st)
         return valid_streams

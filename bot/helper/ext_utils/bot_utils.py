@@ -419,7 +419,11 @@ def safe_int(value, default=0):
 def parse_dest(value):
     if isinstance(value, int) or not value:
         return value, None
-    chat, _, thread = str(value).partition("|")
+    val_str = str(value).strip()
+    for prefix in ("b:", "u:", "h:", "id/", "id:"):
+        if val_str.lower().startswith(prefix):
+            val_str = val_str[len(prefix):].strip()
+    chat, _, thread = val_str.partition("|")
     chat = chat.strip()
     thread = thread.strip()
     if chat.lstrip("-").isdigit():

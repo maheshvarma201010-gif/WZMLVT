@@ -279,6 +279,10 @@ class TaskConfig:
         self.as_doc = False
         self.is_file = False
         self.hybrid_leech = False
+        self.manual_merge = False
+        self.manual_reorder = False
+        self.manual_trim = False
+        self.manual_extract = False
         self.manual_rm_stream = False
         self.bot_trans = False
         self.user_trans = False
@@ -1527,7 +1531,7 @@ class TaskConfig:
             task_dict[self.mid] = SevenZStatus(self, sevenz, gid, "Zip")
         return await sevenz.zip(dl_path, up_path, pswd)
 
-    async def proceed_auto_remove(self, dl_path, gid):
+    async def proceed_auto_remove(self, dl_path, gid, force_menu=False):
         if not dl_path or not await aiopath.exists(dl_path) or is_archive(dl_path) or is_archive_split(dl_path):
             return dl_path
 
@@ -1536,7 +1540,7 @@ class TaskConfig:
         rem_enable = self.user_dict.get("AUTO_REMOVE_REMOVE_ENABLE", False)
         reord_enable = self.user_dict.get("AUTO_REMOVE_REORDER_ENABLE", False)
 
-        if not auto_rem_enable and not getattr(self, "manual_reorder", False) and not getattr(self, "manual_rm_stream", False):
+        if not auto_rem_enable and not force_menu and not getattr(self, "manual_reorder", False) and not getattr(self, "manual_rm_stream", False):
             return dl_path
 
         all_files = [dl_path] if self.is_file else []
@@ -1553,8 +1557,8 @@ class TaskConfig:
 
         ffmpeg = FFMpeg(self)
 
-        # 1. Interactive stream removal prompt when manual_rm_stream is True
-        if getattr(self, "manual_rm_stream", False):
+        # 1. Interactive stream removal prompt when force_menu or manual_rm_stream is True
+        if force_menu or getattr(self, "manual_rm_stream", False):
             for f_path in all_files:
                 if self.is_cancelled:
                     return False
@@ -1617,7 +1621,8 @@ class TaskConfig:
                 )
 
                 try:
-                    await event_done
+                    await wait_for(event_done, timeout=60)
+                    await wait_for(event_done, timeout=60)
                 except Exception:
                     pass
                 finally:
@@ -1626,7 +1631,7 @@ class TaskConfig:
                     await delete_message(prompt_msg)
 
                 if removed_indices:
-                    kept_indices = [i for i in range(len(streams)) if i not in removed_indices]
+                    kept_indices = [s.get("index") for i, s in enumerate(streams) if i not in removed_indices]
                     if kept_indices:
                         async with task_dict_lock:
                             task_dict[self.mid] = FFmpegStatus(self, ffmpeg, gid, "Remove Stream")
@@ -1698,7 +1703,7 @@ class TaskConfig:
 
         return dl_path
 
-    async def proceed_reorder(self, dl_path, gid):
+    async def proceed_reorder(self, dl_path, gid, force_menu=False):
         if not dl_path or not await aiopath.exists(dl_path):
             return dl_path
         all_files = [dl_path] if self.is_file else []
@@ -1729,7 +1734,7 @@ class TaskConfig:
             if not aud_streams and not sub_streams:
                 continue
 
-            if getattr(self, "manual_reorder", False) and not aud_swaps and not sub_swaps:
+            if (force_menu or getattr(self, "manual_reorder", False)) and not aud_swaps and not sub_swaps:
                 text_lines = [f"<b>🔀 Track Reorder Configuration:</b>\n<code>{ospath.basename(f_path)}</code>\n"]
                 if aud_streams:
                     text_lines.append("<b>Audio Tracks:</b>")

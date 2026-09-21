@@ -232,9 +232,10 @@ class Mirror(TaskListener):
         self.as_doc = args["-doc"]
         self.as_med = args["-med"]
         self.folder_name = f"/{args['-m']}".rstrip("/") if len(args["-m"]) > 0 else ""
-        if args["-m"]:
+        if args["-m"] or "-m" in self.options:
             self.manual_merge = True
-            self.merge_custom_name = args["-m"]
+            m_val = args["-m"]
+            self.merge_custom_name = m_val if isinstance(m_val, str) else ""
         self.bot_trans = args["-bt"]
         self.user_trans = args["-ut"]
         self.is_alldebrid = args["-ad"]

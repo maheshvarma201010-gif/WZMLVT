@@ -2046,6 +2046,11 @@ async def edit_user_settings(client, query):
         "encode_menu",
         "compress_menu",
         "watermark_menu",
+        "auto_remove_menu",
+        "kept_menu",
+        "remove_menu",
+        "reorder_menu",
+        "audio_split_menu",
     ]:
         await query.answer()
         await update_user_settings(query, data[2])
@@ -2198,8 +2203,14 @@ async def edit_user_settings(client, query):
             back_to = "seedr"
         elif data[3] == "AUTO_MERGE":
             back_to = "vtools"
-        elif data[3] in ["AUTO_REMOVE_ENABLE", "AUTO_REMOVE_KEPT_ENABLE", "AUTO_REMOVE_REMOVE_ENABLE", "AUTO_REMOVE_REORDER_ENABLE"]:
+        elif data[3] == "AUTO_REMOVE_ENABLE":
             back_to = "auto_remove_menu"
+        elif data[3] == "AUTO_REMOVE_KEPT_ENABLE":
+            back_to = "kept_menu"
+        elif data[3] == "AUTO_REMOVE_REMOVE_ENABLE":
+            back_to = "remove_menu"
+        elif data[3] == "AUTO_REMOVE_REORDER_ENABLE":
+            back_to = "reorder_menu"
         elif data[3] == "AUDIO_SPLIT_ENABLE":
             back_to = "audio_split_menu"
         elif data[3] == "SET_ALL_METADATA_ENABLE":
