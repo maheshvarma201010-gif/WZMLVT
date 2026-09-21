@@ -48,6 +48,8 @@ class Config:
     ENABLE_ENCODE = False
     ENABLE_COMPRESS = False
     ENABLE_WATERMARK = False
+    ENABLE_FFMPEG_CMDS = False
+    REMOVE_STREAM = False
     THUMBNAIL = ""
     PLUGIN_INDEXES = []
     EQUAL_SPLITS = False
@@ -116,7 +118,7 @@ class Config:
     USE_HYPER = True
     HYPER_THREADS = 0
     HYPER_PIPELINE = 4
-    HYPER_CHUNK = 512 * 1024
+    HYPER_CHUNK = 1024 * 1024
     MEM_BUDGET = 0
     MEM_DEEP_STATS = False
     STREAM_PIPELINE = 8

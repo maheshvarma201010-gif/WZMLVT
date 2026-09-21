@@ -619,9 +619,13 @@ async def get_user_settings(from_user, stype="main"):
 • <b>Auto Thumbnail:</b> <b>{auto_thumb}</b></blockquote>"""
 
     elif stype == "enc_com_wm":
-        buttons.data_button("🎞️ Encode Settings", f"userset {user_id} encode_menu")
-        buttons.data_button("🗜️ Compress Settings", f"userset {user_id} compress_menu")
-        buttons.data_button("🖼️ Watermark Settings", f"userset {user_id} watermark_menu")
+        enc_enabled = user_dict.get("ENABLE_ENCODE") if "ENABLE_ENCODE" in user_dict else Config.ENABLE_ENCODE
+        com_enabled = user_dict.get("ENABLE_COMPRESS") if "ENABLE_COMPRESS" in user_dict else Config.ENABLE_COMPRESS
+        wm_enabled = user_dict.get("ENABLE_WATERMARK") if "ENABLE_WATERMARK" in user_dict else Config.ENABLE_WATERMARK
+
+        buttons.data_button(f"🎞️ Encode: {'ON' if enc_enabled else 'OFF'}", f"userset {user_id} encode_menu")
+        buttons.data_button(f"🗜️ Compress: {'ON' if com_enabled else 'OFF'}", f"userset {user_id} compress_menu")
+        buttons.data_button(f"🖼️ Watermark: {'ON' if wm_enabled else 'OFF'}", f"userset {user_id} watermark_menu")
         buttons.data_button("◀️ Back", f"userset {user_id} back", "footer")
         buttons.data_button(
             "❌ Close", f"userset {user_id} close", "footer", style=ButtonStyle.DANGER
@@ -631,9 +635,19 @@ async def get_user_settings(from_user, stype="main"):
         text = f"""<b>🎬 Encode & Compress & Watermark Settings</b>
 
 <blockquote>• <b>User:</b> {user_name}
-Configure custom video encoding, compression, and watermark overlays for uploads.</blockquote>"""
+• <b>Encode Status:</b> <b>{'Enabled' if enc_enabled else 'Disabled'}</b>
+• <b>Compress Status:</b> <b>{'Enabled' if com_enabled else 'Disabled'}</b>
+• <b>Watermark Status:</b> <b>{'Enabled' if wm_enabled else 'Disabled'}</b>
+
+Configure custom video encoding, compression, and watermark overlays for uploads. Each feature can be independently enabled or disabled.</blockquote>"""
 
     elif stype == "encode_menu":
+        enc_enabled = user_dict.get("ENABLE_ENCODE") if "ENABLE_ENCODE" in user_dict else Config.ENABLE_ENCODE
+        buttons.data_button(
+            f"Encode Feature: {'ON' if enc_enabled else 'OFF'}",
+            f"userset {user_id} tog ENABLE_ENCODE {'f' if enc_enabled else 't'}",
+            position="header",
+        )
         buttons.data_button("Quality", f"userset {user_id} menu ENC_QUALITY")
         buttons.data_button("CRF", f"userset {user_id} menu ENC_CRF")
         buttons.data_button("Preset", f"userset {user_id} menu ENC_PRESET")
@@ -657,6 +671,7 @@ Configure custom video encoding, compression, and watermark overlays for uploads
         text = f"""<b>🎞️ Video Encoding Settings</b>
 
 <blockquote>• <b>User:</b> {user_name}
+• <b>Feature Status:</b> <b>{'Enabled' if enc_enabled else 'Disabled'}</b>
 • <b>Quality:</b> <code>{escape(str(eq))}</code>
 • <b>CRF:</b> <code>{escape(str(ec))}</code>
 • <b>Preset:</b> <code>{escape(str(ep))}</code>
@@ -665,6 +680,12 @@ Configure custom video encoding, compression, and watermark overlays for uploads
 • <b>FPS:</b> <code>{escape(str(ef))}</code></blockquote>"""
 
     elif stype == "compress_menu":
+        com_enabled = user_dict.get("ENABLE_COMPRESS") if "ENABLE_COMPRESS" in user_dict else Config.ENABLE_COMPRESS
+        buttons.data_button(
+            f"Compress Feature: {'ON' if com_enabled else 'OFF'}",
+            f"userset {user_id} tog ENABLE_COMPRESS {'f' if com_enabled else 't'}",
+            position="header",
+        )
         buttons.data_button("Quality", f"userset {user_id} menu COM_QUALITY")
         buttons.data_button("CRF", f"userset {user_id} menu COM_CRF")
         buttons.data_button("Preset", f"userset {user_id} menu COM_PRESET")
@@ -686,6 +707,7 @@ Configure custom video encoding, compression, and watermark overlays for uploads
         text = f"""<b>🗜️ Video Compression Settings</b>
 
 <blockquote>• <b>User:</b> {user_name}
+• <b>Feature Status:</b> <b>{'Enabled' if com_enabled else 'Disabled'}</b>
 • <b>Quality:</b> <code>{escape(str(cq))}</code>
 • <b>CRF:</b> <code>{escape(str(cc))}</code>
 • <b>Preset:</b> <code>{escape(str(cp))}</code>
@@ -693,6 +715,12 @@ Configure custom video encoding, compression, and watermark overlays for uploads
 • <b>Audio Codec:</b> <code>{escape(str(cac))}</code></blockquote>"""
 
     elif stype == "watermark_menu":
+        wm_enabled = user_dict.get("ENABLE_WATERMARK") if "ENABLE_WATERMARK" in user_dict else Config.ENABLE_WATERMARK
+        buttons.data_button(
+            f"Watermark Feature: {'ON' if wm_enabled else 'OFF'}",
+            f"userset {user_id} tog ENABLE_WATERMARK {'f' if wm_enabled else 't'}",
+            position="header",
+        )
         buttons.data_button("Username", f"userset {user_id} menu WM_USERNAME")
         buttons.data_button("Text", f"userset {user_id} menu WM_TEXT")
         buttons.data_button("Photo / Image URL", f"userset {user_id} menu WM_IMAGE")
@@ -720,6 +748,7 @@ Configure custom video encoding, compression, and watermark overlays for uploads
         text = f"""<b>🖼️ Watermark Settings</b>
 
 <blockquote>• <b>User:</b> {user_name}
+• <b>Feature Status:</b> <b>{'Enabled' if wm_enabled else 'Disabled'}</b>
 • <b>Username:</b> <code>{escape(str(wm_user or 'Not Set'))}</code>
 • <b>Text:</b> <code>{escape(str(wm_text or 'Not Set'))}</code>
 • <b>Photo/Image URL:</b> <code>{escape(str(wm_img or 'Not Set'))}</code>
@@ -730,27 +759,30 @@ Configure custom video encoding, compression, and watermark overlays for uploads
         auto_merge = user_dict.get("AUTO_MERGE", False) or (
             "AUTO_MERGE" not in user_dict and getattr(Config, "AUTO_MERGE", False)
         )
-        if auto_merge:
-            buttons.data_button(
-                "Disable Auto Merge", f"userset {user_id} tog AUTO_MERGE f"
-            )
-            auto_merge_status = "Enabled"
-        else:
-            buttons.data_button(
-                "Enable Auto Merge", f"userset {user_id} tog AUTO_MERGE t"
-            )
-            auto_merge_status = "Disabled"
+        buttons.data_button(
+            f"Auto Merge: {'✓ ON' if auto_merge else 'OFF'}",
+            f"userset {user_id} tog AUTO_MERGE {'f' if auto_merge else 't'}",
+        )
+
+        remove_stream = user_dict.get("REMOVE_STREAM", False) or (
+            "REMOVE_STREAM" not in user_dict and getattr(Config, "REMOVE_STREAM", False)
+        )
+        buttons.data_button(
+            f"Remove Stream: {'✓ ON' if remove_stream else 'OFF'}",
+            f"userset {user_id} tog REMOVE_STREAM {'f' if remove_stream else 't'}",
+        )
 
         buttons.data_button("◀️ Back", f"userset {user_id} back", "footer")
         buttons.data_button(
             "❌ Close", f"userset {user_id} close", "footer", style=ButtonStyle.DANGER
         )
-        btns = buttons.build_menu(1)
+        btns = buttons.build_menu(2)
 
         text = f"""<b>🎬 Video Processing Tools</b>
 
 <blockquote>• <b>User:</b> {user_name}
-• <b>Auto Video Merge:</b> <b>{auto_merge_status}</b></blockquote>"""
+• <b>Auto Video Merge:</b> <b>{'Enabled' if auto_merge else 'Disabled'}</b>
+• <b>Remove Stream:</b> <b>{'Enabled' if remove_stream else 'Disabled'}</b></blockquote>"""
 
     elif stype == "uphoster":
         uphoster_service = user_dict.get("UPHOSTER_SERVICE", "gofile")
@@ -1179,9 +1211,16 @@ Configure custom video encoding, compression, and watermark overlays for uploads
 • <b>Status:</b> {account_status}</blockquote>"""
 
     elif stype == "ffset":
+        enable_ffc = user_dict.get("ENABLE_FFMPEG_CMDS") if "ENABLE_FFMPEG_CMDS" in user_dict else Config.ENABLE_FFMPEG_CMDS
         buttons.data_button(
-            "FFmpeg Cmds", f"userset {user_id} menu FFMPEG_CMDS", "header"
+            f"FFmpeg Commands: {'ON' if enable_ffc else 'OFF'}",
+            f"userset {user_id} tog ENABLE_FFMPEG_CMDS {'f' if enable_ffc else 't'}",
+            position="header",
         )
+        if enable_ffc:
+            buttons.data_button(
+                "FFmpeg Cmds", f"userset {user_id} menu FFMPEG_CMDS", "header"
+            )
         if user_dict.get("FFMPEG_CMDS", False):
             ffc = user_dict["FFMPEG_CMDS"]
         elif "FFMPEG_CMDS" not in user_dict and Config.FFMPEG_CMDS:
@@ -1965,9 +2004,17 @@ async def edit_user_settings(client, query):
             back_to = "gofile"
         elif data[3] == "SEEDR_DELETE_FOLDER":
             back_to = "seedr"
-        elif data[3] == "AUTO_MERGE":
+        elif data[3] in ["AUTO_MERGE", "REMOVE_STREAM"]:
             back_to = "vtools"
         elif data[3] == "SET_ALL_METADATA_ENABLE":
+            back_to = "ffset"
+        elif data[3] == "ENABLE_ENCODE":
+            back_to = "encode_menu"
+        elif data[3] == "ENABLE_COMPRESS":
+            back_to = "compress_menu"
+        elif data[3] == "ENABLE_WATERMARK":
+            back_to = "watermark_menu"
+        elif data[3] == "ENABLE_FFMPEG_CMDS":
             back_to = "ffset"
         else:
             back_to = "leech"

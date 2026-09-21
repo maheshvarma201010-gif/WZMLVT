@@ -519,8 +519,7 @@ class TelegramUploader:
                         )
                     )
                     upload_tasks.append(task)
-                    if not Config.USE_HYPER:
-                        await task
+                    await task
                     seq_idx += 1
                     if self._listener.is_cancelled:
                         return

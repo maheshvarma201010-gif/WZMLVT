@@ -1109,22 +1109,17 @@ class FFMpeg:
             await remove(output)
         return False
 
-    async def merge_videos(self, video_files, output_file, gid):
+    async def merge_tracks(self, video_files, audio_files, sub_files, output_file, gid):
         cores, threads = ffmpeg_layout()
         self.clear()
 
         total_dur = 0
-        for vf in video_files:
-            dur = (await get_media_info(vf))[0]
-            total_dur += dur
-        self._total_time = total_dur
-
-        list_file_path = f"{output_file}.txt"
-        async with aiopen(list_file_path, "w") as f:
-            for vf in video_files:
-                escaped_vf = vf.replace("'", r"'\''")
-                line_to_write = f"file '{escaped_vf}'\n"
-                await f.write(line_to_write)
+        all_inputs = video_files + audio_files + sub_files
+        for f in all_inputs:
+            dur = (await get_media_info(f))[0]
+            if dur > total_dur:
+                total_dur = dur
+        self._total_time = total_dur or 1
 
         cmd = [
             "taskset",
@@ -1136,24 +1131,42 @@ class FFMpeg:
             "error",
             "-progress",
             "pipe:1",
-            "-f",
-            "concat",
-            "-safe",
-            "0",
-            "-i",
-            list_file_path,
-            "-map",
-            "0",
-            "-c",
-            "copy",
-            "-threads",
-            f"{threads}",
-            output_file,
         ]
 
+        list_file_path = None
+
+        if len(video_files) > 1:
+            list_file_path = f"{output_file}.txt"
+            async with aiopen(list_file_path, "w") as f:
+                for vf in video_files:
+                    escaped_vf = vf.replace("'", r"'\''")
+                    await f.write(f"file '{escaped_vf}'\n")
+            cmd.extend(["-f", "concat", "-safe", "0", "-i", list_file_path])
+        elif len(video_files) == 1:
+            cmd.extend(["-i", video_files[0]])
+
+        for af in audio_files:
+            cmd.extend(["-i", af])
+
+        for sf in sub_files:
+            cmd.extend(["-i", sf])
+
+        total_streams_num = (1 if len(video_files) > 1 else len(video_files)) + len(audio_files) + len(sub_files)
+
+        if len(video_files) > 0:
+            cmd.extend(["-map", "0:v?", "-map", "0:a?", "-map", "0:s?"])
+            for idx in range(1, total_streams_num):
+                cmd.extend(["-map", f"{idx}:a?", "-map", f"{idx}:s?"])
+        else:
+            for idx in range(total_streams_num):
+                cmd.extend(["-map", f"{idx}"])
+
+        cmd.extend(["-c", "copy", "-threads", f"{threads}", output_file])
+
         if self._listener.is_cancelled:
-            with suppress(Exception):
-                await remove(list_file_path)
+            if list_file_path:
+                with suppress(Exception):
+                    await remove(list_file_path)
             return False
 
         self._listener.subproc = await create_subprocess_exec(
@@ -1163,8 +1176,9 @@ class FFMpeg:
         _, stderr = await self._listener.subproc.communicate()
         code = self._listener.subproc.returncode
 
-        with suppress(Exception):
-            await remove(list_file_path)
+        if list_file_path:
+            with suppress(Exception):
+                await remove(list_file_path)
 
         if self._listener.is_cancelled:
             return False
@@ -1181,6 +1195,9 @@ class FFMpeg:
             except Exception:
                 stderr = "Unable to decode the error!"
             LOGGER.error(
-                f"{stderr}. Something went wrong while merging videos. Output: {output_file}"
+                f"{stderr}. Something went wrong while merging tracks. Output: {output_file}"
             )
             return False
+
+    async def merge_videos(self, video_files, output_file, gid):
+        return await self.merge_tracks(video_files, [], [], output_file, gid)

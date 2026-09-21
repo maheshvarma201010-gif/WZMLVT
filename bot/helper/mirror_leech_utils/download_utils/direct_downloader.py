@@ -49,7 +49,13 @@ async def add_direct_download(listener, path):
         if listener.is_cancelled:
             return
 
-    a2c_opt = {"follow-torrent": "false", "follow-metalink": "false"}
+    a2c_opt = {
+        "follow-torrent": "false",
+        "follow-metalink": "false",
+        "max-connection-per-server": "16",
+        "split": "16",
+        "min-split-size": "1M",
+    }
     if header := details.get("header"):
         a2c_opt["header"] = header
     directListener = DirectListener(path, listener, a2c_opt)

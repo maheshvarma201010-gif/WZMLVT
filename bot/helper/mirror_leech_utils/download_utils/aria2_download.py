@@ -19,7 +19,12 @@ async def add_aria2_download(listener, dpath, header, ratio, seed_time):
     ):
         await listener.on_download_error("Torrent and magnet downloads are disabled.")
         return
-    a2c_opt = {"dir": dpath}
+    a2c_opt = {
+        "dir": dpath,
+        "max-connection-per-server": "16",
+        "split": "16",
+        "min-split-size": "1M",
+    }
     if listener.name:
         a2c_opt["out"] = listener.name
     if header:

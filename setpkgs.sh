@@ -27,7 +27,7 @@ $ARIA2_CMD \
     --max-concurrent-downloads=1000 \
     --max-connection-per-server=16 \
     --split=16 \
-    --min-split-size=32M \
+    --min-split-size=1M \
     --optimize-concurrent-downloads=true \
     --continue=true \
     --auto-file-renaming=true \
@@ -56,7 +56,7 @@ $ARIA2_CMD \
     --timeout=30 \
     --retry-wait=5 \
     --file-allocation=falloc \
-    --disk-cache=64M \
+    --disk-cache=128M \
     --check-integrity=true \
     --max-upload-limit=1K \
     --quiet=true \

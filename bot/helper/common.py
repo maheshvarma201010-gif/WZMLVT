@@ -163,6 +163,8 @@ class TaskConfig:
         self.as_med = False
         self.as_doc = False
         self.is_file = False
+        self.hybrid_leech = False
+        self.manual_rm_stream = False
         self.bot_trans = False
         self.user_trans = False
         self.is_rss = getattr(self.message, "_rss_trigger", False)
@@ -726,10 +728,24 @@ class TaskConfig:
             msg[index + 1] = f"{self.multi - 1}"
             reply_id = self.message.reply_to_message_id
             if reply_id is not None:
-                nextmsg = await self.client.get_messages(
-                    chat_id=self.message.chat.id,
-                    message_ids=reply_id + 1,
-                )
+                nextmsg = None
+                target_user_id = self.user_id
+                start_id = reply_id + 1
+                for offset in range(100):
+                    try:
+                        candidate = await self.client.get_messages(
+                            chat_id=self.message.chat.id,
+                            message_ids=start_id + offset,
+                        )
+                    except Exception:
+                        candidate = None
+                    if candidate and not candidate.empty:
+                        c_user = candidate.from_user or candidate.sender_chat
+                        if c_user and c_user.id == target_user_id:
+                            nextmsg = candidate
+                            break
+                if nextmsg is None:
+                    nextmsg = self.message
             else:
                 nextmsg = self.message
             if not isinstance(nextmsg, Message):
@@ -747,6 +763,7 @@ class TaskConfig:
             nextmsg.from_user = self.user
         else:
             nextmsg.sender_chat = self.user
+        setattr(nextmsg, "_is_bulk_subtask", True)
         if intervals["stopAll"]:
             return
 
@@ -796,6 +813,7 @@ class TaskConfig:
                 nextmsg.from_user = self.user
             else:
                 nextmsg.sender_chat = self.user
+            setattr(nextmsg, "_is_bulk_subtask", True)
 
             await obj(
                 client=self.client,
@@ -1260,12 +1278,12 @@ class TaskConfig:
             task_dict[self.mid] = FFmpegStatus(self, ffmpeg, gid, "Encode")
 
         self.progress = True
-        eq = self.user_dict.get("ENC_QUALITY", "")
-        ec = self.user_dict.get("ENC_CRF", "")
-        ep = self.user_dict.get("ENC_PRESET", "")
-        eco = self.user_dict.get("ENC_CODEC", "")
-        er = self.user_dict.get("ENC_RESOLUTION", "")
-        ef = self.user_dict.get("ENC_FPS", "")
+        eq = self.user_dict.get("ENC_QUALITY") or getattr(Config, "ENC_QUALITY", "")
+        ec = self.user_dict.get("ENC_CRF") or getattr(Config, "ENC_CRF", "")
+        ep = self.user_dict.get("ENC_PRESET") or getattr(Config, "ENC_PRESET", "")
+        eco = self.user_dict.get("ENC_CODEC") or getattr(Config, "ENC_CODEC", "")
+        er = self.user_dict.get("ENC_RESOLUTION") or getattr(Config, "ENC_RESOLUTION", "")
+        ef = self.user_dict.get("ENC_FPS") or getattr(Config, "ENC_FPS", "")
 
         for f_path in all_files:
             if self.is_cancelled:
@@ -1295,11 +1313,11 @@ class TaskConfig:
             task_dict[self.mid] = FFmpegStatus(self, ffmpeg, gid, "Compress")
 
         self.progress = True
-        cq = self.user_dict.get("COM_QUALITY", "")
-        cc = self.user_dict.get("COM_CRF", "")
-        cp = self.user_dict.get("COM_PRESET", "")
-        ca = self.user_dict.get("COM_AUDIO_BITRATE", "")
-        cac = self.user_dict.get("COM_AUDIO_CODEC", "")
+        cq = self.user_dict.get("COM_QUALITY") or getattr(Config, "COM_QUALITY", "")
+        cc = self.user_dict.get("COM_CRF") or getattr(Config, "COM_CRF", "")
+        cp = self.user_dict.get("COM_PRESET") or getattr(Config, "COM_PRESET", "")
+        ca = self.user_dict.get("COM_AUDIO_BITRATE") or getattr(Config, "COM_AUDIO_BITRATE", "")
+        cac = self.user_dict.get("COM_AUDIO_CODEC") or getattr(Config, "COM_AUDIO_CODEC", "")
 
         for f_path in all_files:
             if self.is_cancelled:
@@ -1324,11 +1342,11 @@ class TaskConfig:
         if not all_files:
             return dl_path
 
-        wm_user = self.user_dict.get("WM_USERNAME", "")
-        wm_text = self.user_dict.get("WM_TEXT", "")
-        wm_img = self.user_dict.get("WM_IMAGE", "")
-        wm_color = self.user_dict.get("WM_COLOR", "white")
-        wm_pos = self.user_dict.get("WM_POSITION", "Top-Left")
+        wm_user = self.user_dict.get("WM_USERNAME") or getattr(Config, "WM_USERNAME", "")
+        wm_text = self.user_dict.get("WM_TEXT") or getattr(Config, "WM_TEXT", "")
+        wm_img = self.user_dict.get("WM_IMAGE") or getattr(Config, "WM_IMAGE", "")
+        wm_color = self.user_dict.get("WM_COLOR") or getattr(Config, "WM_COLOR", "white")
+        wm_pos = self.user_dict.get("WM_POSITION") or getattr(Config, "WM_POSITION", "Top-Left")
 
         disp_text = wm_text or (f"@{wm_user}" if wm_user else "")
         img_path = ""
@@ -1384,21 +1402,137 @@ class TaskConfig:
             task_dict[self.mid] = SevenZStatus(self, sevenz, gid, "Zip")
         return await sevenz.zip(dl_path, up_path, pswd)
 
-    async def proceed_merge(self, dl_path, gid, custom_name=""):
-        v_files = []
-        if self.is_file:
-            if (await get_document_type(dl_path))[0]:
-                v_files.append(dl_path)
-        else:
+    async def proceed_remove_stream(self, dl_path, gid):
+        all_files = [dl_path] if self.is_file else []
+        if not self.is_file:
             for dirpath, _, files in await sync_to_async(walk, dl_path, topdown=False):
                 for file_ in files:
-                    f_path = ospath.join(dirpath, file_)
-                    if (await get_document_type(f_path))[0]:
-                        v_files.append(f_path)
+                    fp = ospath.join(dirpath, file_)
+                    if (await get_document_type(fp))[0]:
+                        all_files.append(fp)
 
-        if len(v_files) < 2:
-            LOGGER.info("Merge skipped: Less than 2 video files found.")
+        if not all_files:
             return dl_path
+
+        ffmpeg = FFMpeg(self)
+        for f_path in all_files:
+            if self.is_cancelled:
+                return False
+            streams = await ffmpeg.get_streams(f_path)
+            if not streams or len(streams) <= 1:
+                continue
+
+            selected = set(range(len(streams)))
+            event_done = TgClient.bot.loop.create_future()
+
+            async def build_rm_stream_menu():
+                text_lines = [f"<b>🎬 Remove Streams for:</b> <code>{ospath.basename(f_path)}</code>\n"]
+                buttons = ButtonMaker()
+                for idx, st in enumerate(streams):
+                    st_type = st.get("codec_type", "unknown").upper()
+                    st_lang = st.get("tags", {}).get("language", "und")
+                    st_title = st.get("tags", {}).get("title", "")
+                    title_part = f" ({st_title})" if st_title else ""
+
+                    text_lines.append(f"• Track {idx}: <b>{st_type}</b> - {st_lang}{title_part}")
+                    status = "✅ Keep" if idx in selected else "❌ Remove"
+                    buttons.data_button(f"#{idx} {st_type} [{st_lang}]: {status}", f"rmst toggle {self.mid} {idx}")
+
+                buttons.data_button("Done / Process", f"rmst done {self.mid}", position="footer")
+                return "\n".join(text_lines), buttons.build_menu(1)
+
+            menu_text, menu_btns = await build_rm_stream_menu()
+            prompt_msg = await send_message(self.user_id, menu_text, menu_btns)
+
+            from .. import bot_loop
+            cb_handler = None
+
+            async def stream_cb(_, query):
+                data = query.data.split()
+                if int(data[2]) != self.mid:
+                    return
+                if query.from_user.id != self.user_id:
+                    return await query.answer("This menu is not for you!", show_alert=True)
+
+                if data[1] == "toggle":
+                    s_idx = int(data[3])
+                    if s_idx in selected:
+                        if len(selected) > 1:
+                            selected.remove(s_idx)
+                        else:
+                            return await query.answer("You must keep at least one stream!", show_alert=True)
+                    else:
+                        selected.add(s_idx)
+                    await query.answer()
+                    mt, mb = await build_rm_stream_menu()
+                    await edit_message(prompt_msg, mt, mb)
+                elif data[1] == "done":
+                    await query.answer("Processing stream removal...")
+                    if not event_done.done():
+                        event_done.set_result(True)
+
+            from pyrogram.handlers import CallbackQueryHandler
+            from pyrogram.filters import regex
+            cb_handler = TgClient.bot.add_handler(
+                CallbackQueryHandler(stream_cb, filters=regex(rf"^rmst (toggle|done) {self.mid}")), group=-1
+            )
+
+            try:
+                await event_done
+            except Exception:
+                pass
+            finally:
+                if cb_handler:
+                    TgClient.bot.remove_handler(*cb_handler)
+                await delete_message(prompt_msg)
+
+            if len(selected) < len(streams):
+                async with task_dict_lock:
+                    task_dict[self.mid] = FFmpegStatus(self, ffmpeg, gid, "Remove Stream")
+                res = await ffmpeg.remove_streams(f_path, selected)
+                if res and await aiopath.exists(res):
+                    await remove(f_path)
+                    await move(res, f_path)
+
+        return dl_path
+
+    async def proceed_merge(self, dl_path, gid, custom_name=""):
+        all_files = []
+        if self.is_file:
+            all_files.append(dl_path)
+            work_dir = ospath.dirname(dl_path)
+        else:
+            work_dir = dl_path
+            for dirpath, _, files in await sync_to_async(walk, dl_path, topdown=False):
+                for file_ in files:
+                    all_files.append(ospath.join(dirpath, file_))
+
+        if await aiopath.isdir(work_dir):
+            for dirpath, _, files in await sync_to_async(walk, work_dir, topdown=False):
+                for file_ in files:
+                    fp = ospath.join(dirpath, file_)
+                    if fp not in all_files:
+                        all_files.append(fp)
+
+        video_exts = (".mp4", ".mkv", ".webm", ".avi", ".mov", ".flv", ".wmv", ".m4v", ".ts", ".3gp")
+        audio_exts = (".mp3", ".m4a", ".flac", ".aac", ".ac3", ".ogg", ".opus", ".wav", ".wma", ".eac3", ".mka")
+        sub_exts = (".srt", ".ass", ".vtt", ".sub", ".idx")
+
+        v_files = []
+        a_files = []
+        s_files = []
+
+        for fp in all_files:
+            ext = ospath.splitext(fp)[1].lower()
+            if ext in video_exts or (await get_document_type(fp))[0]:
+                if fp not in v_files:
+                    v_files.append(fp)
+            elif ext in audio_exts or (await get_document_type(fp))[1]:
+                if fp not in a_files:
+                    a_files.append(fp)
+            elif ext in sub_exts:
+                if fp not in s_files:
+                    s_files.append(fp)
 
         def natural_key(text):
             return [
@@ -1407,21 +1541,32 @@ class TaskConfig:
             ]
 
         v_files.sort(key=lambda x: natural_key(ospath.basename(x)))
+        a_files.sort(key=lambda x: natural_key(ospath.basename(x)))
+        s_files.sort(key=lambda x: natural_key(ospath.basename(x)))
 
-        ext = ospath.splitext(v_files[0])[1] or ".mkv"
+        total_inputs = len(v_files) + len(a_files) + len(s_files)
+        if total_inputs < 2 and len(v_files) < 2:
+            LOGGER.info("Merge skipped: Less than 2 mergeable files found.")
+            return dl_path
+
         if custom_name:
-            out_filename = custom_name if custom_name.endswith(ext) else f"{custom_name}{ext}"
+            out_base = custom_name
         else:
-            base_filename = self.name or ospath.basename(v_files[0])
-            for arch_ext in [".zip", ".7z", ".rar", ".tar", ".gz", ".xz"]:
-                if base_filename.lower().endswith(arch_ext):
-                    base_filename = base_filename[:-len(arch_ext)]
-            out_filename = base_filename if base_filename.endswith(ext) else f"{base_filename}{ext}"
+            out_base = self.name
+            if not out_base or out_base == "None":
+                main_f = v_files[0] if v_files else (a_files[0] if a_files else all_files[0])
+                out_base = ospath.basename(main_f)
 
-        if self.is_file:
-            work_dir = ospath.dirname(dl_path)
+        for non_vid_ext in [".zip", ".7z", ".rar", ".tar", ".gz", ".xz", ".pdf", ".txt", ".bin", ".tmp", ".001", ".part1"]:
+            if out_base.lower().endswith(non_vid_ext):
+                out_base = out_base[:-len(non_vid_ext)]
+
+        out_ext = ospath.splitext(out_base)[1].lower()
+        if out_ext not in video_exts:
+            out_base = ospath.splitext(out_base)[0] if out_ext else out_base
+            out_filename = f"{out_base}.mkv"
         else:
-            work_dir = dl_path
+            out_filename = out_base
 
         output_file = ospath.join(work_dir, out_filename)
 
@@ -1429,15 +1574,16 @@ class TaskConfig:
         async with task_dict_lock:
             task_dict[self.mid] = FFmpegStatus(self, ffmpeg, gid, "Merge")
 
-        LOGGER.info(f"Merging {len(v_files)} files into {output_file}")
+        LOGGER.info(f"Merging {len(v_files)} videos, {len(a_files)} audio, {len(s_files)} subtitles into {output_file}")
         self.progress = True
-        res = await ffmpeg.merge_videos(v_files, output_file, gid)
+        res = await ffmpeg.merge_tracks(v_files, a_files, s_files, output_file, gid)
 
         if res and await aiopath.exists(output_file):
-            for vf in v_files:
-                if vf != output_file:
+            merged_sources = v_files + a_files + s_files
+            for sf in merged_sources:
+                if sf != output_file:
                     with suppress(Exception):
-                        await remove(vf)
+                        await remove(sf)
 
             if work_dir != dl_path:
                 for root, dirs, files in await sync_to_async(walk, work_dir, topdown=False):

@@ -237,37 +237,53 @@ class TaskListener(TaskConfig):
             self.size = await get_path_size(up_dir)
             self.clear()
 
-        # Automatic Pipeline Order: Encode -> Compress -> Watermark
-        if Config.ENABLE_ENCODE or any(k.startswith("ENC_") for k in self.user_dict):
+        remove_stream = self.user_dict.get("REMOVE_STREAM", False) or (
+            "REMOVE_STREAM" not in self.user_dict and getattr(Config, "REMOVE_STREAM", False)
+        )
+        if remove_stream or getattr(self, "manual_rm_stream", False):
+            up_path = await self.proceed_remove_stream(up_path, gid)
+            if self.is_cancelled or not up_path:
+                return
+            self.is_file = await aiopath.isfile(up_path)
+            self.name = up_path.replace(f"{up_dir}/", "").split("/", 1)[0]
+            self.size = await get_path_size(up_dir)
+            self.clear()
+
+        # Automatic Pipeline Order: Encode -> Compress -> Watermark -> Merge
+        enable_encode = self.user_dict.get("ENABLE_ENCODE") if "ENABLE_ENCODE" in self.user_dict else Config.ENABLE_ENCODE
+        enable_compress = self.user_dict.get("ENABLE_COMPRESS") if "ENABLE_COMPRESS" in self.user_dict else Config.ENABLE_COMPRESS
+        enable_watermark = self.user_dict.get("ENABLE_WATERMARK") if "ENABLE_WATERMARK" in self.user_dict else Config.ENABLE_WATERMARK
+
+        if enable_encode:
             try:
                 up_path = await self.proceed_encode(up_path, gid)
             except Exception as e:
                 LOGGER.error(f"Encode processing error: {e}")
-            if self.is_cancelled:
+            if self.is_cancelled or not up_path:
                 return
             self.is_file = await aiopath.isfile(up_path)
             self.name = up_path.replace(f"{up_dir}/", "").split("/", 1)[0]
             self.size = await get_path_size(up_dir)
             self.clear()
 
-        if Config.ENABLE_COMPRESS or any(k.startswith("COM_") for k in self.user_dict):
+        if enable_compress:
             try:
                 up_path = await self.proceed_compress_video(up_path, gid)
             except Exception as e:
                 LOGGER.error(f"Compress processing error: {e}")
-            if self.is_cancelled:
+            if self.is_cancelled or not up_path:
                 return
             self.is_file = await aiopath.isfile(up_path)
             self.name = up_path.replace(f"{up_dir}/", "").split("/", 1)[0]
             self.size = await get_path_size(up_dir)
             self.clear()
 
-        if Config.ENABLE_WATERMARK or any(k.startswith("WM_") for k in self.user_dict):
+        if enable_watermark:
             try:
                 up_path = await self.proceed_watermark(up_path, gid)
             except Exception as e:
                 LOGGER.error(f"Watermark processing error: {e}")
-            if self.is_cancelled:
+            if self.is_cancelled or not up_path:
                 return
             self.is_file = await aiopath.isfile(up_path)
             self.name = up_path.replace(f"{up_dir}/", "").split("/", 1)[0]
@@ -275,16 +291,16 @@ class TaskListener(TaskConfig):
             self.clear()
             await remove_excluded_files(up_dir, self.excluded_extensions)
 
-            if getattr(self, "auto_merge", False) or getattr(self, "manual_merge", False):
-                up_path = await self.proceed_merge(
-                    up_path, gid, getattr(self, "merge_custom_name", "")
-                )
-                if self.is_cancelled:
-                    return
-                self.is_file = await aiopath.isfile(up_path)
-                self.name = up_path.replace(f"{up_dir}/", "").split("/", 1)[0]
-                self.size = await get_path_size(up_dir)
-                self.clear()
+        if getattr(self, "auto_merge", False) or getattr(self, "manual_merge", False):
+            up_path = await self.proceed_merge(
+                up_path, gid, getattr(self, "merge_custom_name", "")
+            )
+            if self.is_cancelled or not up_path:
+                return
+            self.is_file = await aiopath.isfile(up_path)
+            self.name = up_path.replace(f"{up_dir}/", "").split("/", 1)[0]
+            self.size = await get_path_size(up_dir)
+            self.clear()
 
         if self.ffmpeg_cmds:
             up_path = await self.proceed_ffmpeg(

@@ -302,9 +302,10 @@ async def pre_task_check(message):
             f"┠ Max Concurrent Bot's Tasks Limit exceeded.\n┃ Bot Tasks Limit : {bmax_tasks} task"
         )
     maxtask = safe_int(user_dict.get("maxtask", Config.USER_MAX_TASKS))
-    if maxtask > 0:
+    if maxtask > 0 and not getattr(message, "_is_bulk_subtask", False):
         user_tasks = [tk for tk in all_tasks if tk.listener.user_id == user_id]
-        if len(user_tasks) >= maxtask:
+        running_user_tasks = [tk for tk in user_tasks if tk.listener.mid in non_queued_dl or tk.listener.mid in non_queued_up]
+        if len(running_user_tasks) >= maxtask:
             msg.append(
                 f"┠ Max Concurrent User's Task(s) Limit exceeded! \n┃ User Task Limit : {maxtask} tasks"
             )

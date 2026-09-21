@@ -339,15 +339,17 @@ class Mirror(TaskListener):
             event_done = bot_loop.create_future()
             ht_tasks[self.mid] = {
                 "merge": False,
+                "rm_stream": False,
                 "user_id": user_id,
                 "future": event_done,
             }
             buttons = ButtonMaker()
             buttons.data_button("Merge: OFF", f"htmerge merge {self.mid}")
-            buttons.data_button("Done", f"htmerge done {self.mid}")
+            buttons.data_button("Remove Stream: OFF", f"htmerge rm_stream {self.mid}")
+            buttons.data_button("Done", f"htmerge done {self.mid}", position="footer")
             prompt_msg = await send_message(
                 self.message,
-                f"<b>Task Received with -ht flag.</b>\nChoose whether to merge files before uploading:",
+                f"<b>Task Received with -ht flag.</b>\nChoose options before uploading:\n\n• <b>Merge Status:</b> OFF\n• <b>Remove Stream:</b> OFF",
                 buttons.build_menu(2),
             )
             try:
@@ -355,6 +357,7 @@ class Mirror(TaskListener):
             except Exception:
                 pass
             self.manual_merge = ht_tasks.get(self.mid, {}).get("merge", False)
+            self.manual_rm_stream = ht_tasks.get(self.mid, {}).get("rm_stream", False)
             ht_tasks.pop(self.mid, None)
             await delete_message(prompt_msg)
 
@@ -599,14 +602,21 @@ async def ht_merge_callback(_, query):
     if query.from_user.id != task_info["user_id"]:
         return await query.answer("This menu is not for you!", show_alert=True)
 
-    if data[1] == "merge":
-        task_info["merge"] = not task_info["merge"]
-        state_str = "ON" if task_info["merge"] else "OFF"
-        await query.answer(f"Merge turned {state_str}")
+    if data[1] in ["merge", "rm_stream"]:
+        key = data[1]
+        task_info[key] = not task_info[key]
+        await query.answer(f"{'Merge' if key == 'merge' else 'Remove Stream'} turned {'ON' if task_info[key] else 'OFF'}")
+
+        m_on = task_info["merge"]
+        rm_on = task_info["rm_stream"]
+
         buttons = ButtonMaker()
-        buttons.data_button(f"Merge: {state_str}", f"htmerge merge {mid}")
-        buttons.data_button("Done", f"htmerge done {mid}")
-        await edit_message(query.message, query.message.text.html, buttons.build_menu(2))
+        buttons.data_button(f"Merge: {'✓ ON' if m_on else 'OFF'}", f"htmerge merge {mid}")
+        buttons.data_button(f"Remove Stream: {'✓ ON' if rm_on else 'OFF'}", f"htmerge rm_stream {mid}")
+        buttons.data_button("Done", f"htmerge done {mid}", position="footer")
+
+        msg_text = f"<b>Task Received with -ht flag.</b>\nChoose options before uploading:\n\n• <b>Merge Status:</b> {'✓ ON' if m_on else 'OFF'}\n• <b>Remove Stream:</b> {'✓ ON' if rm_on else 'OFF'}"
+        await edit_message(query.message, msg_text, buttons.build_menu(2))
     elif data[1] == "done":
         await query.answer("Starting task...")
         fut = task_info.get("future")
@@ -772,31 +782,33 @@ async def merge_command(client, message):
 
     start_id = reply_to.id
     chat_id = message.chat.id
+    target_user_id = reply_to.from_user.id if reply_to.from_user else (reply_to.sender_chat.id if reply_to.sender_chat else 0)
 
     msg = await send_message(message, f"<b>Fetching {count} files for merge task...</b>")
 
-    for i in range(count):
-        curr_id = start_id + i
+    curr_id = start_id
+    found_count = 0
+
+    while found_count < count and curr_id < start_id + 500:
         try:
             curr_msg = await client.get_messages(chat_id, curr_id)
-        except Exception as e:
-            await edit_message(msg, f"Error fetching message #{curr_id}: {e}")
-            await clean_download(path)
-            return
-
-        curr_file = curr_msg.video or curr_msg.document if curr_msg else None
+        except Exception:
+            curr_msg = None
+        curr_id += 1
+        if not curr_msg or curr_msg.empty:
+            continue
+        c_user = curr_msg.from_user or curr_msg.sender_chat
+        if target_user_id and c_user and c_user.id != target_user_id:
+            continue
+        curr_file = curr_msg.video or curr_msg.document or curr_msg.audio if curr_msg else None
         if not curr_file:
-            await edit_message(
-                msg,
-                f"Message #{curr_id} is not a valid video or document! Sequence aborted.",
-            )
-            await clean_download(path)
-            return
+            continue
 
-        idx_prefix = f"{i+1:04d}_"
+        idx_prefix = f"{found_count+1:04d}_"
         dl_helper = TelegramDownloadHelper(mirror_task)
-        mirror_task.name = f"{idx_prefix}{curr_file.file_name or 'video.mkv'}"
+        mirror_task.name = f"{idx_prefix}{getattr(curr_file, 'file_name', None) or 'video.mkv'}"
         await dl_helper.add_download(curr_msg, f"{path}/", session="")
+        found_count += 1
 
     await delete_message(msg)
     mirror_task.name = custom_name
