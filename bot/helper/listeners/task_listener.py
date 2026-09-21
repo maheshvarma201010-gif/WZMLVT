@@ -265,9 +265,7 @@ class TaskListener(TaskConfig):
             self.size = await get_path_size(up_dir)
             self.clear()
 
-        force_track_menu = bool(self.extract or getattr(self, "manual_rm_stream", False) or getattr(self, "manual_reorder", False))
-
-        up_path = await self.proceed_auto_remove(up_path, gid, force_menu=force_track_menu)
+        up_path = await self.proceed_auto_remove(up_path, gid)
         if self.is_cancelled or not up_path:
             return
         self.is_file = await aiopath.isfile(up_path)
@@ -275,7 +273,7 @@ class TaskListener(TaskConfig):
         self.size = await get_path_size(up_dir)
         self.clear()
 
-        up_path = await self.proceed_reorder(up_path, gid, force_menu=force_track_menu)
+        up_path = await self.proceed_reorder(up_path, gid)
         if self.is_cancelled or not up_path:
             return
         self.is_file = await aiopath.isfile(up_path)
