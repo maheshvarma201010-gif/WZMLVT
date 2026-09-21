@@ -559,27 +559,14 @@ class TaskListener(TaskConfig):
                 msg += f"• <b>Corrupted Files:</b> {mime_type}\n"
             msg += f"• <b>User:</b> {self.tag}</blockquote>\n\n"
 
-            dest_chats = []
-
-            # 1. User DM (always included)
-            dest_chats.append((self.user_id, None))
-
-            # 2. Configured user dump (if configured for this user)
-            if self.leech_dest and self.leech_dest != self.user_id:
-                dest_chats.append((self.leech_dest, self.leech_thread_id))
-
-            # 3. Configured leech/mirror/link dump (if configured)
-            global_dump = self.up_dest or Config.LEECH_LOG_CHAT
-            if global_dump and global_dump not in (self.user_id, self.leech_dest):
-                dest_chats.append((global_dump, self.chat_thread_id))
-
             if self.is_super_chat:
                 pmsg = msg + "<b>✅ Action Performed:</b>\n<blockquote>File(s) sent to User PM / Dump Channel.</blockquote>\n\n"
                 await send_message(self.message, pmsg)
 
+            dm_target, dm_thread = self.user_id, None
+
             if not files:
-                for d_chat, thread_id in dest_chats:
-                    await send_message(d_chat, msg, message_thread_id=thread_id)
+                await send_message(dm_target, msg, message_thread_id=dm_thread)
             else:
                 msg += "<b>📁 Files List:</b>\n"
                 fmsg = ""
@@ -600,13 +587,11 @@ class TaskListener(TaskConfig):
                                 fmsg += f"\n  ↳ <a href='{slinks[0]}'>Stream</a> | <a href='{slinks[1]}'>Download</a>"
                     fmsg += "\n"
                     if len(fmsg.encode() + msg.encode()) > 4000:
-                        for d_chat, thread_id in dest_chats:
-                            await send_message(d_chat, msg + fmsg, message_thread_id=thread_id)
+                        await send_message(dm_target, msg + fmsg, message_thread_id=dm_thread)
                         await sleep(1)
                         fmsg = ""
                 if fmsg != "":
-                    for d_chat, thread_id in dest_chats:
-                        await send_message(d_chat, msg + fmsg, message_thread_id=thread_id)
+                    await send_message(dm_target, msg + fmsg, message_thread_id=dm_thread)
         else:
             msg += f"\n<blockquote>• <b>Type:</b> {mime_type}"
             if mime_type == "Folder":
