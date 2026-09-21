@@ -285,13 +285,21 @@ class Mirror(TaskListener):
 
         try:
             if args["-ff"]:
-                if isinstance(args["-ff"], set):
-                    self.ffmpeg_cmds = args["-ff"]
-                else:
-                    value = literal_eval(args["-ff"])
-                    if not isinstance(value, (dict, set, list, tuple)):
-                        raise ValueError("ffmpeg_cmds must be a dict/set/list/tuple")
-                    self.ffmpeg_cmds = value
+                if isinstance(args["-ff"], (set, list, tuple)):
+                    self.ffmpeg_cmds = list(args["-ff"])
+                elif isinstance(args["-ff"], str):
+                    try:
+                        value = literal_eval(args["-ff"])
+                        if isinstance(value, (set, list, tuple)):
+                            self.ffmpeg_cmds = list(value)
+                        elif isinstance(value, dict):
+                            self.ffmpeg_cmds = value
+                        elif isinstance(value, str):
+                            self.ffmpeg_cmds = [x.strip() for x in value.replace(",", " ").split() if x.strip()]
+                        else:
+                            self.ffmpeg_cmds = [x.strip() for x in args["-ff"].replace(",", " ").split() if x.strip()]
+                    except Exception:
+                        self.ffmpeg_cmds = [x.strip() for x in args["-ff"].replace(",", " ").split() if x.strip()]
         except Exception as e:
             self.ffmpeg_cmds = None
             LOGGER.error(e)

@@ -460,27 +460,35 @@ class TaskConfig:
         else:
             gc_used = False
 
-        if self.ffmpeg_cmds and not isinstance(self.ffmpeg_cmds, list):
-            if self.user_dict.get("FFMPEG_CMDS", None):
-                ffmpeg_dict = self.user_dict["FFMPEG_CMDS"]
-            elif "FFMPEG_CMDS" not in self.user_dict and Config.FFMPEG_CMDS:
-                ffmpeg_dict = Config.FFMPEG_CMDS
+        if self.ffmpeg_cmds:
+            ffmpeg_dict = Config.FFMPEG_CMDS if isinstance(Config.FFMPEG_CMDS, dict) else {}
+            valid = {
+                key: (cmds if isinstance(cmds, (list, tuple)) else [cmds])
+                for key, cmds in ffmpeg_dict.items()
+            }
+            if isinstance(self.ffmpeg_cmds, str):
+                raw_keys = [x.strip() for x in self.ffmpeg_cmds.replace(",", " ").split() if x.strip()]
+            elif isinstance(self.ffmpeg_cmds, (list, tuple, set)):
+                raw_keys = []
+                for item in self.ffmpeg_cmds:
+                    if isinstance(item, str):
+                        raw_keys.extend([x.strip() for x in item.replace(",", " ").split() if x.strip()])
+                    else:
+                        raw_keys.append(item)
+            elif isinstance(self.ffmpeg_cmds, dict):
+                raw_keys = list(self.ffmpeg_cmds.keys())
             else:
-                ffmpeg_dict = {}
-            valid = (
-                {
-                    key: cmds
-                    for key, cmds in ffmpeg_dict.items()
-                    if isinstance(cmds, (list, tuple))
-                }
-                if isinstance(ffmpeg_dict, dict)
-                else {}
-            )
-            keys = list(self.ffmpeg_cmds)
+                raw_keys = []
+
+            keys = []
+            for k in raw_keys:
+                if k not in keys:
+                    keys.append(k)
+
             if missing := [key for key in keys if key not in valid]:
                 await send_message(
                     self.message,
-                    f"Unknown FFmpeg Cmds key(s): {', '.join(map(str, missing))}. Check FF Media Settings in /usetting.",
+                    f"Unknown FFmpeg Cmds key(s): {', '.join(map(str, missing))}. Check configured commands in /bsetting.",
                 )
             self.ffmpeg_cmds = [
                 value for key in keys if key in valid for value in valid[key]

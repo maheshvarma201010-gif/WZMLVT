@@ -175,9 +175,9 @@ user_settings_text = {
         "<blockquote>Send yt-dlp options dictionary.\n⏱️ <b>Time Left:</b> <code>60 sec</code></blockquote>",
     ),
     "FFMPEG_CMDS": (
-        "Dict of commands",
-        "Pre-processing FFmpeg commands dictionary.",
-        "<blockquote>Send FFmpeg commands dictionary.\n⏱️ <b>Time Left:</b> <code>60 sec</code></blockquote>",
+        "Configured command flags",
+        "Global owner-configured FFmpeg commands.",
+        "<blockquote>Use configured command flags (e.g., <code>-ff tel</code>, <code>-ff tam,hin</code>) when starting a task.</blockquote>",
     ),
     "METADATA_CMDS": (
         "Text",
@@ -1388,20 +1388,16 @@ Configure custom video encoding, compression, and watermark overlays for uploads
             buttons.data_button(
                 "FFmpeg Cmds", f"userset {user_id} menu FFMPEG_CMDS", "header"
             )
-        if user_dict.get("FFMPEG_CMDS", False):
-            ffc = user_dict["FFMPEG_CMDS"]
-        elif "FFMPEG_CMDS" not in user_dict and Config.FFMPEG_CMDS:
-            ffc = Config.FFMPEG_CMDS
-        else:
-            ffc = "<b>Not Set</b>"
-
-        if isinstance(ffc, dict):
+        ffc_dict = Config.FFMPEG_CMDS if isinstance(Config.FFMPEG_CMDS, dict) else {}
+        if ffc_dict:
             ffc = "\n" + "\n".join(
                 [
-                    f"{no}. <b>{escape(str(key))}</b>: <code>{escape(str(value[0] if isinstance(value, (list, tuple)) and value else value))}</code>"
-                    for no, (key, value) in enumerate(ffc.items(), start=1)
+                    f"{no}. <code>-ff {escape(str(key))}</code>"
+                    for no, key in enumerate(ffc_dict.keys(), start=1)
                 ]
             )
+        else:
+            ffc = "<b>None configured</b>"
 
         set_all_enabled = user_dict.get("SET_ALL_METADATA_ENABLE", False)
 
@@ -1862,16 +1858,17 @@ async def get_menu(option, message, user_id):
         key = "set"
     if option == "WM_IMAGE":
         buttons.data_button("Set Image URL / Text", f"userset {user_id} set WM_IMAGE")
-    buttons.data_button(
-        "Change" if user_dict.get(option, False) else "Set",
-        f"userset {user_id} {key} {option}",
-    )
+    if option != "FFMPEG_CMDS":
+        buttons.data_button(
+            "Change" if user_dict.get(option, False) else "Set",
+            f"userset {user_id} {key} {option}",
+        )
     if user_dict.get(option, False):
         if option == "THUMBNAIL":
             buttons.data_button(
                 "View Thumb", f"userset {user_id} view THUMBNAIL", "header"
             )
-        elif option in ["YT_DLP_OPTIONS", "FFMPEG_CMDS", "UPLOAD_PATHS", "DRIVE_CAT"]:
+        elif option in ["YT_DLP_OPTIONS", "UPLOAD_PATHS", "DRIVE_CAT"]:
             buttons.data_button(
                 "Add One", f"userset {user_id} addone {option}", "header"
             )
@@ -1879,7 +1876,7 @@ async def get_menu(option, message, user_id):
                 "Remove One", f"userset {user_id} rmone {option}", "header"
             )
 
-        if key != "file":
+        if key != "file" and option != "FFMPEG_CMDS":
             buttons.data_button("Reset", f"userset {user_id} reset {option}")
         elif await aiopath.exists(file_dict[option]):
             buttons.data_button("Remove", f"userset {user_id} remove {option}")
@@ -1961,7 +1958,15 @@ async def get_menu(option, message, user_id):
         elif not val:
             val = "<b>Not Set</b>"
 
-    elif option in ["FFMPEG_CMDS", "YT_DLP_OPTIONS", "UPLOAD_PATHS"]:
+    elif option == "FFMPEG_CMDS":
+        ff_dict = Config.FFMPEG_CMDS if isinstance(Config.FFMPEG_CMDS, dict) else {}
+        if ff_dict:
+            val = "\n" + "\n".join(
+                [f"• <code>-ff {escape(str(k))}</code>" for k in ff_dict.keys()]
+            )
+        else:
+            val = "<b>No commands configured by owner</b>"
+    elif option in ["YT_DLP_OPTIONS", "UPLOAD_PATHS"]:
         val = f"<code>{escape(str(val))}</code>" if val else "<b>Not Set</b>"
 
     text = f"""<b>⚙️ Setting Configuration: {option}</b>

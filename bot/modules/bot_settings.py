@@ -409,10 +409,25 @@ async def get_buttons(key=None, edit_type=None, edit_mode=False):
         buttons.data_button("Aria2c Settings", "botset aria")
         buttons.data_button("Sabnzbd Settings", "botset nzb")
         buttons.data_button("JDownloader Sync", "botset syncjd")
+        buttons.data_button("FFmpeg CMDs", "botset ffcmds")
         buttons.data_button("Close", "botset close", style=ButtonStyle.DANGER)
         msg = "<b>⚙️ Global Bot Settings Dashboard</b>\n\n<blockquote>Select a category to configure global bot settings.</blockquote>"
     elif edit_type is not None:
-        if edit_type == "ariavar":
+        if edit_type == "ffcmdkey":
+            buttons.data_button("Back", "botset ffcmds", style=ButtonStyle.PRIMARY)
+            if key != "newkey":
+                buttons.data_button("Add Command", f"botset addffcmd {key}")
+                buttons.data_button("Delete Key", f"botset delffkey {key}")
+            buttons.data_button("Close", "botset close", style=ButtonStyle.DANGER)
+            if key == "newkey":
+                msg = "<blockquote>Send new key name (e.g. <code>tel</code> or <code>tam</code>).\n⏱️ <b>Time Left:</b> <code>60 sec</code></blockquote>"
+            else:
+                cmds = Config.FFMPEG_CMDS.get(key, [])
+                cmds_formatted = "\n\n".join(
+                    [f"<b>{i+1}.</b> <code>{c}</code>" for i, c in enumerate(cmds)]
+                ) if cmds else "<i>None</i>"
+                msg = f"<b>⚙️ Configured FFmpeg Commands for key: <code>{key}</code></b>\n\n{cmds_formatted}\n\n<blockquote>Send new command list dict, OR use 'Add Command' button to append. To edit/remove specific commands, send updated command list or send dict. Format dict example:\n<code>{{\"{key}\": [\"-i ...\", \"-i ...\"]}}</code>\n⏱️ <b>Time Left:</b> <code>60 sec</code></blockquote>"
+        elif edit_type == "ariavar":
             buttons.data_button("Back", "botset aria", style=ButtonStyle.PRIMARY)
             if key != "newkey":
                 buttons.data_button("Empty String", f"botset emptyaria {key}")
@@ -713,6 +728,19 @@ async def get_buttons(key=None, edit_type=None, edit_mode=False):
                 f"{int(x / 10)}", f"botset start nzb {x}", position="footer"
             )
         msg = f"<b>⚙️ SABnzbd Options</b> (Page {int(start / 10)} | Mode: {state})"
+    elif key == "ffcmds":
+        ff_dict = Config.FFMPEG_CMDS if isinstance(Config.FFMPEG_CMDS, dict) else {}
+        keys_list = list(ff_dict.keys())
+        for k in keys_list[start : 10 + start]:
+            buttons.data_button(f"{k} ({len(ff_dict[k]) if isinstance(ff_dict[k], list) else 0})", f"botset ffcmdkey {k}")
+        buttons.data_button("Add Key", "botset ffcmdkey newkey")
+        buttons.data_button("Back", "botset back")
+        buttons.data_button("Close", "botset close", style=ButtonStyle.DANGER)
+        for x in range(0, len(keys_list), 10):
+            buttons.data_button(
+                f"{int(x / 10) + 1}", f"botset start ffcmds {x}", position="footer"
+            )
+        msg = f"<b>⚙️ Global FFmpeg Commands Settings</b>\n\n<blockquote>Click on a language key to view or edit its configured FFmpeg commands, or click 'Add Key' to add a new key.</blockquote>"
     elif key == "nzbserver":
         servers = (
             Config.USENET_SERVERS if isinstance(Config.USENET_SERVERS, list) else []
@@ -1039,6 +1067,63 @@ async def _handle_service_toggle(key, disabled):
         else:
             await manager.boot()
             LOGGER.info("Plugins loaded via Module Settings")
+
+
+@new_task
+async def edit_ffcmd(_, message, pre_message, key, mode="edit"):
+    handler_dict[message.chat.id] = False
+    value = message.text.strip()
+    if not isinstance(Config.FFMPEG_CMDS, dict):
+        Config.FFMPEG_CMDS = {}
+    ff_dict = Config.FFMPEG_CMDS
+
+    if key == "newkey":
+        new_key = value.lower()
+        if new_key not in ff_dict:
+            ff_dict[new_key] = []
+        await update_buttons(pre_message, new_key, "ffcmdkey")
+    elif mode == "add":
+        if "-i" not in value:
+            await send_message(message, "FFmpeg command must contain -i parameter!")
+            await update_buttons(pre_message, key, "ffcmdkey")
+            return
+        if key not in ff_dict:
+            ff_dict[key] = []
+        ff_dict[key].append(value)
+        await update_buttons(pre_message, key, "ffcmdkey")
+    else:
+        if value.startswith("{") and value.endswith("}"):
+            try:
+                parsed = literal_eval(value)
+                if isinstance(parsed, dict):
+                    for k, v in parsed.items():
+                        if isinstance(v, list):
+                            ff_dict[k] = v
+                        elif isinstance(v, str):
+                            ff_dict[k] = [v]
+            except Exception:
+                await send_message(message, "Invalid dict format!")
+                await update_buttons(pre_message, key, "ffcmdkey")
+                return
+        elif value.startswith("[") and value.endswith("]"):
+            try:
+                parsed = literal_eval(value)
+                if isinstance(parsed, list):
+                    ff_dict[key] = parsed
+            except Exception:
+                await send_message(message, "Invalid list format!")
+                await update_buttons(pre_message, key, "ffcmdkey")
+                return
+        elif value:
+            if "-i" not in value:
+                await send_message(message, "FFmpeg command must contain -i parameter!")
+                await update_buttons(pre_message, key, "ffcmdkey")
+                return
+            ff_dict[key] = [value]
+        await update_buttons(pre_message, key, "ffcmdkey")
+
+    await delete_message(message)
+    await database.update_config({"FFMPEG_CMDS": Config.FFMPEG_CMDS})
 
 
 @new_task
@@ -1391,16 +1476,38 @@ async def edit_bot_settings(client, query):
         "qbit",
         "nzb",
         "nzbserver",
+        "ffcmds",
         "setonoff",
         "settoggle",
         "setlimit",
     ] or data[
         1
     ].startswith("nzbser"):
-        if data[1] in ("nzbserver", "setlimit"):
+        if data[1] in ("nzbserver", "setlimit", "ffcmds"):
             globals()["start"] = 0
         await query.answer()
         await update_buttons(message, data[1])
+    elif data[1] == "ffcmdkey":
+        await query.answer()
+        key = data[2]
+        await update_buttons(message, key, "ffcmdkey")
+        pfunc = partial(edit_ffcmd, pre_message=message, key=key, mode="edit")
+        rfunc = partial(update_buttons, message, "ffcmds" if key == "newkey" else key, "ffcmdkey" if key != "newkey" else None)
+        await event_handler(client, query, pfunc, rfunc)
+    elif data[1] == "addffcmd":
+        await query.answer()
+        key = data[2]
+        await update_buttons(message, key, "ffcmdkey")
+        pfunc = partial(edit_ffcmd, pre_message=message, key=key, mode="add")
+        rfunc = partial(update_buttons, message, key, "ffcmdkey")
+        await event_handler(client, query, pfunc, rfunc)
+    elif data[1] == "delffkey":
+        await query.answer()
+        key = data[2]
+        if isinstance(Config.FFMPEG_CMDS, dict) and key in Config.FFMPEG_CMDS:
+            del Config.FFMPEG_CMDS[key]
+            await database.update_config({"FFMPEG_CMDS": Config.FFMPEG_CMDS})
+        await update_buttons(message, "ffcmds")
     elif data[1] == "resetvar":
         await query.answer()
         value = DEFAULT_CONFIG.get(data[2], "")
