@@ -381,6 +381,26 @@ user_settings_text = {
         "Color for text watermark.",
         "<blockquote>Send text watermark color name or hex code (e.g. white, yellow, #FF0000).\n⏱️ <b>Time Left:</b> <code>60 sec</code></blockquote>",
     ),
+    "AUTO_REMOVE_KEPT": (
+        "String",
+        "Tracks or languages to keep (removes all others).",
+        "<blockquote>Send audio/subtitle languages or positions to keep.\nExamples:\n• <code>audio/aud=tel</code>\n• <code>audio/aud=1, 2</code>\n• <code>subtitle/sub=tel, tam</code>\n• <code>sub=1</code>\n⏱️ <b>Time Left:</b> <code>60 sec</code></blockquote>",
+    ),
+    "AUTO_REMOVE_REMOVE": (
+        "String",
+        "Tracks or languages to remove.",
+        "<blockquote>Send audio/subtitle languages or positions to remove.\nExamples:\n• <code>audio/aud=tel</code>\n• <code>audio/aud=1, 3</code>\n• <code>subtitle/sub=tel, tam</code>\n• <code>sub=2, 4</code>\n⏱️ <b>Time Left:</b> <code>60 sec</code></blockquote>",
+    ),
+    "AUTO_REMOVE_REORDER": (
+        "String",
+        "Track reordering specification.",
+        "<blockquote>Send reorder format.\nExamples:\n• <code>1-2</code>\n• <code>1:tel</code>\n• <code>2:tam</code>\n• <code>1:tel, 2:tam, 3:hin</code>\n⏱️ <b>Time Left:</b> <code>60 sec</code></blockquote>",
+    ),
+    "AUDIO_SPLIT": (
+        "String",
+        "Audio languages or positions to split into separate files.",
+        "<blockquote>Send audio languages or track positions separated by commas.\nExamples:\n• <code>tel</code>\n• <code>1</code>\n• <code>tel, tam, hin</code>\n• <code>1, 2, 3</code>\n⏱️ <b>Time Left:</b> <code>60 sec</code></blockquote>",
+    ),
 }
 
 
@@ -760,18 +780,24 @@ Configure custom video encoding, compression, and watermark overlays for uploads
         auto_merge = user_dict.get("AUTO_MERGE", False) or (
             "AUTO_MERGE" not in user_dict and getattr(Config, "AUTO_MERGE", False)
         )
+        auto_remove = user_dict.get("AUTO_REMOVE", False)
+        audio_split = user_dict.get("AUDIO_SPLIT_ENABLE", False)
+
         buttons.data_button(
             f"Auto Merge: {'✓ ON' if auto_merge else 'OFF'}",
             f"userset {user_id} tog AUTO_MERGE {'f' if auto_merge else 't'}",
         )
-
-        remove_stream = user_dict.get("REMOVE_STREAM", False) or (
-            "REMOVE_STREAM" not in user_dict and getattr(Config, "REMOVE_STREAM", False)
-        )
         buttons.data_button(
-            f"Remove Stream: {'✓ ON' if remove_stream else 'OFF'}",
-            f"userset {user_id} tog REMOVE_STREAM {'f' if remove_stream else 't'}",
+            f"Auto Remove: {'✓ ON' if auto_remove else 'OFF'}",
+            f"userset {user_id} tog AUTO_REMOVE {'f' if auto_remove else 't'}",
         )
+        buttons.data_button("🗑️ Auto Remove Settings", f"userset {user_id} auto_remove_menu")
+
+        buttons.data_button(
+            f"Audio Split: {'✓ ON' if audio_split else 'OFF'}",
+            f"userset {user_id} tog AUDIO_SPLIT_ENABLE {'f' if audio_split else 't'}",
+        )
+        buttons.data_button("🎵 Audio Split Settings", f"userset {user_id} menu AUDIO_SPLIT")
 
         buttons.data_button("◀️ Back", f"userset {user_id} back", "footer")
         buttons.data_button(
@@ -783,7 +809,56 @@ Configure custom video encoding, compression, and watermark overlays for uploads
 
 <blockquote>• <b>User:</b> {user_name}
 • <b>Auto Video Merge:</b> <b>{'Enabled' if auto_merge else 'Disabled'}</b>
-• <b>Remove Stream:</b> <b>{'Enabled' if remove_stream else 'Disabled'}</b></blockquote>"""
+• <b>Auto Remove Status:</b> <b>{'Enabled' if auto_remove else 'Disabled'}</b>
+• <b>Audio Split Status:</b> <b>{'Enabled' if audio_split else 'Disabled'}</b></blockquote>"""
+
+    elif stype == "auto_remove_menu":
+        auto_remove = user_dict.get("AUTO_REMOVE", False)
+        kept_enable = user_dict.get("AUTO_REMOVE_KEPT_ENABLE", False)
+        remove_enable = user_dict.get("AUTO_REMOVE_REMOVE_ENABLE", False)
+        reorder_enable = user_dict.get("AUTO_REMOVE_REORDER_ENABLE", False)
+
+        kept_val = user_dict.get("AUTO_REMOVE_KEPT", "Not Set")
+        remove_val = user_dict.get("AUTO_REMOVE_REMOVE", "Not Set")
+        reorder_val = user_dict.get("AUTO_REMOVE_REORDER", "Not Set")
+
+        buttons.data_button(
+            f"Auto Remove Master: {'✓ ON' if auto_remove else 'OFF'}",
+            f"userset {user_id} tog AUTO_REMOVE {'f' if auto_remove else 't'}",
+            position="header",
+        )
+
+        buttons.data_button("Kept Tracks", f"userset {user_id} menu AUTO_REMOVE_KEPT")
+        buttons.data_button(
+            f"Kept: {'✓ ON' if kept_enable else 'OFF'}",
+            f"userset {user_id} tog AUTO_REMOVE_KEPT_ENABLE {'f' if kept_enable else 't'}",
+        )
+
+        buttons.data_button("Remove Tracks", f"userset {user_id} menu AUTO_REMOVE_REMOVE")
+        buttons.data_button(
+            f"Remove: {'✓ ON' if remove_enable else 'OFF'}",
+            f"userset {user_id} tog AUTO_REMOVE_REMOVE_ENABLE {'f' if remove_enable else 't'}",
+        )
+
+        buttons.data_button("Reorder Tracks", f"userset {user_id} menu AUTO_REMOVE_REORDER")
+        buttons.data_button(
+            f"Reorder: {'✓ ON' if reorder_enable else 'OFF'}",
+            f"userset {user_id} tog AUTO_REMOVE_REORDER_ENABLE {'f' if reorder_enable else 't'}",
+        )
+
+        buttons.data_button("◀️ Back", f"userset {user_id} vtools", "footer")
+        buttons.data_button(
+            "❌ Close", f"userset {user_id} close", "footer", style=ButtonStyle.DANGER
+        )
+        btns = buttons.build_menu(2)
+
+        text = f"""<b>🗑️ Auto Remove Track Settings</b>
+
+<blockquote>• <b>User:</b> {user_name}
+• <b>Master Auto Remove:</b> <b>{'Enabled' if auto_remove else 'Disabled'}</b>
+• <b>Kept Feature:</b> <b>{'Enabled' if kept_enable else 'Disabled'}</b> (<code>{escape(str(kept_val))}</code>)
+• <b>Remove Feature:</b> <b>{'Enabled' if remove_enable else 'Disabled'}</b> (<code>{escape(str(remove_val))}</code>)
+• <b>Reorder Feature:</b> <b>{'Enabled' if reorder_enable else 'Disabled'}</b> (<code>{escape(str(reorder_val))}</code>)</blockquote>"""
 
     elif stype == "uphoster":
         uphoster_service = user_dict.get("UPHOSTER_SERVICE", "gofile")
@@ -1701,6 +1776,14 @@ async def set_option(_, message, option, rfunc, target_user_id=None):
     update_user_ldata(user_id, option, value)
     if option == "SET_ALL_METADATA":
         update_user_ldata(user_id, "SET_ALL_METADATA_ENABLE", True)
+    elif option == "AUTO_REMOVE_KEPT":
+        update_user_ldata(user_id, "AUTO_REMOVE_KEPT_ENABLE", True)
+    elif option == "AUTO_REMOVE_REMOVE":
+        update_user_ldata(user_id, "AUTO_REMOVE_REMOVE_ENABLE", True)
+    elif option == "AUTO_REMOVE_REORDER":
+        update_user_ldata(user_id, "AUTO_REMOVE_REORDER_ENABLE", True)
+    elif option == "AUDIO_SPLIT":
+        update_user_ldata(user_id, "AUDIO_SPLIT_ENABLE", True)
     await delete_message(message)
     await rfunc()
     await database.update_user_data(user_id)
@@ -1769,6 +1852,10 @@ async def get_menu(option, message, user_id):
         back_to = "compress_menu"
     elif option.startswith("WM_"):
         back_to = "watermark_menu"
+    elif option in ["AUTO_REMOVE_KEPT", "AUTO_REMOVE_REMOVE", "AUTO_REMOVE_REORDER"]:
+        back_to = "auto_remove_menu"
+    elif option == "AUDIO_SPLIT":
+        back_to = "vtools"
     else:
         back_to = "back"
     buttons.data_button("◀️ Back", f"userset {user_id} {back_to}", "footer")
@@ -1888,6 +1975,7 @@ async def edit_user_settings(client, query):
         "mirror",
         "leech",
         "vtools",
+        "auto_remove_menu",
         "uphoster",
         "gofile",
         "buzzheavier",
@@ -2052,8 +2140,10 @@ async def edit_user_settings(client, query):
             back_to = "gofile"
         elif data[3] == "SEEDR_DELETE_FOLDER":
             back_to = "seedr"
-        elif data[3] in ["AUTO_MERGE", "REMOVE_STREAM"]:
+        elif data[3] in ["AUTO_MERGE", "AUTO_REMOVE", "AUDIO_SPLIT_ENABLE"]:
             back_to = "vtools"
+        elif data[3] in ["AUTO_REMOVE_KEPT_ENABLE", "AUTO_REMOVE_REMOVE_ENABLE", "AUTO_REMOVE_REORDER_ENABLE"]:
+            back_to = "auto_remove_menu"
         elif data[3] == "SET_ALL_METADATA_ENABLE":
             back_to = "ffset"
         elif data[3] == "ENABLE_ENCODE":

@@ -353,10 +353,6 @@ class Mirror(TaskListener):
             event_done = bot_loop.create_future()
             ht_tasks[self.mid] = {
                 "merge": self.auto_merge or self.manual_merge,
-                "rm_stream": False,
-                "reorder": False,
-                "reorder_aud": [],
-                "reorder_sub": [],
                 "trim": False,
                 "trim_range": "",
                 "extract": False,
@@ -368,15 +364,11 @@ class Mirror(TaskListener):
             def build_ht_menu(mid):
                 t_info = ht_tasks.get(mid, {})
                 m_on = "✓ ON" if t_info.get("merge") else "OFF"
-                rm_on = "✓ ON" if t_info.get("rm_stream") else "OFF"
-                ro_on = "✓ ON" if t_info.get("reorder") else "OFF"
                 tr_on = "✓ ON" if t_info.get("trim") else "OFF"
                 ex_on = "✓ ON" if t_info.get("extract") else "OFF"
 
                 buttons = ButtonMaker()
                 buttons.data_button(f"Merge: {m_on}", f"htmerge merge {mid}")
-                buttons.data_button(f"Remove Stream: {rm_on}", f"htmerge rm_stream {mid}")
-                buttons.data_button(f"Reorder: {ro_on}", f"htmerge reorder {mid}")
                 buttons.data_button(f"Trim: {tr_on}", f"htmerge trim {mid}")
                 buttons.data_button(f"Extract: {ex_on}", f"htmerge extract {mid}")
                 buttons.data_button("Done", f"htmerge done {mid}", position="footer")
@@ -384,7 +376,7 @@ class Mirror(TaskListener):
 
             prompt_msg = await send_message(
                 self.message,
-                f"<b>Task Received with -ht flag.</b>\nChoose pre-upload options:\n\n• <b>Merge:</b> OFF\n• <b>Remove Stream:</b> OFF\n• <b>Reorder:</b> OFF\n• <b>Trim:</b> OFF\n• <b>Extract:</b> OFF",
+                f"<b>Task Received with -ht flag.</b>\nChoose pre-upload options:\n\n• <b>Merge:</b> OFF\n• <b>Trim:</b> OFF\n• <b>Extract:</b> OFF",
                 build_ht_menu(self.mid).build_menu(2),
             )
             try:
@@ -394,10 +386,6 @@ class Mirror(TaskListener):
 
             saved_ht = ht_tasks.get(self.mid, {})
             self.manual_merge = saved_ht.get("merge", False)
-            self.manual_rm_stream = saved_ht.get("rm_stream", False)
-            self.manual_reorder = saved_ht.get("reorder", False)
-            self.reorder_aud = saved_ht.get("reorder_aud", [])
-            self.reorder_sub = saved_ht.get("reorder_sub", [])
             self.manual_trim = saved_ht.get("trim", False)
             self.trim_range = saved_ht.get("trim_range", "")
             self.manual_extract = saved_ht.get("extract", False)
@@ -651,8 +639,6 @@ async def ht_merge_callback(client, query):
         t_info = ht_tasks.get(mid, {})
         buttons = ButtonMaker()
         buttons.data_button(f"Merge: {'✓ ON' if t_info.get('merge') else 'OFF'}", f"htmerge merge {mid}")
-        buttons.data_button(f"Remove Stream: {'✓ ON' if t_info.get('rm_stream') else 'OFF'}", f"htmerge rm_stream {mid}")
-        buttons.data_button(f"Reorder: {'✓ ON' if t_info.get('reorder') else 'OFF'}", f"htmerge reorder {mid}")
         buttons.data_button(f"Trim: {'✓ ON' if t_info.get('trim') else 'OFF'}", f"htmerge trim {mid}")
         buttons.data_button(f"Extract: {'✓ ON' if t_info.get('extract') else 'OFF'}", f"htmerge extract {mid}")
         buttons.data_button("Done", f"htmerge done {mid}", position="footer")
@@ -663,13 +649,11 @@ async def ht_merge_callback(client, query):
         return (
             f"<b>Task Received with -ht flag.</b>\nChoose pre-upload options:\n\n"
             f"• <b>Merge:</b> {'✓ ON' if t_info.get('merge') else 'OFF'}\n"
-            f"• <b>Remove Stream:</b> {'✓ ON' if t_info.get('rm_stream') else 'OFF'}\n"
-            f"• <b>Reorder:</b> {'✓ ON' if t_info.get('reorder') else 'OFF'}\n"
             f"• <b>Trim:</b> {'✓ ON' if t_info.get('trim') else 'OFF'} ({t_info.get('trim_range') or 'Not Set'})\n"
             f"• <b>Extract:</b> {'✓ ON' if t_info.get('extract') else 'OFF'} ({', '.join(t_info.get('extract_types', [])) or 'Not Set'})"
         )
 
-    if data[1] in ["merge", "rm_stream", "reorder"]:
+    if data[1] in ["merge"]:
         key = data[1]
         task_info[key] = not task_info[key]
         await query.answer(f"{key.replace('_', ' ').title()} turned {'ON' if task_info[key] else 'OFF'}")
@@ -703,60 +687,6 @@ async def ht_merge_callback(client, query):
             if user_input and "-" in user_input[0]:
                 task_info["trim"] = True
                 task_info["trim_range"] = user_input[0]
-        except Exception:
-            pass
-        finally:
-            client.remove_handler(*h)
-            await edit_message(query.message, render_ht_text(mid), render_ht_menu(mid).build_menu(2))
-    elif data[1] == "chorder":
-        await query.answer()
-        buttons = ButtonMaker()
-        buttons.data_button("◀️ Back", f"htmerge back {mid}", position="footer")
-        prompt = (
-            "<b>🔀 Send new track order format:</b>\n"
-            "• <code>aud=1:2</code> — Swap audio track 1 with track 2\n"
-            "• <code>sub=1:2</code> — Swap subtitle track 1 with track 2\n"
-            "• Multiple: <code>aud=1:2,3:4, sub=1:2</code>\n⏱️ <i>Timeout: 30s</i>"
-        )
-        await edit_message(query.message, prompt, buttons.build_menu(1))
-
-        event_done = bot_loop.create_future()
-        user_input = []
-
-        async def reorder_filter(_, __, event):
-            u = event.from_user or event.sender_chat
-            return bool(u and u.id == task_info["user_id"] and event.chat.id == query.message.chat.id and event.text)
-
-        async def reorder_handler(_, msg):
-            user_input.append(msg.text.strip())
-            await delete_message(msg)
-            if not event_done.done():
-                event_done.set_result(True)
-
-        from pyrogram.handlers import MessageHandler
-        from pyrogram.filters import create
-        from asyncio import wait_for
-        h = client.add_handler(MessageHandler(reorder_handler, filters=create(reorder_filter)), group=-1)
-        try:
-            await wait_for(event_done, timeout=30)
-            if user_input:
-                inp = user_input[0]
-                aud_swaps, sub_swaps = [], []
-                for item in inp.split(","):
-                    item = item.strip()
-                    if item.startswith("aud="):
-                        val = item.split("=", 1)[1]
-                        nums = [int(x) for x in val.split(":") if x.isdigit()]
-                        for k in range(0, len(nums) - 1, 2):
-                            aud_swaps.append([nums[k], nums[k+1]])
-                    elif item.startswith("sub="):
-                        val = item.split("=", 1)[1]
-                        nums = [int(x) for x in val.split(":") if x.isdigit()]
-                        for k in range(0, len(nums) - 1, 2):
-                            sub_swaps.append([nums[k], nums[k+1]])
-                task_info["reorder"] = True
-                task_info["reorder_aud"] = aud_swaps
-                task_info["reorder_sub"] = sub_swaps
         except Exception:
             pass
         finally:

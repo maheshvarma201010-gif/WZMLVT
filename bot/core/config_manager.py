@@ -49,7 +49,6 @@ class Config:
     ENABLE_COMPRESS = False
     ENABLE_WATERMARK = False
     ENABLE_FFMPEG_CMDS = False
-    REMOVE_STREAM = False
     THUMBNAIL = ""
     PLUGIN_INDEXES = []
     EQUAL_SPLITS = False

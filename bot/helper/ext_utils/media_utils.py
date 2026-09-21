@@ -456,6 +456,144 @@ async def get_multiple_frames_thumbnail(video_file, layout, keep_screenshots):
     return output
 
 
+def parse_track_spec(input_str):
+    res = {"audio": [], "subtitle": []}
+    if not input_str or not isinstance(input_str, str):
+        return res
+    lines = [p.strip() for p in re.split(r"[|;\n]", input_str) if p.strip()]
+    for line in lines:
+        if "=" in line:
+            k, v = line.split("=", 1)
+            k = k.strip().lower()
+            items = [x.strip() for x in v.split(",") if x.strip()]
+            if k in ["audio", "aud"] or k.startswith("audio") or k.startswith("aud"):
+                res["audio"].extend(items)
+            elif k in ["subtitle", "sub"] or k.startswith("subtitle") or k.startswith("sub"):
+                res["subtitle"].extend(items)
+        else:
+            items = [x.strip() for x in line.split(",") if x.strip()]
+            res["audio"].extend(items)
+    return res
+
+
+def match_stream_lang_or_pos(stream, stream_pos, user_items):
+    if not user_items or not stream:
+        return False
+    lang = str(stream.get("tags", {}).get("language", "")).strip().lower()
+    title = str(stream.get("tags", {}).get("title", "")).strip().lower()
+
+    for item in user_items:
+        item_str = str(item).strip().lower()
+        if not item_str:
+            continue
+        if item_str.isdigit():
+            val = int(item_str)
+            if val == stream_pos or val == stream.get("index"):
+                return True
+            continue
+
+        if lang:
+            if item_str == lang or item_str in lang or lang in item_str:
+                return True
+            try:
+                l1 = Language.get(lang)
+                l2 = Language.get(item_str)
+                if l1.language == l2.language:
+                    return True
+            except Exception:
+                pass
+
+        if title and (item_str in title):
+            return True
+
+    return False
+
+
+def reorder_stream_list(streams, spec_str, target_type="audio"):
+    if not streams or not spec_str:
+        return streams
+
+    type_streams = [s for s in streams if s.get("codec_type") == target_type]
+    if len(type_streams) <= 1:
+        return streams
+
+    spec_for_type = spec_str
+    if "aud=" in spec_str or "sub=" in spec_str or "audio=" in spec_str or "subtitle=" in spec_str:
+        found_spec = []
+        parts = [p.strip() for p in re.split(r"[|;\n]", spec_str) if p.strip()]
+        for part in parts:
+            if "=" in part:
+                k, v = part.split("=", 1)
+                k = k.strip().lower()
+                if target_type == "audio" and k in ["audio", "aud"]:
+                    found_spec.append(v.strip())
+                elif target_type == "subtitle" and k in ["subtitle", "sub"]:
+                    found_spec.append(v.strip())
+        if found_spec:
+            spec_for_type = ", ".join(found_spec)
+        elif ("aud=" in spec_str or "audio=" in spec_str) and target_type == "subtitle":
+            return streams
+        elif ("sub=" in spec_str or "subtitle=" in spec_str) and target_type == "audio":
+            return streams
+
+    clean_spec = spec_for_type.strip()
+    if clean_spec in ["1-2", "1:2", "1-2,"]:
+        reordered_type = list(type_streams)
+        reordered_type[0], reordered_type[1] = reordered_type[1], reordered_type[0]
+        res = []
+        t_idx = 0
+        for s in streams:
+            if s.get("codec_type") == target_type:
+                res.append(reordered_type[t_idx])
+                t_idx += 1
+            else:
+                res.append(s)
+        return res
+
+    items = [x.strip() for x in clean_spec.split(",") if x.strip()]
+    placed = {}
+    used_streams = set()
+
+    for item in items:
+        if ":" in item:
+            pos_part, target_part = item.split(":", 1)
+            pos_part = pos_part.strip()
+            target_part = target_part.strip()
+            if pos_part.isdigit():
+                target_pos = int(pos_part) - 1
+                for idx, s in enumerate(type_streams, 1):
+                    if id(s) not in used_streams and match_stream_lang_or_pos(s, idx, [target_part]):
+                        placed[target_pos] = s
+                        used_streams.add(id(s))
+                        break
+
+    if not placed:
+        return streams
+
+    new_type_streams = []
+    num_type_streams = len(type_streams)
+    unused_streams = [s for s in type_streams if id(s) not in used_streams]
+
+    for i in range(num_type_streams):
+        if i in placed:
+            new_type_streams.append(placed[i])
+        else:
+            if unused_streams:
+                new_type_streams.append(unused_streams.pop(0))
+
+    new_type_streams.extend(unused_streams)
+
+    res = []
+    t_idx = 0
+    for s in streams:
+        if s.get("codec_type") == target_type:
+            res.append(new_type_streams[t_idx])
+            t_idx += 1
+        else:
+            res.append(s)
+    return res
+
+
 class FFMpeg:
     def __init__(self, listener):
         self._listener = listener
@@ -1214,45 +1352,44 @@ class FFMpeg:
     async def merge_videos(self, video_files, output_file, gid):
         return await self.merge_tracks(video_files, [], [], output_file, gid)
 
-    async def remove_streams(self, f_path, selected_indices):
-        out_path = f"{f_path}.rm_stream.mkv"
-        cmd = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", f_path]
-        for idx in selected_indices:
-            cmd.extend(["-map", f"0:{idx}"])
-        cmd.extend(["-c", "copy", out_path])
-        res, err, code = await cmd_exec(cmd)
-        if code == 0 and await aiopath.exists(out_path):
-            return out_path
-        return None
+    async def auto_remove_kept(self, f_path, kept_spec):
+        if not f_path or not await aiopath.exists(f_path):
+            return f_path
+        parsed = parse_track_spec(kept_spec)
+        kept_aud = parsed.get("audio", [])
+        kept_sub = parsed.get("subtitle", [])
 
-    async def reorder_tracks(self, f_path, aud_swaps, sub_swaps):
+        if not kept_aud and not kept_sub:
+            return f_path
+
         streams = await self.get_streams(f_path)
-        if not streams:
-            return None
-        out_path = f"{f_path}.reorder.mkv"
-        audio_streams = [s for s in streams if s.get("codec_type") == "audio"]
-        sub_streams = [s for s in streams if s.get("codec_type") == "subtitle"]
-        video_streams = [s for s in streams if s.get("codec_type") == "video"]
+        if not streams or len(streams) <= 1:
+            return f_path
 
-        for swap in aud_swaps:
-            if len(swap) == 2:
-                i1, i2 = swap[0] - 1, swap[1] - 1
-                if 0 <= i1 < len(audio_streams) and 0 <= i2 < len(audio_streams):
-                    audio_streams[i1], audio_streams[i2] = audio_streams[i2], audio_streams[i1]
+        v_streams = [s for s in streams if s.get("codec_type") == "video"]
+        a_streams = [s for s in streams if s.get("codec_type") == "audio"]
+        s_streams = [s for s in streams if s.get("codec_type") == "subtitle"]
+        o_streams = [s for s in streams if s.get("codec_type") not in ["video", "audio", "subtitle"]]
 
-        for swap in sub_swaps:
-            if len(swap) == 2:
-                i1, i2 = swap[0] - 1, swap[1] - 1
-                if 0 <= i1 < len(sub_streams) and 0 <= i2 < len(sub_streams):
-                    sub_streams[i1], sub_streams[i2] = sub_streams[i2], sub_streams[i1]
+        retained_a = a_streams
+        if kept_aud and a_streams:
+            matched_a = [s for idx, s in enumerate(a_streams, 1) if match_stream_lang_or_pos(s, idx, kept_aud)]
+            if matched_a:
+                retained_a = matched_a
 
+        retained_s = s_streams
+        if kept_sub and s_streams:
+            matched_s = [s for idx, s in enumerate(s_streams, 1) if match_stream_lang_or_pos(s, idx, kept_sub)]
+            retained_s = matched_s
+
+        retained_streams = v_streams + retained_a + retained_s + o_streams
+        if len(retained_streams) == len(streams):
+            return f_path
+
+        out_path = f"{f_path}.kept.mkv"
         cmd = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", f_path]
-        for v in video_streams:
-            cmd.extend(["-map", f"0:{v.get('index')}"])
-        for a in audio_streams:
-            cmd.extend(["-map", f"0:{a.get('index')}"])
-        for s in sub_streams:
-            cmd.extend(["-map", f"0:{s.get('index')}"])
+        for st in retained_streams:
+            cmd.extend(["-map", f"0:{st.get('index')}"])
         cmd.extend(["-c", "copy", out_path])
 
         res, err, code = await cmd_exec(cmd)
@@ -1260,7 +1397,122 @@ class FFMpeg:
             await remove(f_path)
             await move(out_path, f_path)
             return f_path
-        return None
+        return f_path
+
+    async def auto_remove_remove(self, f_path, remove_spec):
+        if not f_path or not await aiopath.exists(f_path):
+            return f_path
+        parsed = parse_track_spec(remove_spec)
+        rm_aud = parsed.get("audio", [])
+        rm_sub = parsed.get("subtitle", [])
+
+        if not rm_aud and not rm_sub:
+            return f_path
+
+        streams = await self.get_streams(f_path)
+        if not streams or len(streams) <= 1:
+            return f_path
+
+        v_streams = [s for s in streams if s.get("codec_type") == "video"]
+        a_streams = [s for s in streams if s.get("codec_type") == "audio"]
+        s_streams = [s for s in streams if s.get("codec_type") == "subtitle"]
+        o_streams = [s for s in streams if s.get("codec_type") not in ["video", "audio", "subtitle"]]
+
+        retained_a = a_streams
+        if rm_aud and a_streams:
+            retained_a = [s for idx, s in enumerate(a_streams, 1) if not match_stream_lang_or_pos(s, idx, rm_aud)]
+
+        retained_s = s_streams
+        if rm_sub and s_streams:
+            retained_s = [s for idx, s in enumerate(s_streams, 1) if not match_stream_lang_or_pos(s, idx, rm_sub)]
+
+        retained_streams = v_streams + retained_a + retained_s + o_streams
+        if len(retained_streams) == len(streams) or not retained_streams:
+            return f_path
+
+        out_path = f"{f_path}.rm.mkv"
+        cmd = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", f_path]
+        for st in retained_streams:
+            cmd.extend(["-map", f"0:{st.get('index')}"])
+        cmd.extend(["-c", "copy", out_path])
+
+        res, err, code = await cmd_exec(cmd)
+        if code == 0 and await aiopath.exists(out_path):
+            await remove(f_path)
+            await move(out_path, f_path)
+            return f_path
+        return f_path
+
+    async def auto_remove_reorder(self, f_path, reorder_spec):
+        if not f_path or not await aiopath.exists(f_path):
+            return f_path
+        streams = await self.get_streams(f_path)
+        if not streams or len(streams) <= 1:
+            return f_path
+
+        reordered = reorder_stream_list(streams, reorder_spec, target_type="audio")
+        reordered = reorder_stream_list(reordered, reorder_spec, target_type="subtitle")
+
+        if [s.get("index") for s in reordered] == [s.get("index") for s in streams]:
+            return f_path
+
+        out_path = f"{f_path}.reorder.mkv"
+        cmd = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", f_path]
+        for st in reordered:
+            cmd.extend(["-map", f"0:{st.get('index')}"])
+        cmd.extend(["-c", "copy", out_path])
+
+        res, err, code = await cmd_exec(cmd)
+        if code == 0 and await aiopath.exists(out_path):
+            await remove(f_path)
+            await move(out_path, f_path)
+            return f_path
+        return f_path
+
+    async def audio_split(self, f_path, split_spec):
+        if not f_path or not await aiopath.exists(f_path) or not split_spec:
+            return False
+        split_items = [x.strip() for x in split_spec.split(",") if x.strip()]
+        if not split_items:
+            return False
+
+        streams = await self.get_streams(f_path)
+        if not streams:
+            return False
+
+        a_streams = [s for s in streams if s.get("codec_type") == "audio"]
+        if not a_streams:
+            return False
+
+        dir_path, filename = ospath.split(f_path)
+        base_name, _ = ospath.splitext(filename)
+        created = False
+
+        for idx, s in enumerate(a_streams, 1):
+            if match_stream_lang_or_pos(s, idx, split_items):
+                lang = s.get("tags", {}).get("language", f"track{idx}")
+                out_name = f"{base_name}_{lang}_{idx}.mka"
+                out_path = ospath.join(dir_path, out_name)
+
+                cmd = [
+                    "ffmpeg",
+                    "-hide_banner",
+                    "-loglevel",
+                    "error",
+                    "-y",
+                    "-i",
+                    f_path,
+                    "-map",
+                    f"0:{s.get('index')}",
+                    "-c",
+                    "copy",
+                    out_path,
+                ]
+                res, err, code = await cmd_exec(cmd)
+                if code == 0 and await aiopath.exists(out_path):
+                    created = True
+
+        return created
 
     async def trim_media(self, f_path, start_time, end_time):
         out_path = f"{f_path}.trim.mkv"
