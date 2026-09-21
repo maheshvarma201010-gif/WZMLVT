@@ -47,6 +47,7 @@ fi
 
 source venv/bin/activate
 pip install --upgrade pip -q
+pip install wzgram
 if [ -f "requirements.txt" ]; then
     pip install -r requirements.txt -q
 fi
