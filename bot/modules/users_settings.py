@@ -1164,8 +1164,8 @@ Configure custom video encoding, compression, and watermark overlays for uploads
 • <b>Stop Duplicate Checks:</b> <b>{sd_msg}</b></blockquote>"""
 
     elif stype == "mega":
-        mega_email = user_dict.get("MEGA_EMAIL", "")
-        mega_password = user_dict.get("MEGA_PASSWORD", "")
+        mega_email = user_dict.get("MEGA_EMAIL") or Config.MEGA_EMAIL or ""
+        mega_password = user_dict.get("MEGA_PASSWORD") or Config.MEGA_PASSWORD or ""
         has_creds = bool(mega_email and mega_password)
         masked_pass = (
             (

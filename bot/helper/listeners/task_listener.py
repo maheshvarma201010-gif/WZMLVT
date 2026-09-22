@@ -529,8 +529,8 @@ class TaskListener(TaskConfig):
             del drive
         elif self.up_dest == "mega:":
             LOGGER.info(f"Mega Upload Name: {self.name}")
-            mega_email = self.user_dict.get("MEGA_EMAIL") or ""
-            mega_password = self.user_dict.get("MEGA_PASSWORD") or ""
+            mega_email = self.user_dict.get("MEGA_EMAIL") or Config.MEGA_EMAIL or ""
+            mega_password = self.user_dict.get("MEGA_PASSWORD") or Config.MEGA_PASSWORD or ""
             await add_mega_upload(self, up_path, mega_email, mega_password, gid)
         else:
             LOGGER.info(f"Rclone Upload Name: {self.name}")

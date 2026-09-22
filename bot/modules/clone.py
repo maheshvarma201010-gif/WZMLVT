@@ -332,11 +332,11 @@ class Clone(TaskListener):
                 )
                 return
 
-            mega_email = self.user_dict.get("MEGA_EMAIL") or ""
-            mega_password = self.user_dict.get("MEGA_PASSWORD") or ""
+            mega_email = self.user_dict.get("MEGA_EMAIL") or Config.MEGA_EMAIL or ""
+            mega_password = self.user_dict.get("MEGA_PASSWORD") or Config.MEGA_PASSWORD or ""
             if not mega_email or not mega_password:
                 await send_message(
-                    self.message, "Mega credentials not configured in user settings."
+                    self.message, "Mega credentials not configured in user or bot settings."
                 )
                 return
 

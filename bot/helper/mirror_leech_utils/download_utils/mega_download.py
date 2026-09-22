@@ -106,6 +106,52 @@ async def _release_link(link: str):
         _ACTIVE_MEGA_LINKS.discard(link)
 
 
+def _mega_py_download_sync(listener, path, email, password):
+    from mega import Mega
+    mega = Mega()
+    m = mega.login(email, password) if email and password else mega.login()
+    downloaded_path = m.download_url(listener.link, dest_path=path)
+    return downloaded_path
+
+
+async def _download_mega_py(listener, path, email, password):
+    from ...ext_utils.bot_utils import sync_to_async
+    await makedirs(path, exist_ok=True)
+    gid = token_hex(5)
+
+    msg, button = await stop_duplicate_check(listener)
+    if msg:
+        await listener.on_download_error(msg, button)
+        return
+
+    if limit_exceeded := await limit_checker(listener):
+        await listener.on_download_error(limit_exceeded, is_limit=True)
+        return
+
+    added_to_queue, event = await check_running_tasks(listener)
+    if added_to_queue:
+        async with task_dict_lock:
+            task_dict[listener.mid] = QueueStatus(listener, gid, "dl")
+        await listener.on_download_start()
+        if listener.multi <= 1:
+            await send_status_message(listener.message)
+        await event.wait()
+        if listener.is_cancelled:
+            return
+
+    await listener.on_download_start()
+    if listener.multi <= 1:
+        await send_status_message(listener.message)
+
+    if listener.is_cancelled:
+        return
+
+    res = await sync_to_async(_mega_py_download_sync, listener, path, email, password)
+    if not res or listener.is_cancelled:
+        return
+    await listener.on_download_complete()
+
+
 async def add_mega_download(listener, path):
     if Config.DISABLE_MEGA:
         await listener.on_download_error(
@@ -124,10 +170,13 @@ async def add_mega_download(listener, path):
         return
 
     if MegaApi is None:
-        await _release_link(listener.link)
-        await listener.on_download_error(
-            "MEGA C++ SDK is not installed on this system."
-        )
+        try:
+            from mega import Mega
+            await _download_mega_py(listener, path, mega_email, mega_password)
+        except Exception as e:
+            await listener.on_download_error(f"Mega download failed: {e}")
+        finally:
+            await _release_link(listener.link)
         return
 
     async_api = None
