@@ -984,6 +984,7 @@ async def merge_command(client, message):
 
             await delete_message(status_msg)
             if found_count < 2:
+                await clean_download(path)
                 await send_message(
                     message,
                     "<b>Merge failed!</b> Less than 2 media files found in the specified link range.",
