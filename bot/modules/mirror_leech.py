@@ -1190,12 +1190,16 @@ async def done_command(client, message):
     for idx, item in enumerate(collected, 1):
         idx_prefix = f"{idx:04d}_"
         if isinstance(item, str) or (getattr(item, "text", None) and ("http://" in item.text or "https://" in item.text)):
-            link = item if isinstance(item, str) else item.text.strip()
+            link = item if isinstance(item, str) else item.text.strip().split("\n", 1)[0].strip()
             mirror_task.link = link
             mirror_task.name = f"{idx_prefix}downloaded_video.mkv"
             try:
-                from .mirror_leech import direct_download
-                await direct_download(mirror_task, f"{path}/")
+                if is_mega_link(link):
+                    await add_mega_download(mirror_task, f"{path}/")
+                elif is_gdrive_link(link) or is_gdrive_id(link):
+                    await add_gd_download(mirror_task, f"{path}/")
+                else:
+                    await add_aria2_download(mirror_task, f"{path}/", "", None, None)
             except Exception as e:
                 LOGGER.error(f"Error downloading link in merge session: {e}")
         else:
@@ -1206,7 +1210,23 @@ async def done_command(client, message):
                 await dl_helper.add_download(item, f"{path}/", session="")
 
     await delete_message(status_msg)
+
+    # Check if files were downloaded into path
+    downloaded_files = []
+    if await aiopath.exists(path):
+        downloaded_files = await listdir(path)
+
+    if not downloaded_files:
+        await clean_download(path)
+        await send_message(
+            message,
+            "<b>Merge failed!</b> No files were successfully downloaded for merging.",
+        )
+        return
+
     mirror_task.name = custom_name
+    mirror_task.manual_merge = True
+    mirror_task.merge_custom_name = custom_name
     await mirror_task.on_download_complete()
 
 

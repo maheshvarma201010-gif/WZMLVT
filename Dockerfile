@@ -1,5 +1,5 @@
 FROM mysterysd/wzmlx:wzadv
-# COPY --from=mysterysd/wzmlx:m-tools /usr/local /usr/local
+COPY --from=mysterysd/wzmlx:m-tools /usr/local /usr/local
 
 WORKDIR /usr/src/app
 
