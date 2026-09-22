@@ -1734,7 +1734,7 @@ async def set_option(_, message, option, rfunc, target_user_id=None):
     await database.update_user_data(user_id)
 
 
-async def get_menu(option, message, user_id):
+async def get_menu(option, message, user_id, start=0):
     handler_dict[user_id] = False
     user_dict = user_data.get(user_id, {})
 
@@ -1774,6 +1774,24 @@ async def get_menu(option, message, user_id):
                 buttons.data_button("Reset", f"userset {user_id} reset {option}")
             elif await aiopath.exists(file_dict[option]):
                 buttons.data_button("Remove", f"userset {user_id} remove {option}")
+
+    if option == "FFMPEG_CMDS":
+        avail_keys = list(Config.FFMPEG_CMDS.keys()) if isinstance(Config.FFMPEG_CMDS, dict) else []
+        if avail_keys:
+            page_items = avail_keys[start : start + 5]
+            lines = [
+                f"{idx + 1}. • <code>-ff {escape(str(k))}</code>"
+                for idx, k in enumerate(page_items, start=start)
+            ]
+            val = "\n" + "\n".join(lines)
+            if len(avail_keys) > 5:
+                for x in range(0, len(avail_keys), 5):
+                    buttons.data_button(
+                        f"{int(x / 5) + 1}", f"userset {user_id} ffpage {x}", position="footer"
+                    )
+        else:
+            val = "<b>No commands configured by Bot Owner/Sudo.</b>"
+
     if option in leech_options:
         back_to = "leech"
     elif option in rclone_options:
@@ -1804,11 +1822,11 @@ async def get_menu(option, message, user_id):
     buttons.data_button(
         "❌ Close", f"userset {user_id} close", "footer", style=ButtonStyle.DANGER
     )
-    val = user_dict.get(option)
+    val_setting = user_dict.get(option)
     if option in file_dict and await aiopath.exists(file_dict[option]):
         val = "<b>Exists</b>"
     elif option == "LEECH_SPLIT_SIZE":
-        val = get_readable_file_size(val)
+        val = get_readable_file_size(val_setting)
     elif option in ["SET_ALL_METADATA", "METADATA", "AUDIO_METADATA", "VIDEO_METADATA", "SUBTITLE_METADATA"]:
         current_meta_val = user_dict.get(option)
         if isinstance(current_meta_val, dict) and current_meta_val:
@@ -1832,8 +1850,8 @@ async def get_menu(option, message, user_id):
         lines = [f"• <b>Default:</b> <code>{escape(str(default_id))}</code>"]
         if default_index:
             lines[0] += f" | <code>{escape(default_index)}</code>"
-        if isinstance(val, dict):
-            for k, v in val.items():
+        if isinstance(val_setting, dict):
+            for k, v in val_setting.items():
                 did = v.get("drive_id", "")
                 ilink = v.get("index_link", "")
                 ilink_part = f" | <code>{escape(ilink)}</code>" if ilink else ""
@@ -1841,15 +1859,8 @@ async def get_menu(option, message, user_id):
                     f"• <b>{escape(k)}:</b> <code>{escape(did)}</code>{ilink_part}"
                 )
             val = "\n".join(lines)
-        elif not val:
+        elif not val_setting:
             val = "<b>Not Set</b>"
-
-    elif option == "FFMPEG_CMDS":
-        avail_keys = list(Config.FFMPEG_CMDS.keys()) if isinstance(Config.FFMPEG_CMDS, dict) else []
-        if avail_keys:
-            val = "\n" + "\n".join([f"• <code>-ff {escape(str(k))}</code>" for k in avail_keys])
-        else:
-            val = "<b>No commands configured by Bot Owner/Sudo.</b>"
     elif option == "FFMPEG_DUMP":
         user_dump = user_dict.get("FFMPEG_DUMP") or Config.FFMPEG_DUMP or {}
         if isinstance(user_dump, dict) and user_dump:
@@ -2080,6 +2091,10 @@ async def edit_user_settings(client, query):
     elif data[2] == "menu":
         await query.answer()
         await get_menu(data[3], message, user_id)
+    elif data[2] == "ffpage":
+        await query.answer()
+        start = int(data[3]) if len(data) > 3 and data[3].isdigit() else 0
+        await get_menu("FFMPEG_CMDS", message, user_id, start=start)
     elif data[2] == "tog":
         await query.answer()
         update_user_ldata(user_id, data[3], data[4] == "t")

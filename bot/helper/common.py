@@ -1104,21 +1104,25 @@ class TaskConfig:
                     if res:
                         if delete_files:
                             await remove(file_path)
-                            remaining = await listdir(new_folder)
-                            if len(remaining) == 1:
-                                folder = new_folder.rsplit("/", 1)[0]
-                                self.name = ospath.basename(res[0])
-                                if self.name.startswith("ffmpeg"):
-                                    self.name = self.name.split(".", 1)[-1]
-                                dl_path = ospath.join(folder, self.name)
-                                await move(res[0], dl_path)
-                                await rmtree(new_folder)
-                                self.is_file = True
-                            else:
-                                dl_path = new_folder
-                                self.name = new_folder.rsplit("/", 1)[-1]
-                                self.is_file = False
+                        remaining = await listdir(new_folder)
+                        if len(remaining) == 1:
+                            folder = new_folder.rsplit("/", 1)[0]
+                            single_res = ospath.join(new_folder, remaining[0])
+                            self.name = ospath.basename(single_res)
+                            if self.name.startswith("ffmpeg"):
+                                self.name = self.name.split(".", 1)[-1]
+                            dl_path = ospath.join(folder, self.name)
+                            await move(single_res, dl_path)
+                            await rmtree(new_folder)
+                            self.is_file = True
                         else:
+                            # Clean up 'ffmpeg' prefix for all generated output files in folder
+                            for item in remaining:
+                                item_path = ospath.join(new_folder, item)
+                                if item.startswith("ffmpeg"):
+                                    clean_name = item.split(".", 1)[-1]
+                                    clean_path = ospath.join(new_folder, clean_name)
+                                    await move(item_path, clean_path)
                             dl_path = new_folder
                             self.name = new_folder.rsplit("/", 1)[-1]
                             self.is_file = False
@@ -1163,14 +1167,15 @@ class TaskConfig:
                             self.subsize = await get_path_size(f_path)
                             self.subname = file_
                             res = await ffmpeg.ffmpeg_cmds(var_cmd, f_path)
-                            if res and delete_files:
-                                await remove(f_path)
-                                if len(res) == 1:
-                                    file_name = ospath.basename(res[0])
+                            if res:
+                                if delete_files:
+                                    await remove(f_path)
+                                for output_path in res:
+                                    file_name = ospath.basename(output_path)
                                     if file_name.startswith("ffmpeg"):
                                         newname = file_name.split(".", 1)[-1]
                                         newres = ospath.join(dirpath, newname)
-                                        await move(res[0], newres)
+                                        await move(output_path, newres)
         finally:
             if lock_acquired:
                 await ff_lock.release()

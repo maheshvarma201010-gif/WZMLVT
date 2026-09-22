@@ -874,7 +874,7 @@ async def merge_command(client, message):
     input_list = text[0].split(" ")
     args = {
         "-i": 0,
-        "-n": "merged_video.mkv",
+        "-n": "merged_video",
         "-up": "",
         "-ud": "",
         "-sp": 0,
@@ -884,7 +884,7 @@ async def merge_command(client, message):
     }
     arg_parser(input_list[1:], args)
 
-    custom_name = args["-n"] if args["-n"] else "merged_video.mkv"
+    custom_name = args["-n"] if args["-n"] else "merged_video"
     count = int(args["-i"]) if str(args["-i"]).isdigit() else 0
 
     # Check for batch Telegram link range e.g. https://t.me/c/12345/10-20 or https://t.me/c/12345/10-https://t.me/c/12345/20
@@ -1116,23 +1116,24 @@ async def done_command(client, message):
     custom_name = session["custom_name"]
     collected = session["collected"]
 
-    # If user sent replies/media after start, fetch active chat history or replied items
-    # Check if there are messages between init_message and current done message
-    if not collected:
-        start_id = init_message.id + 1
-        end_id = message.id
-        chat_id = message.chat.id
-        for mid in range(start_id, end_id):
-            try:
-                msg = await client.get_messages(chat_id, mid)
-                if not msg or msg.empty:
-                    continue
-                c_user = msg.from_user or msg.sender_chat
-                if c_user and c_user.id == user_id:
-                    if msg.video or msg.document or msg.audio or (msg.text and ("http://" in msg.text or "https://" in msg.text)):
-                        collected.append(msg)
-            except Exception:
-                pass
+    # Fetch active chat history between init_message and current done message
+    start_id = init_message.id + 1
+    end_id = message.id
+    chat_id = message.chat.id
+    seen_ids = {msg.id for msg in collected if hasattr(msg, "id")}
+
+    for mid in range(start_id, end_id):
+        try:
+            msg = await client.get_messages(chat_id, mid)
+            if not msg or msg.empty or msg.id in seen_ids:
+                continue
+            c_user = msg.from_user or msg.sender_chat
+            if c_user and c_user.id == user_id:
+                if msg.video or msg.document or msg.audio or (msg.text and ("http://" in msg.text or "https://" in msg.text)):
+                    collected.append(msg)
+                    seen_ids.add(msg.id)
+        except Exception:
+            pass
 
     if not collected:
         await send_message(
