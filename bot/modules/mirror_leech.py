@@ -896,7 +896,7 @@ async def merge_command(client, message):
 
     if batch_link:
         match = re_search(
-            r"https://t\.me/(?:c/)?([^/]+)/(\d+)(?:-https://t\.me/(?:c/)?(?:[^/]+)/|-)(\d+)",
+            r"https://t\.me/(?:c/)?([^/]+)/(\d+)(?:-(?:https://t\.me/(?:c/)?(?:[^/]+)/)?(\d+))",
             batch_link,
         )
         if match:
@@ -1113,7 +1113,7 @@ async def merge_command(client, message):
         message,
         f"<b>🎬 Merge Session Started!</b>\n\n"
         f"Send or forward videos, files, or direct links sequentially in the order you want them merged.\n"
-        f"When finished, send <code>/{done_cmd}</code> to start downloading &amp; merging!\n\n"
+        f"When finished, send <code>/{done_cmd}</code> (or <code>/done1</code>, <code>/done2</code>, etc.) to start downloading &amp; merging!\n\n"
         f"• <b>Output Name:</b> <code>{custom_name}</code>",
     )
 
@@ -1124,6 +1124,14 @@ async def done_command(client, message):
     session_key = (message.chat.id, user_id)
 
     session = _MERGE_SESSIONS.pop(session_key, None)
+    if not session:
+        # Search for any active merge session in this chat
+        for (c_id, u_id), sess in list(_MERGE_SESSIONS.items()):
+            if c_id == message.chat.id:
+                session_key = (c_id, u_id)
+                session = _MERGE_SESSIONS.pop(session_key, None)
+                break
+
     if not session:
         await send_message(
             message,
