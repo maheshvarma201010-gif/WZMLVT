@@ -992,7 +992,6 @@ Configure custom video encoding, compression, and watermark overlays for uploads
 • <b>Auto-Create Folder:</b> <code>{"Enabled" if auto_create else "Disabled"}</code></blockquote>"""
 
     elif stype == "lfont":
-        await query.answer()
         fonts = [
             ("Bold", "b"),
             ("Italic", "i"),
@@ -1002,14 +1001,12 @@ Configure custom video encoding, compression, and watermark overlays for uploads
             ("Underline", "u"),
             ("None (Normal)", "none"),
         ]
-        buttons = ButtonMaker()
         cur_font = user_dict.get("LEECH_FONT") or Config.LEECH_FONT or "none"
         for label, tag in fonts:
             st = "✓ " if cur_font == tag else ""
             buttons.data_button(f"{st}{label}", f"userset {user_id} setfont {tag}")
         buttons.data_button("◀️ Back", f"userset {user_id} leech", position="footer")
-        msg = f"<b>📄 Select Caption Font Style:</b>\nCurrent: <code>{cur_font}</code>"
-        await edit_message(message, msg, buttons.build_menu(2))
+        text = f"<b>📄 Select Caption Font Style:</b>\nCurrent: <code>{cur_font}</code>"
     elif stype == "rclone":
         buttons.data_button("Rclone Config", f"userset {user_id} menu RCLONE_CONFIG")
         buttons.data_button(
