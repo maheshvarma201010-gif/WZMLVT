@@ -431,11 +431,13 @@ async def get_buttons(key=None, edit_type=None, edit_mode=False):
         current_page = int(start / 5) + 1
         msg = f"<b>🎬 Global FFmpeg Commands</b> (Page {current_page} of {total_pages})\n\n<blockquote>{ff_display}</blockquote>"
         if len(ff_items) > 5:
-            prev_page = start - 5 if start >= 5 else (total_pages - 1) * 5
-            next_page = start + 5 if start + 5 < len(ff_items) else 0
-            buttons.data_button("◀️ Prev", f"botset start ffmpegcmds {prev_page}", position="footer")
-            buttons.data_button(f"{current_page}/{total_pages}", "botset start ffmpegcmds", position="footer")
-            buttons.data_button("Next ▶️", f"botset start ffmpegcmds {next_page}", position="footer")
+            for x in range(0, len(ff_items), 5):
+                pg_num = int(x / 5) + 1
+                buttons.data_button(
+                    f"{'• ' if pg_num == current_page else ''}{pg_num}",
+                    f"botset start ffmpegcmds {x}",
+                    position="footer",
+                )
         if edit_mode:
             msg += "\n\n<blockquote>Send dict format: <code>{'tel': ['cmd1', 'cmd2']}</code> or single entry format: <code>KEY: command</code>\n⏱️ <b>Time Left:</b> <code>60 sec</code></blockquote>"
     elif key == "dumpcmds":
@@ -1772,9 +1774,10 @@ async def edit_bot_settings(client, query):
         await update_buttons(message, data[2])
     elif data[1] == "start":
         await query.answer()
-        if start != int(data[3]):
-            globals()["start"] = int(data[3])
-            await update_buttons(message, data[2])
+        if len(data) > 3 and data[3].isdigit():
+            if start != int(data[3]):
+                globals()["start"] = int(data[3])
+                await update_buttons(message, data[2])
     elif data[1] in ("editff", "editdump"):
         await query.answer()
         key = "ffmpegcmds" if data[1] == "editff" else "dumpcmds"
