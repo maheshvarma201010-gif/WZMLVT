@@ -133,23 +133,28 @@ def _run_update(upstream_repo, upstream_branch, version):
         _LOGGER.info("No UPSTREAM_REPO set, skipping git update")
         return
     if path.exists(".git"):
-        srun(["rm", "-rf", ".git"])
-    git_cmds = [
-        ["git", "init", "-q"],
-        [
-            "git",
-            "config",
-            "--global",
-            "user.email",
-            "105407900+SilentDemonSD@users.noreply.github.com",
-        ],
-        ["git", "config", "--global", "user.name", "SilentDemonSD"],
-        ["git", "add", "."],
-        ["git", "commit", "-sm", "update", "-q"],
-        ["git", "remote", "add", "origin", upstream_repo],
-        ["git", "fetch", "origin", "-q"],
-        ["git", "reset", "--hard", f"origin/{upstream_branch}", "-q"],
-    ]
+        git_cmds = [
+            ["git", "remote", "set-url", "origin", upstream_repo],
+            ["git", "fetch", "origin", "-q"],
+            ["git", "reset", "--hard", f"origin/{upstream_branch}", "-q"],
+        ]
+    else:
+        git_cmds = [
+            ["git", "init", "-q"],
+            [
+                "git",
+                "config",
+                "--global",
+                "user.email",
+                "105407900+SilentDemonSD@users.noreply.github.com",
+            ],
+            ["git", "config", "--global", "user.name", "SilentDemonSD"],
+            ["git", "add", "."],
+            ["git", "commit", "-sm", "update", "-q"],
+            ["git", "remote", "add", "origin", upstream_repo],
+            ["git", "fetch", "origin", "-q"],
+            ["git", "reset", "--hard", f"origin/{upstream_branch}", "-q"],
+        ]
     for cmd in git_cmds:
         result = srun(cmd)
         if result.returncode != 0:

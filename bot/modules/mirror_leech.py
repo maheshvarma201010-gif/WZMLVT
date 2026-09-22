@@ -3,7 +3,7 @@ from asyncio import sleep
 from base64 import b64encode
 from html import escape
 from os import path as ospath
-from re import match as re_match
+from re import match as re_match, search as re_search
 from time import time
 
 from aiofiles import open as aiopen
