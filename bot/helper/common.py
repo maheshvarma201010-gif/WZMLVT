@@ -500,7 +500,7 @@ class TaskConfig:
                         break
             if key_dump_dest:
                 self.dump_dest = key_dump_dest
-            else:
+            elif not self.dump_dest:
                 self.dump_dest = self.user_dict.get("LEECH_DUMP_CHAT") or Config.LEECH_LOG_CHAT or ""
 
         self.metadata_title = self.user_dict.get("METADATA")
@@ -654,7 +654,7 @@ class TaskConfig:
             if self.hybrid_leech:
                 self.transmission_mode = "both"
 
-            self.up_dest = Config.LEECH_LOG_CHAT
+            self.up_dest = ""
             if self.dump_dest:
                 dump_chats = Config.LEECH_DUMP_CHATS or {}
                 self.up_dest = dump_chats.get(self.dump_dest)
@@ -679,11 +679,6 @@ class TaskConfig:
                             f"Unknown dump chat '{self.dump_dest}'! "
                             f"Configured dumps: none"
                         )
-            if not self.up_dest and self.leech_dest:
-                self.up_dest = self.leech_dest
-                self.chat_thread_id = self.leech_thread_id
-            elif not self.up_dest:
-                self.up_dest = self.user_id
 
             if self.up_dest:
                 if not isinstance(self.up_dest, int):
@@ -1550,94 +1545,6 @@ class TaskConfig:
             task_dict[self.mid] = SevenZStatus(self, sevenz, gid, "Zip")
         return await sevenz.zip(dl_path, up_path, pswd)
 
-    async def proceed_auto_remove(self, dl_path, gid):
-        if not dl_path or not await aiopath.exists(dl_path) or is_archive(dl_path) or is_archive_split(dl_path):
-            return dl_path
-
-        auto_rem_enable = self.user_dict.get("AUTO_REMOVE_ENABLE", False)
-        kept_enable = self.user_dict.get("AUTO_REMOVE_KEPT_ENABLE", False)
-        rem_enable = self.user_dict.get("AUTO_REMOVE_REMOVE_ENABLE", False)
-        reord_enable = self.user_dict.get("AUTO_REMOVE_REORDER_ENABLE", False)
-
-        if not auto_rem_enable:
-            return dl_path
-
-        all_files = [dl_path] if self.is_file else []
-        if not self.is_file:
-            for dirpath, _, files in await sync_to_async(walk, dl_path, topdown=False):
-                for file_ in files:
-                    fp = ospath.join(dirpath, file_)
-                    is_vid, is_aud, _ = await get_document_type(fp)
-                    if is_vid or is_aud:
-                        all_files.append(fp)
-
-        if not all_files:
-            return dl_path
-
-        ffmpeg = FFMpeg(self)
-
-        kept_cfg = self.user_dict.get("AUTO_REMOVE_KEPT_CONFIG", "") if (auto_rem_enable and kept_enable) else ""
-        rem_cfg = self.user_dict.get("AUTO_REMOVE_REMOVE_CONFIG", "") if (auto_rem_enable and rem_enable) else ""
-        reord_cfg = self.user_dict.get("AUTO_REMOVE_REORDER_CONFIG", "") if (auto_rem_enable and reord_enable) else ""
-
-        for f_path in all_files:
-            if self.is_cancelled:
-                return False
-
-            streams = await ffmpeg.get_streams(f_path)
-            if not streams or len(streams) <= 1:
-                continue
-
-            video_streams = [s for s in streams if s.get("codec_type") == "video"]
-            audio_streams = [s for s in streams if s.get("codec_type") == "audio"]
-            sub_streams = [s for s in streams if s.get("codec_type") == "subtitle"]
-
-            if kept_cfg or rem_cfg:
-                kept_indices = [v.get("index") for v in video_streams]
-
-                if kept_cfg:
-                    aud_l, aud_p, sub_l, sub_p = parse_track_selectors(kept_cfg)
-                    m_aud = [s.get("index") for i, s in enumerate(audio_streams, 1) if match_stream_track(s, i, aud_l, aud_p)]
-                    m_sub = [s.get("index") for i, s in enumerate(sub_streams, 1) if match_stream_track(s, i, sub_l, sub_p)]
-
-                    if not m_aud and audio_streams:
-                        m_aud = [audio_streams[0].get("index")]
-
-                    kept_indices.extend(m_aud)
-                    kept_indices.extend(m_sub)
-
-                elif rem_cfg:
-                    aud_l, aud_p, sub_l, sub_p = parse_track_selectors(rem_cfg)
-                    r_aud = {s.get("index") for i, s in enumerate(audio_streams, 1) if match_stream_track(s, i, aud_l, aud_p)}
-                    r_sub = {s.get("index") for i, s in enumerate(sub_streams, 1) if match_stream_track(s, i, sub_l, sub_p)}
-
-                    k_aud = [s.get("index") for s in audio_streams if s.get("index") not in r_aud]
-                    k_sub = [s.get("index") for s in sub_streams if s.get("index") not in r_sub]
-
-                    if not k_aud and audio_streams:
-                        k_aud = [audio_streams[0].get("index")]
-
-                    kept_indices.extend(k_aud)
-                    kept_indices.extend(k_sub)
-
-                if kept_indices and len(kept_indices) < len(streams):
-                    async with task_dict_lock:
-                        task_dict[self.mid] = FFmpegStatus(self, ffmpeg, gid, "Auto Remove Tracks")
-                    res = await ffmpeg.remove_streams(f_path, kept_indices)
-                    if res and await aiopath.exists(res):
-                        await remove(f_path)
-                        await move(res, f_path)
-
-            # Reorder rules
-            if reord_cfg:
-                aud_swaps, sub_swaps = parse_reorder_rules(reord_cfg)
-                if aud_swaps or sub_swaps:
-                    async with task_dict_lock:
-                        task_dict[self.mid] = FFmpegStatus(self, ffmpeg, gid, "Reorder Streams")
-                    await ffmpeg.reorder_tracks(f_path, aud_swaps, sub_swaps)
-
-        return dl_path
-
     async def proceed_reorder(self, dl_path, gid):
         if not dl_path or not await aiopath.exists(dl_path):
             return dl_path
@@ -1673,58 +1580,6 @@ class TaskConfig:
                 async with task_dict_lock:
                     task_dict[self.mid] = FFmpegStatus(self, ffmpeg, gid, "Reorder Streams")
                 await ffmpeg.reorder_tracks(f_path, aud_swaps, sub_swaps)
-
-        return dl_path
-
-    async def proceed_audio_split(self, dl_path, gid):
-        if not dl_path or not await aiopath.exists(dl_path) or is_archive(dl_path) or is_archive_split(dl_path):
-            return dl_path
-
-        as_enable = self.user_dict.get("AUDIO_SPLIT_ENABLE", False)
-        as_cfg = self.user_dict.get("AUDIO_SPLIT_CONFIG", "")
-        if not as_enable or not as_cfg:
-            return dl_path
-
-        all_files = [dl_path] if self.is_file else []
-        if not self.is_file:
-            for dirpath, _, files in await sync_to_async(walk, dl_path, topdown=False):
-                for file_ in files:
-                    fp = ospath.join(dirpath, file_)
-                    is_vid, is_aud, _ = await get_document_type(fp)
-                    if is_vid or is_aud:
-                        all_files.append(fp)
-
-        if not all_files:
-            return dl_path
-
-        ffmpeg = FFMpeg(self)
-        aud_l, aud_p, _, _ = parse_track_selectors(f"aud={as_cfg}")
-
-        for f_path in all_files:
-            if self.is_cancelled:
-                return False
-
-            streams = await ffmpeg.get_streams(f_path)
-            if not streams:
-                continue
-
-            audio_streams = [s for s in streams if s.get("codec_type") == "audio"]
-            if not audio_streams:
-                continue
-
-            matched = [(i, s) for i, s in enumerate(audio_streams, 1) if match_stream_track(s, i, aud_l, aud_p)]
-            if matched:
-                async with task_dict_lock:
-                    task_dict[self.mid] = FFmpegStatus(self, ffmpeg, gid, "Splitting Audio")
-                for i, s in matched:
-                    st_idx = s.get("index")
-                    lang = s.get("tags", {}).get("language", "und")
-                    codec = s.get("codec_name", "m4a")
-                    dir_name = ospath.dirname(f_path)
-                    base_name = ospath.splitext(ospath.basename(f_path))[0]
-                    out_file = ospath.join(dir_name, f"{base_name}_audio_{i}_{lang}.{codec}")
-                    cmd = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", f_path, "-map", f"0:{st_idx}", "-c", "copy", out_file]
-                    await cmd_exec(cmd)
 
         return dl_path
 

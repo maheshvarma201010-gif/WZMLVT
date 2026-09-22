@@ -165,13 +165,19 @@ class TelegramUploader:
                 r"\{([^}]+)\}", lambda m: f"{{{m.group(1).lower()}}}", parts[0]
             )
             up_path = ospath.join(dirpath, pre_file_)
-            dur, qual, lang, subs = await get_media_info(up_path, True)
+            media_info_res = await get_media_info(up_path, True)
+            if len(media_info_res) == 5:
+                dur, qual, lang, subs, langr = media_info_res
+            else:
+                dur, qual, lang, subs = media_info_res[:4]
+                langr = lang
             cap_mono = parts[0].format(
                 filename=cap_file_,
                 size=get_readable_file_size(await aiopath.getsize(up_path)),
                 duration=get_readable_time(dur),
                 quality=qual,
                 languages=lang,
+                languagesr=langr,
                 subtitles=subs,
                 md5_hash=await sync_to_async(get_md5_hash, up_path),
                 mime_type=self._listener.file_details.get("mime_type", "text/plain"),
@@ -350,8 +356,8 @@ class TelegramUploader:
             if d_chat and (d_chat, d_thread) not in destinations:
                 destinations.append((d_chat, d_thread))
 
-        # Global dump / leech log chat
-        global_dump = self._listener.up_dest or getattr(Config, "LEECH_LOG_CHAT", None)
+        # Global dump / leech log chat or task dump
+        global_dump = self._listener.up_dest
         if global_dump and global_dump not in (self._listener.user_id, self._listener.leech_dest):
             g_chat, g_thread = parse_dest(global_dump) if not isinstance(global_dump, int) else (global_dump, self._listener.chat_thread_id)
             if g_chat and (g_chat, g_thread) not in destinations:

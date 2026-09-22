@@ -4,7 +4,11 @@ from tempfile import mkdtemp
 try:
     from mega import MegaApi, MegaError, MegaListener, MegaRequest
 except ImportError:
-    MegaApi = MegaError = MegaRequest = None
+    try:
+        from mega import Mega as PyMega
+        MegaApi = MegaError = MegaRequest = None
+    except ImportError:
+        PyMega = MegaApi = MegaError = MegaRequest = None
     class MegaListener:
         pass
 
@@ -168,6 +172,34 @@ class MegaAccountListener(MegaListener):
 
 def _get_mega_account_info_sync(email: str, password: str) -> str:
     from time import sleep, gmtime, strftime
+
+    if MegaApi is None:
+        try:
+            from mega import Mega
+            m = Mega()
+            m_user = m.login(email, password)
+            account_info = m.get_storage_space(u=m_user)
+            user_info = m.get_user()
+
+            used_bytes = account_info.get("used", 0)
+            total_bytes = account_info.get("total", 0)
+            pct = round((used_bytes / max(total_bytes, 1)) * 100, 2)
+
+            text = (
+                f"⌬ <b>Mega Account Info</b>\n"
+                f"│\n"
+                f"┠ <b>Email</b> → <code>{email}</code>\n"
+                f"┠ <b>Account Name</b> → {user_info.get('name', 'N/A')}\n"
+                f"┃\n"
+                f"┠ <b>Storage</b> → {get_readable_file_size(used_bytes)} / "
+                f"{get_readable_file_size(total_bytes)} ({pct}%)\n"
+            )
+            return text
+        except Exception as e:
+            if "MEGA SDK" in str(e):
+                pass
+            else:
+                return f"⌬ <b>Mega Account Info</b>\n│\n┖ Error: {e}"
 
     if MegaApi is None:
         return "⌬ <b>Mega Account Info</b>\n│\n┖ <i>MEGA SDK is not installed on this system.</i>"
