@@ -419,13 +419,21 @@ async def get_buttons(key=None, edit_type=None, edit_mode=False):
         buttons.data_button("Back", "botset back")
         buttons.data_button("Close", "botset close", style=ButtonStyle.DANGER)
         ff_display = ""
-        if Config.FFMPEG_CMDS and isinstance(Config.FFMPEG_CMDS, dict):
-            for k, v in Config.FFMPEG_CMDS.items():
-                cmds_str = "\n".join([f"    • <code>{cmd}</code>" for cmd in (v if isinstance(v, list) else [v])])
-                ff_display += f"• <b>{k}:</b>\n{cmds_str}\n"
+        ff_items = list(Config.FFMPEG_CMDS.items()) if Config.FFMPEG_CMDS and isinstance(Config.FFMPEG_CMDS, dict) else []
+        page_items = ff_items[start : start + 5]
+        for k, v in page_items:
+            cmds_str = "\n".join([f"    • <code>{cmd}</code>" for cmd in (v if isinstance(v, list) else [v])])
+            ff_display += f"• <b>{k}:</b>\n{cmds_str}\n"
         if not ff_display:
             ff_display = "<i>No FFmpeg commands configured.</i>"
-        msg = f"<b>🎬 Global FFmpeg Commands</b>\n\n<blockquote>{ff_display}</blockquote>"
+        total_pages = max(1, -(-len(ff_items) // 5))
+        current_page = int(start / 5) + 1
+        msg = f"<b>🎬 Global FFmpeg Commands</b> (Page {current_page} of {total_pages})\n\n<blockquote>{ff_display}</blockquote>"
+        if len(ff_items) > 5:
+            for x in range(0, len(ff_items), 5):
+                buttons.data_button(
+                    f"{int(x / 5) + 1}", f"botset start ffmpegcmds {x}", position="footer"
+                )
         if edit_mode:
             msg += "\n\n<blockquote>Send dict format: <code>{'tel': ['cmd1', 'cmd2']}</code> or single entry format: <code>KEY: command</code>\n⏱️ <b>Time Left:</b> <code>60 sec</code></blockquote>"
     elif key == "dumpcmds":

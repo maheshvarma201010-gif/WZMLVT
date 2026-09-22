@@ -171,6 +171,7 @@ async def edit_message(message, text, buttons=None, block=True, photo=None):
                 reply_markup=buttons,
             )
         if message.media:
+            caption_text = text[:1020] + "..." if len(text) > 1024 else text
             if photo:
                 if photo == "IMAGES":
                     if Config.USE_IMAGES and Config.IMAGES:
@@ -180,7 +181,7 @@ async def edit_message(message, text, buttons=None, block=True, photo=None):
                 if photo:
                     try:
                         return await message.edit_media(
-                            InputMediaPhoto(photo, text), reply_markup=buttons
+                            InputMediaPhoto(photo, caption_text), reply_markup=buttons
                         )
                     except (
                         PhotoInvalidDimensions,
@@ -191,18 +192,20 @@ async def edit_message(message, text, buttons=None, block=True, photo=None):
                         des_dir = await download_image_url(photo)
                         if des_dir:
                             msg = await message.edit_media(
-                                InputMediaPhoto(des_dir, text), reply_markup=buttons
+                                InputMediaPhoto(des_dir, caption_text), reply_markup=buttons
                             )
                             from aiofiles.os import remove as aioremove
 
                             await aioremove(des_dir)
                             return msg
                         return await message.edit_caption(
-                            caption=text, reply_markup=buttons
+                            caption=caption_text, reply_markup=buttons
                         )
-            return await message.edit_caption(caption=text, reply_markup=buttons)
+            return await message.edit_caption(caption=caption_text, reply_markup=buttons)
+
+        msg_text = text[:4090] + "..." if len(text) > 4096 else text
         return await message.edit(
-            text=text,
+            text=msg_text,
             disable_web_page_preview=True,
             reply_markup=buttons,
         )
