@@ -1,3 +1,4 @@
+from asyncio import gather
 from html import escape
 from pyrogram.enums import ButtonStyle
 from time import monotonic, time
@@ -8,7 +9,7 @@ from aiofiles import open as aiopen
 from cloudscraper import create_scraper
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
-from .. import LOGGER, user_data
+from .. import LOGGER, auth_chats, user_data
 from ..core.config_manager import Config
 from ..core.tg_client import TgClient
 from ..helper.ext_utils.bot_utils import new_task, update_user_ldata
@@ -19,6 +20,7 @@ from ..helper.languages import Language
 from ..helper.telegram_helper.bot_commands import BotCommands
 from ..helper.telegram_helper.button_build import ButtonMaker
 from ..helper.telegram_helper.filters import CustomFilters
+from ..helper.telegram_helper.tg_utils import chat_info
 from ..helper.telegram_helper.message_utils import (
     delete_message,
     edit_message,
@@ -28,16 +30,54 @@ from ..helper.telegram_helper.message_utils import (
 )
 
 
+async def _build_start_buttons():
+    buttons = ButtonMaker()
+    lang = Language()
+    buttons.url_button(
+        lang.START_BUTTON1, "https://www.github.com/SilentDemonSD/WZML-X", "header"
+    )
+    buttons.url_button(lang.START_BUTTON2, "https://t.me/WZML_X", "header")
+
+    chat_ids = list(auth_chats.keys())
+    if Config.AUTHORIZED_CHATS:
+        for raw_id in Config.AUTHORIZED_CHATS.split():
+            cid = raw_id.split("|")[0].strip()
+            try:
+                cid_int = int(cid)
+                if cid_int not in chat_ids:
+                    chat_ids.append(cid_int)
+            except ValueError:
+                pass
+
+    if chat_ids:
+        tasks = [chat_info(cid) for cid in chat_ids]
+        chats = await gather(*tasks, return_exceptions=True)
+        for idx, (cid, chat) in enumerate(zip(chat_ids, chats), 1):
+            if isinstance(chat, Exception) or chat is None:
+                title = f"Auth Chat {idx}"
+                link = f"https://t.me/c/{str(cid)[4:]}" if str(cid).startswith("-100") else None
+            else:
+                title = getattr(chat, "title", None) or f"Auth Chat {idx}"
+                if getattr(chat, "username", None):
+                    link = f"https://t.me/{chat.username}"
+                elif getattr(chat, "invite_link", None):
+                    link = chat.invite_link
+                elif str(cid).startswith("-100"):
+                    link = f"https://t.me/c/{str(cid)[4:]}"
+                else:
+                    link = None
+
+            if link:
+                buttons.url_button(title, link, position="default")
+
+    return buttons.build_menu(b_cols=3, h_cols=2)
+
+
 @new_task
 async def start(_, message):
     userid = message.from_user.id
-    lang = Language()
-    buttons = ButtonMaker()
-    buttons.url_button(
-        lang.START_BUTTON1, "https://www.github.com/SilentDemonSD/WZML-X"
-    )
-    buttons.url_button(lang.START_BUTTON2, "https://t.me/WZML_X")
-    reply_markup = buttons.build_menu(2)
+    user_name = message.from_user.first_name if message.from_user else "User"
+    reply_markup = await _build_start_buttons()
 
     if len(message.command) > 1 and message.command[1] == "wzmlx":
         await delete_message(message)
@@ -74,33 +114,49 @@ async def start(_, message):
                     message,
                     "<blockquote><b>Bot Already Logged In via Password</b>\nNo need to accept temporary tokens.</blockquote>",
                 )
-            buttons.data_button(
+            btn = ButtonMaker()
+            btn.data_button(
                 "Activate Access Token", f"start pass {input_token}", "header"
             )
-            reply_markup = buttons.build_menu(2)
+            token_markup = btn.build_menu(1)
             msg = f"""<b>🔑 Access Login Token</b>
 
 <blockquote>• <b>Status:</b> Generated Successfully
 • <b>Access Token:</b> <code>{input_token}</code>
 • <b>Validity:</b> {get_readable_time(int(Config.VERIFY_TIMEOUT))}</blockquote>"""
-            return await send_message(message, msg, reply_markup)
+            return await send_message(message, msg, token_markup)
 
+    help_cmd = BotCommands.HelpCommand[0] if isinstance(BotCommands.HelpCommand, list) else BotCommands.HelpCommand
     if await CustomFilters.authorized(_, message):
-        start_string = lang.START_MSG.format(
-            cmd=BotCommands.HelpCommand[0],
+        start_string = (
+            f"<b>👋 Welcome, {escape(user_name)}!</b>\n\n"
+            f"<blockquote><b>WZML-X Bot</b> is ready to mirror and leech files, torrents, and cloud links to Telegram or Cloud Storage.</blockquote>\n\n"
+            f"<b>💡 Commands & Help:</b> Use /{help_cmd} to view all available commands and guides.\n"
+            f"<b>💬 Authorized Chats:</b> Click any of the authorized chat buttons below to access supported groups."
         )
         await send_message(message, start_string, reply_markup, photo="IMAGES")
     elif Config.BOT_PM:
+        start_string = (
+            f"<b>👋 Welcome, {escape(user_name)}!</b>\n\n"
+            f"<blockquote>Bot will send all your files and links here in private message. Start using now!</blockquote>\n\n"
+            f"<b>💬 Authorized Chats:</b> Join any authorized chat below to start tasks."
+        )
         await send_message(
             message,
-            "<blockquote>Bot will send all your files and links here. Start using now!</blockquote>",
+            start_string,
             reply_markup,
             photo="IMAGES",
         )
     else:
+        start_string = (
+            f"<b>👋 Welcome to WZML-X Bot, {escape(user_name)}!</b>\n\n"
+            f"<blockquote>Mirror and leech files, torrents, and links to Telegram or Cloud Storage.\n\n"
+            f"<b>Note:</b> You are not authorized to use this bot instance directly in private.</blockquote>\n\n"
+            f"<b>💬 Authorized Chats:</b> Join our authorized chats below to get access."
+        )
         await send_message(
             message,
-            "<blockquote><b>Welcome to WZML-X Bot!</b>\nMirror and leech files, torrents, and links to Telegram or Cloud Storage.\n\n<b>Note:</b> You are not authorized to use this bot instance.</blockquote>",
+            start_string,
             reply_markup,
             photo="IMAGES",
         )
@@ -110,12 +166,15 @@ async def start(_, message):
 @new_task
 async def start_cb(_, query):
     user_id = query.from_user.id
-    input_token = query.data.split()[2]
-    data = user_data.get(user_id, {})
+    data = query.data.split()
+    if len(data) < 3:
+        return await query.answer("Invalid request!", show_alert=True)
+    input_token = data[2]
+    u_data = user_data.get(user_id, {})
 
     if input_token == "activated":
         return await query.answer("Already activated!", show_alert=True)
-    elif "VERIFY_TOKEN" not in data or data["VERIFY_TOKEN"] != input_token:
+    elif "VERIFY_TOKEN" not in u_data or u_data["VERIFY_TOKEN"] != input_token:
         return await query.answer("Already used! Please generate a new one.", show_alert=True)
 
     update_user_ldata(user_id, "VERIFY_TOKEN", str(uuid4()))
@@ -124,12 +183,13 @@ async def start_cb(_, query):
         await database.update_user_data(user_id)
     await query.answer("Access token activated successfully!", show_alert=True)
 
-    kb = query.message.reply_markup.inline_keyboard[1:]
-    kb.insert(
-        0,
-        [InlineKeyboardButton("✅ Activated", callback_data="start pass activated", style=ButtonStyle.SUCCESS)],
-    )
-    await edit_reply_markup(query.message, InlineKeyboardMarkup(kb))
+    if query.message and query.message.reply_markup and len(query.message.reply_markup.inline_keyboard) > 1:
+        kb = query.message.reply_markup.inline_keyboard[1:]
+        kb.insert(
+            0,
+            [InlineKeyboardButton("✅ Activated", callback_data="start pass activated", style=ButtonStyle.SUCCESS)],
+        )
+        await edit_reply_markup(query.message, InlineKeyboardMarkup(kb))
 
 
 @new_task

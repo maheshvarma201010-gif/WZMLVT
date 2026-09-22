@@ -497,10 +497,16 @@ class TaskConfig:
                     if resolved_dest and resolved_dest not in self.key_dump_dests:
                         self.key_dump_dests.append(resolved_dest)
 
+            universal_dump = self.user_dict.get("LEECH_DUMP_CHAT") or Config.LEECH_LOG_CHAT or getattr(Config, "LEECH_DUMP_CHAT", "") or ""
+            if universal_dump:
+                resolved_u = dump_chats.get(universal_dump) or universal_dump
+                if resolved_u and resolved_u not in self.key_dump_dests:
+                    self.key_dump_dests.append(resolved_u)
+
             if self.key_dump_dests:
                 self.dump_dest = self.key_dump_dests[0]
             elif not self.dump_dest:
-                self.dump_dest = self.user_dict.get("LEECH_DUMP_CHAT") or Config.LEECH_LOG_CHAT or ""
+                self.dump_dest = universal_dump
 
         self.metadata_title = self.user_dict.get("METADATA")
 
@@ -1701,6 +1707,16 @@ class TaskConfig:
         total_inputs = len(v_files) + len(a_files) + len(s_files)
         if total_inputs < 2 and len(v_files) < 2:
             LOGGER.info("Merge skipped: Less than 2 mergeable files found.")
+            if custom_name and len(v_files) == 1:
+                single_v = v_files[0]
+                parent_d = ospath.dirname(single_v)
+                v_ext = ospath.splitext(single_v)[1]
+                target_n = custom_name if custom_name.lower().endswith(v_ext.lower()) else f"{custom_name}{v_ext}"
+                target_p = ospath.join(parent_d, target_n)
+                if single_v != target_p:
+                    await move(single_v, target_p)
+                    self.name = target_n
+                    return target_p
             return dl_path
 
         if custom_name:

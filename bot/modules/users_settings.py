@@ -10,17 +10,16 @@ from os import getcwd
 from re import sub
 from time import time
 import zipfile
-from shutil import rmtree
-
 from aiofiles.os import makedirs, remove, rename
 from aiofiles.os import path as aiopath
 from aioshutil import move
 from langcodes import Language
 from pyrogram.filters import create
 from pyrogram.handlers import MessageHandler
+from pyrogram.types import ReplyParameters
 
 
-from .. import DOWNLOAD_DIR, auth_chats, excluded_extensions, sudo_users, user_data
+from .. import auth_chats, excluded_extensions, sudo_users, user_data
 from ..core.config_manager import Config
 from ..core.seedr_client import SeedrClient
 from ..core.tg_client import TgClient
@@ -30,7 +29,7 @@ from ..helper.ext_utils.bot_utils import (
     update_user_ldata,
 )
 from ..helper.ext_utils.db_handler import database
-from ..helper.ext_utils.mega_utils import get_mega_account_info
+from ..helper.ext_utils.mega_utils import get_mega_account_info, get_mega_creds
 from ..helper.ext_utils.media_utils import create_thumb, download_image_thumb
 from ..helper.ext_utils.status_utils import get_readable_file_size
 from ..helper.telegram_helper.button_build import ButtonMaker
@@ -1006,6 +1005,7 @@ Configure custom video encoding, compression, and watermark overlays for uploads
             st = "✓ " if cur_font == tag else ""
             buttons.data_button(f"{st}{label}", f"userset {user_id} setfont {tag}")
         buttons.data_button("◀️ Back", f"userset {user_id} leech", position="footer")
+        btns = buttons.build_menu(2)
         text = f"<b>📄 Select Caption Font Style:</b>\nCurrent: <code>{cur_font}</code>"
         btns = buttons.build_menu(2)
     elif stype == "rclone":
@@ -1165,8 +1165,7 @@ Configure custom video encoding, compression, and watermark overlays for uploads
 • <b>Stop Duplicate Checks:</b> <b>{sd_msg}</b></blockquote>"""
 
     elif stype == "mega":
-        mega_email = user_dict.get("MEGA_EMAIL", "")
-        mega_password = user_dict.get("MEGA_PASSWORD", "")
+        mega_email, mega_password = get_mega_creds(user_id)
         has_creds = bool(mega_email and mega_password)
         masked_pass = (
             (
@@ -1398,11 +1397,8 @@ Configure custom video encoding, compression, and watermark overlays for uploads
         if ex_ex != "None":
             ex_ex = ", ".join(ex_ex)
 
-        ns_msg = (
-            f"<code>{swap}</code>"
-            if (swap := user_dict.get("NAME_SWAP", False))
-            else "<b>Not Set</b>"
-        )
+        swap = user_dict.get("NAME_SWAP", False)
+        ns_msg = f"<code>{swap}</code>" if swap else "<b>Not Set</b>"
         buttons.data_button("Name Swap", f"userset {user_id} menu NAME_SWAP")
 
         buttons.data_button("YT-DLP Options", f"userset {user_id} menu YT_DLP_OPTIONS")
@@ -1992,8 +1988,7 @@ async def edit_user_settings(client, query):
         await query.answer()
         msg, button = await get_user_settings(query.from_user, "mega")
         await edit_message(message, msg, button)
-        mega_email = user_dict.get("MEGA_EMAIL", "")
-        mega_password = user_dict.get("MEGA_PASSWORD", "")
+        mega_email, mega_password = get_mega_creds(user_id)
         if mega_email and mega_password:
             info_text = await get_mega_account_info(mega_email, mega_password)
             msg += f"\n\n{info_text}"
@@ -2484,23 +2479,26 @@ async def chthumb_command(client, message):
 
         status_msg = await send_message(message, "<b>Updating video cover/thumbnail...</b>")
 
-        # Download target video locally
-        vid_dir = f"{DOWNLOAD_DIR}chthumb_{user_id}_{time()}"
-        await makedirs(vid_dir, exist_ok=True)
-        video_file_path = await reply_to.download(file_name=f"{vid_dir}/video.mp4")
+        video_attr = reply_to.video
+        caption = reply_to.caption or ""
+        caption_entities = reply_to.caption_entities
 
-        # Resend modified video with new thumbnail
-        sent_msg = await client.send_video(
-            chat_id=message.chat.id,
-            video=video_file_path,
-            thumb=thumb_path,
-            caption=reply_to.caption or "",
-            reply_to_message_id=message.id,
-        )
-
-        await delete_message(status_msg)
-        if await aiopath.exists(vid_dir):
-            await rmtree(vid_dir, ignore_errors=True)
+        try:
+            await client.send_video(
+                chat_id=message.chat.id,
+                video=video_attr.file_id,
+                thumb=thumb_path,
+                caption=caption,
+                caption_entities=caption_entities,
+                duration=getattr(video_attr, "duration", 0),
+                width=getattr(video_attr, "width", 0),
+                height=getattr(video_attr, "height", 0),
+                supports_streaming=getattr(video_attr, "supports_streaming", True),
+                reply_parameters=ReplyParameters(message_id=message.id),
+            )
+            await delete_message(status_msg)
+        except Exception as e:
+            await edit_message(status_msg, f"<b>Failed to update cover:</b> {escape(str(e))}")
         return
 
     # Case 2: Reply to photo, image URL, or image document -> prompt for video

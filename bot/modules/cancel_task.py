@@ -66,6 +66,8 @@ async def cancel(_, message):
 @new_task
 async def cancel_multi(_, query):
     data = query.data.split()
+    if len(data) < 3:
+        return await query.answer("Invalid request!", show_alert=True)
     user_id = query.from_user.id
     if user_id != int(data[1]) and not await CustomFilters.sudo("", query):
         await query.answer("This menu is not for you!", show_alert=True)
@@ -150,6 +152,8 @@ async def cancel_all_buttons(_, message):
 @new_task
 async def cancel_all_update(_, query):
     data = query.data.split()
+    if len(data) < 2:
+        return await query.answer("Invalid request!", show_alert=True)
     message = query.message
     reply_to = message.reply_to_message
     user_id = int(data[3]) if len(data) > 3 else ""

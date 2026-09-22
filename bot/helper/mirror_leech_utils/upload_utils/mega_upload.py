@@ -156,6 +156,24 @@ async def add_mega_upload(listener, path, mega_email, mega_password, gid):
         await listener.on_upload_error("Mega credentials not configured for this user.")
         return
 
+    if MegaApi is None:
+        try:
+            from mega import Mega
+            mega_inst = Mega()
+            m_user = mega_inst.login(mega_email, mega_password)
+            up_res = await sync_to_async(m_user.upload, path)
+            link = m_user.get_upload_link(up_res)
+            await listener.on_upload_complete(link, 1, 0, "File")
+            return
+        except (ImportError, ModuleNotFoundError):
+            await listener.on_upload_error(
+                "MEGA C++ SDK is not installed on this system."
+            )
+            return
+        except Exception as err:
+            await listener.on_upload_error(f"Mega upload error: {err}")
+            return
+
     mega_base = ""
     sdk_gid = token_hex(5)
     mega_base = os.path.join(os.path.dirname(path.rstrip("/")), ".mega_sdk", sdk_gid)
