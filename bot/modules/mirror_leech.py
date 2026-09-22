@@ -862,22 +862,26 @@ async def nzb_leech(client, message):
     bot_loop.create_task(mirror_task.new_event())
 
 
+merge_sessions = {}
+
+
+def normalize_tg_batch_link(link: str) -> str:
+    if "-http" in link:
+        parts = link.split("-http")
+        first_url = parts[0].strip()
+        second_url = "http" + parts[1].strip()
+        m1 = re_match(r".*\/([0-9]+)$", first_url)
+        m2 = re_match(r".*\/([0-9]+)$", second_url)
+        if m1 and m2:
+            return f"{first_url}-{m2.group(1)}"
+    return link
+
+
 @new_task
 async def merge_command(client, message):
-    reply_to = message.reply_to_message
-    if not reply_to:
-        await send_message(
-            message,
-            "<blockquote>Reply to the first Telegram file or video in sequence to merge!</blockquote>",
-        )
-        return
-
-    file_ = reply_to.video or reply_to.document
-    if file_ is None:
-        await send_message(
-            message,
-            "<blockquote>Unsupported media! Reply to first Telegram file or video in sequence.</blockquote>",
-        )
+    user_id = message.from_user.id if message.from_user else (message.sender_chat.id if message.sender_chat else 0)
+    chat_id = message.chat.id
+    if not user_id:
         return
 
     text = message.text.split("\n")
@@ -890,29 +894,146 @@ async def merge_command(client, message):
         "-sp": 0,
         "-doc": False,
         "-med": False,
+        "-ff": set(),
+        "-gc": "",
+        "-z": False,
+        "-e": False,
+        "link": "",
     }
     arg_parser(input_list[1:], args)
 
-    count = int(args["-i"]) if str(args["-i"]).isdigit() else 0
-    if count <= 0:
-        await send_message(
-            message,
-            "<blockquote>Specify file count using -i. Usage: <code>/merge -i 5 -n name.mkv</code></blockquote>",
-        )
-        return
-
-    custom_name = args["-n"]
-    if not custom_name:
-        await send_message(
-            message,
-            "<blockquote>Specify custom output name using -n. Usage: <code>/merge -i 5 -n name.mkv</code></blockquote>",
-        )
-        return
-
+    custom_name = args["-n"] or "merged_video.mkv"
     up_target = args["-up"] or args["-ud"]
+    link = args["link"] or (message.reply_to_message.text if message.reply_to_message and message.reply_to_message.text else "")
+
+    session = {
+        "custom_name": custom_name,
+        "up_target": up_target,
+        "args": args,
+        "input_list": input_list,
+        "message": message,
+        "client": client,
+        "items": [],
+        "user_id": user_id,
+        "chat_id": chat_id,
+    }
+
+    if link and is_telegram_link(link):
+        norm_link = normalize_tg_batch_link(link)
+        try:
+            tg_res, s_type = await get_tg_link_message(norm_link)
+            if isinstance(tg_res, list):
+                for l in tg_res:
+                    session["items"].append({"type": "tg_link", "url": l})
+            elif tg_res:
+                session["items"].append({"type": "tg", "msg": tg_res})
+        except Exception as e:
+            await send_message(message, f"Failed to resolve Telegram link: {e}")
+            return
+    elif link:
+        session["items"].append({"type": "link", "url": link})
+    elif reply_to := message.reply_to_message:
+        file_ = reply_to.video or reply_to.document or reply_to.audio or reply_to.photo
+        if file_:
+            session["items"].append({"type": "tg", "msg": reply_to})
+        elif reply_to.text and (is_url(reply_to.text) or is_magnet(reply_to.text)):
+            session["items"].append({"type": "link", "url": reply_to.text.strip()})
+
+    if len(session["items"]) > 1 and is_telegram_link(link):
+        await process_merge_session(session)
+        return
+
+    merge_sessions[(chat_id, user_id)] = session
+    done_cmd = BotCommands.DoneCommand if isinstance(BotCommands.DoneCommand, str) else BotCommands.DoneCommand[0]
+    initial_count = len(session["items"])
+    count_msg = f"\n• <b>Initial Item:</b> {initial_count}" if initial_count > 0 else ""
+
+    msg = (
+        f"<b>🎬 Merge Sequence Collector Started!</b>\n\n"
+        f"<blockquote>• <b>Output File:</b> <code>{escape(custom_name)}</code>{count_msg}\n"
+        f"• Send or forward video files or links in order.\n"
+        f"• When finished, send <code>/{done_cmd}</code> to start downloading & merging.</blockquote>"
+    )
+
+    await send_message(message, msg)
+
+
+@new_task
+async def collect_merge_item(client, message):
+    user_id = message.from_user.id if message.from_user else (message.sender_chat.id if message.sender_chat else 0)
+    chat_id = message.chat.id
+    if (chat_id, user_id) not in merge_sessions:
+        return False
+
+    session = merge_sessions[(chat_id, user_id)]
+
+    file_ = message.video or message.document or message.audio or message.photo
+    done_cmd = BotCommands.DoneCommand if isinstance(BotCommands.DoneCommand, str) else BotCommands.DoneCommand[0]
+
+    if file_:
+        session["items"].append({"type": "tg", "msg": message})
+        count = len(session["items"])
+        await send_message(message, f"<blockquote>✅ Collected item #{count}!\nSend next item or send <code>/{done_cmd}</code> when done.</blockquote>")
+        return True
+    elif message.text:
+        text = message.text.strip()
+        done_cmds = BotCommands.DoneCommand if isinstance(BotCommands.DoneCommand, list) else [BotCommands.DoneCommand]
+        if any(text.startswith(f"/{dc}") for dc in done_cmds) or text.startswith("/done"):
+            return False
+        elif is_url(text) or is_magnet(text):
+            session["items"].append({"type": "link", "url": text})
+            count = len(session["items"])
+            await send_message(message, f"<blockquote>✅ Collected link item #{count}!\nSend next item or send <code>/{done_cmd}</code> when done.</blockquote>")
+            return True
+
+    return False
+
+
+@new_task
+async def done_command(client, message):
+    user_id = message.from_user.id if message.from_user else (message.sender_chat.id if message.sender_chat else 0)
+    chat_id = message.chat.id
+    if (chat_id, user_id) not in merge_sessions:
+        await send_message(message, "<blockquote>No active merge collection session found! Start one with /merge.</blockquote>")
+        return
+
+    session = merge_sessions.pop((chat_id, user_id))
+    await process_merge_session(session)
+
+
+class ItemDownloadListener(Mirror):
+    def __init__(self, client, message, is_leech=True):
+        super().__init__(client, message, is_leech=is_leech)
+        self.done_event = bot_loop.create_future()
+        self.download_failed = False
+        self.error_msg = ""
+
+    async def on_download_complete(self):
+        if not self.done_event.done():
+            self.done_event.set_result(True)
+
+    async def on_download_error(self, error, button=None, is_limit=False):
+        self.download_failed = True
+        self.error_msg = str(error)
+        if not self.done_event.done():
+            self.done_event.set_result(False)
+
+
+async def process_merge_session(session):
+    client = session["client"]
+    message = session["message"]
+    items = session["items"]
+    if not items:
+        await send_message(message, "<blockquote>No files or links were collected for merging!</blockquote>")
+        return
+
+    custom_name = session["custom_name"]
+    up_target = session["up_target"]
+    args = session["args"]
+
     is_telegram_dest = False
     if up_target:
-        up_lower = up_target.lower()
+        up_lower = str(up_target).lower()
         dump_chats = Config.LEECH_DUMP_CHATS or {}
         if (
             up_lower == "pm"
@@ -932,6 +1053,15 @@ async def merge_command(client, message):
     mirror_task.manual_merge = True
     mirror_task.merge_custom_name = custom_name
 
+    if args["-ff"]:
+        raw_ff = args["-ff"]
+        if isinstance(raw_ff, set):
+            mirror_task.ffmpeg_cmds = list(raw_ff)
+        elif isinstance(raw_ff, str):
+            mirror_task.ffmpeg_cmds = [k.strip() for k in raw_ff.split(",") if k.strip()]
+        else:
+            mirror_task.ffmpeg_cmds = raw_ff
+
     if is_leech:
         if up_target:
             mirror_task.dump_dest = up_target
@@ -949,39 +1079,56 @@ async def merge_command(client, message):
     path = f"{DOWNLOAD_DIR}{mirror_task.mid}"
     await makedirs(path, exist_ok=True)
 
-    start_id = reply_to.id
-    chat_id = message.chat.id
-    target_user_id = reply_to.from_user.id if reply_to.from_user else (reply_to.sender_chat.id if reply_to.sender_chat else 0)
+    status_msg = await send_message(message, f"<b>Downloading {len(items)} collected item(s) sequentially for merge task...</b>")
 
-    msg = await send_message(message, f"<b>Fetching {count} files for merge task...</b>")
+    for idx, item in enumerate(items, start=1):
+        idx_prefix = f"{idx:04d}_"
+        item_listener = ItemDownloadListener(client, message, is_leech=is_leech)
+        item_listener.mid = mirror_task.mid
+        item_listener.dump_dest = mirror_task.dump_dest
+        item_listener.up_dest = mirror_task.up_dest
 
-    curr_id = start_id
-    found_count = 0
+        if item["type"] == "tg":
+            curr_msg = item["msg"]
+            curr_file = curr_msg.video or curr_msg.document or curr_msg.audio or curr_msg.photo
+            fname = getattr(curr_file, "file_name", None) or "video.mkv"
+            item_listener.name = f"{idx_prefix}{fname}"
+            dl_helper = TelegramDownloadHelper(item_listener)
+            await dl_helper.add_download(curr_msg, f"{path}/", session="")
+        elif item["type"] == "tg_link":
+            tg_res, s_type = await get_tg_link_message(item["url"])
+            if isinstance(tg_res, Message) and not tg_res.empty:
+                curr_file = tg_res.video or tg_res.document or tg_res.audio or tg_res.photo
+                fname = getattr(curr_file, "file_name", None) or "video.mkv"
+                item_listener.name = f"{idx_prefix}{fname}"
+                dl_helper = TelegramDownloadHelper(item_listener)
+                await dl_helper.add_download(tg_res, f"{path}/", session=s_type)
+        elif item["type"] == "link":
+            url = item["url"]
+            item_listener.link = url
+            item_listener.name = f"{idx_prefix}video.mkv"
+            try:
+                await item_listener.before_start()
+            except Exception:
+                pass
+            item_listener._set_mode_engine()
 
-    while found_count < count and curr_id < start_id + 500:
-        try:
-            curr_msg = await client.get_messages(chat_id, curr_id)
-        except Exception:
-            curr_msg = None
-        curr_id += 1
-        if not curr_msg or curr_msg.empty:
-            continue
-        c_user = curr_msg.from_user or curr_msg.sender_chat
-        if target_user_id and c_user and c_user.id != target_user_id:
-            continue
-        curr_file = curr_msg.video or curr_msg.document or curr_msg.audio if curr_msg else None
-        if not curr_file:
-            continue
+            if is_rclone_path(url):
+                bot_loop.create_task(add_rclone_download(item_listener, f"{path}/"))
+            elif is_gdrive_link(url) or is_gdrive_id(url):
+                bot_loop.create_task(add_gd_download(item_listener, f"{path}/"))
+            elif is_mega_link(url):
+                bot_loop.create_task(add_mega_download(item_listener, f"{path}/"))
+            else:
+                bot_loop.create_task(add_direct_download(item_listener, f"{path}/"))
 
-        idx_prefix = f"{found_count+1:04d}_"
-        dl_helper = TelegramDownloadHelper(mirror_task)
-        mirror_task.name = f"{idx_prefix}{getattr(curr_file, 'file_name', None) or 'video.mkv'}"
-        await dl_helper.add_download(curr_msg, f"{path}/", session="")
-        found_count += 1
+            success = await item_listener.done_event
+            if not success:
+                LOGGER.error(f"Item #{idx} download failed: {item_listener.error_msg}")
 
-    await delete_message(msg)
+    await delete_message(status_msg)
     mirror_task.name = custom_name
-    await mirror_task.on_download_complete()
+    bot_loop.create_task(mirror_task.on_download_complete())
 
 
 async def uphoster(client, message):

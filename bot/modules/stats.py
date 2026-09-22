@@ -54,20 +54,48 @@ commands = {
     ),
     "python": (["python3", "--version"], r"Python ([\d.]+)"),
     "rclone": ([BinConfig.RCLONE_NAME, "--version"], r"rclone v([\d.]+)"),
-    "yt-dlp": (["yt-dlp", "--version"], r"([\d.]+)"),
+    "yt-dlp": (
+        [
+            "python3",
+            "-c",
+            "import yt_dlp; print(yt_dlp.version.__version__)",
+        ],
+        r"([\d.]+)",
+    ),
     "ffmpeg": (
         [BinConfig.FFMPEG_NAME, "-version"],
         r"ffmpeg version ([\d.]+(-\w+)?).*",
     ),
     "7z": (["7z", "i"], r"7-Zip ([\d.]+)"),
-    "aiohttp": (["uv", "pip", "show", "aiohttp"], r"Version: ([\d.]+)"),
-    "wzgram": (["uv", "pip", "show", "wzgram"], r"Version: ([\d.]+)"),
-    "gapi": (["uv", "pip", "show", "google-api-python-client"], r"Version: ([\d.]+)"),
+    "aiohttp": (
+        [
+            "python3",
+            "-c",
+            "import aiohttp; print(aiohttp.__version__)",
+        ],
+        r"([\d.]+)",
+    ),
+    "wzgram": (
+        [
+            "python3",
+            "-c",
+            "import wzgram; print(wzgram.__version__)",
+        ],
+        r"([\d.]+)",
+    ),
+    "gapi": (
+        [
+            "python3",
+            "-c",
+            "import googleapiclient; print(googleapiclient.__version__)",
+        ],
+        r"([\d.]+)",
+    ),
     "mega": (
         [
             "python3",
             "-c",
-            "from mega import MegaApi; print(MegaApi('test').getVersion())",
+            "try:\n from mega import MegaApi; print(MegaApi('test').getVersion())\nexcept Exception:\n print('N/A')",
         ],
         r"v?([\d.]+)",
     ),
@@ -322,13 +350,11 @@ async def get_version_async(command, regex, timeout=5):
     try:
         out, err, code = await wait_for(cmd_exec(command), timeout=timeout)
         if code != 0:
-            return f"Error: {err}"
+            return "N/A"
         match = research(regex, out)
-        return match.group(1) if match else "-"
-    except TimeoutError:
-        return "Timeout"
-    except Exception as e:
-        return f"Exception: {str(e)}"
+        return match.group(1) if match else "N/A"
+    except Exception:
+        return "N/A"
 
 
 async def retry_mega_version():

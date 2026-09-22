@@ -21,6 +21,7 @@ from ... import (
     queue_dict_lock,
     same_directory_lock,
     DOWNLOAD_DIR,
+    sudo_users,
 )
 from ...modules.metadata import apply_metadata_title
 from ..common import TaskConfig
@@ -275,9 +276,10 @@ class TaskListener(TaskConfig):
         self.clear()
 
         # Automatic Pipeline Order: Encode -> Compress -> Watermark -> Merge
-        enable_encode = self.user_dict.get("ENABLE_ENCODE") if "ENABLE_ENCODE" in self.user_dict else Config.ENABLE_ENCODE
-        enable_compress = self.user_dict.get("ENABLE_COMPRESS") if "ENABLE_COMPRESS" in self.user_dict else Config.ENABLE_COMPRESS
-        enable_watermark = self.user_dict.get("ENABLE_WATERMARK") if "ENABLE_WATERMARK" in self.user_dict else Config.ENABLE_WATERMARK
+        is_sudo = (self.user_id == Config.OWNER_ID) or (self.user_id in sudo_users)
+        enable_encode = is_sudo and (self.user_dict.get("ENABLE_ENCODE") if "ENABLE_ENCODE" in self.user_dict else Config.ENABLE_ENCODE)
+        enable_compress = is_sudo and (self.user_dict.get("ENABLE_COMPRESS") if "ENABLE_COMPRESS" in self.user_dict else Config.ENABLE_COMPRESS)
+        enable_watermark = is_sudo and (self.user_dict.get("ENABLE_WATERMARK") if "ENABLE_WATERMARK" in self.user_dict else Config.ENABLE_WATERMARK)
 
         if enable_encode:
             try:

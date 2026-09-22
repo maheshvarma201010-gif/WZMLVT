@@ -1472,6 +1472,10 @@ Configure custom video encoding, compression, and watermark overlays for uploads
 
 async def update_user_settings(query, stype="main"):
     handler_dict[query.from_user.id] = False
+    if stype in ["enc_com_wm", "encode_menu", "compress_menu", "watermark_menu"]:
+        is_sudo = (query.from_user.id == Config.OWNER_ID) or (query.from_user.id in sudo_users)
+        if not is_sudo:
+            return await query.answer("This feature is restricted to Owner and Sudo users only!", show_alert=True)
     msg, button = await get_user_settings(query.from_user, stype)
     await edit_message(query.message, msg, button)
 
@@ -1944,6 +1948,10 @@ async def edit_user_settings(client, query):
         "compress_menu",
         "watermark_menu",
     ]:
+        if data[2] in ["enc_com_wm", "encode_menu", "compress_menu", "watermark_menu"]:
+            is_sudo = (user_id == Config.OWNER_ID) or (user_id in sudo_users)
+            if not is_sudo:
+                return await query.answer("This feature is restricted to Owner and Sudo users only!", show_alert=True)
         await query.answer()
         await update_user_settings(query, data[2])
     elif data[2] == "mega":
@@ -1990,6 +1998,9 @@ async def edit_user_settings(client, query):
         await query.answer()
         await update_user_settings(query, data[2])
     elif data[2] == "wm_color_select":
+        is_sudo = (user_id == Config.OWNER_ID) or (user_id in sudo_users)
+        if not is_sudo:
+            return await query.answer("This feature is restricted to Owner and Sudo users only!", show_alert=True)
         await query.answer()
         user_dict = user_data.get(user_id, {})
         if len(data) > 3:
@@ -2009,6 +2020,9 @@ async def edit_user_settings(client, query):
             buttons.data_button("❌ Close", f"userset {user_id} close", "footer", style=ButtonStyle.DANGER)
             await edit_message(message, "<b>🎨 Select Text Watermark Color:</b>", buttons.build_menu(2))
     elif data[2] == "wm_pos_select":
+        is_sudo = (user_id == Config.OWNER_ID) or (user_id in sudo_users)
+        if not is_sudo:
+            return await query.answer("This feature is restricted to Owner and Sudo users only!", show_alert=True)
         await query.answer()
         user_dict = user_data.get(user_id, {})
         if len(data) > 3:
@@ -2081,6 +2095,10 @@ async def edit_user_settings(client, query):
         await query.answer()
         await get_menu(data[3], message, user_id)
     elif data[2] == "tog":
+        if data[3] in ["ENABLE_ENCODE", "ENABLE_COMPRESS", "ENABLE_WATERMARK"]:
+            is_sudo = (user_id == Config.OWNER_ID) or (user_id in sudo_users)
+            if not is_sudo:
+                return await query.answer("This feature is restricted to Owner and Sudo users only!", show_alert=True)
         await query.answer()
         update_user_ldata(user_id, data[3], data[4] == "t")
         if len(data) > 5:

@@ -1035,58 +1035,41 @@ class TaskConfig:
         ]
         try:
             ffmpeg = FFMpeg(self)
-            for ffmpeg_cmd in cmds:
-                self.proceed_count = 0
-                cmd = [
-                    "taskset",
-                    "-c",
-                    f"{cores}",
-                    BinConfig.FFMPEG_NAME,
-                    "-hide_banner",
-                    "-loglevel",
-                    "error",
-                    "-progress",
-                    "pipe:1",
-                ] + ffmpeg_cmd
-                if "-del" in cmd:
-                    cmd.remove("-del")
-                    delete_files = True
-                else:
-                    delete_files = False
-                if "-i" not in cmd:
-                    LOGGER.error(f"Skipping ffmpeg cmd without -i: {ffmpeg_cmd}")
+            input_files = [dl_path] if self.is_file else []
+            if not self.is_file:
+                for dirpath, _, files in await sync_to_async(walk, dl_path, topdown=False):
+                    for file_ in files:
+                        input_files.append(ospath.join(dirpath, file_))
+
+            output_files = []
+            files_to_remove = set()
+
+            for f_path in input_files:
+                is_video, is_audio, _ = await get_document_type(f_path)
+                if not is_video and not is_audio:
                     continue
-                index = cmd.index("-i")
-                input_file = cmd[index + 1]
-                if input_file.strip().endswith(".video"):
-                    ext = "video"
-                elif input_file.strip().endswith(".audio"):
-                    ext = "audio"
-                elif "." not in input_file:
-                    ext = "all"
-                else:
-                    ext = ospath.splitext(input_file)[-1].lower()
-                if await aiopath.isfile(dl_path):
-                    is_video, is_audio, _ = await get_document_type(dl_path)
-                    if not is_video and not is_audio:
-                        break
-                    elif is_video and ext == "audio":
+
+                for cmd_idx, ffmpeg_cmd in enumerate(cmds, start=1):
+                    cmd = [
+                        "taskset",
+                        "-c",
+                        f"{cores}",
+                        BinConfig.FFMPEG_NAME,
+                        "-hide_banner",
+                        "-loglevel",
+                        "error",
+                        "-progress",
+                        "pipe:1",
+                    ] + ffmpeg_cmd
+                    if "-del" in cmd:
+                        cmd.remove("-del")
+                        files_to_remove.add(f_path)
+                    if "-i" not in cmd:
                         continue
-                    elif is_audio and not is_video and ext == "video":
-                        continue
-                    elif ext not in [
-                        "all",
-                        "audio",
-                        "video",
-                    ] and not dl_path.strip().lower().endswith(ext):
-                        continue
-                    new_folder = ospath.splitext(dl_path)[0]
-                    if await aiopath.isfile(new_folder):
-                        new_folder = f"{new_folder}_temp"
-                    name = ospath.basename(dl_path)
-                    await makedirs(new_folder, exist_ok=True)
-                    file_path = f"{new_folder}/{name}"
-                    await move(dl_path, file_path)
+                    index = cmd.index("-i")
+                    var_cmd = cmd.copy()
+                    var_cmd[index + 1] = f_path
+
                     if not checked:
                         checked = True
                         async with task_dict_lock:
@@ -1097,77 +1080,31 @@ class TaskConfig:
                         await ff_lock.acquire()
                         lock_acquired = True
                         self.progress = True
-                    LOGGER.info(f"Running ffmpeg cmd for: {file_path}")
-                    var_cmd = cmd.copy()
-                    var_cmd[index + 1] = file_path
-                    self.subsize = self.size
-                    res = await ffmpeg.ffmpeg_cmds(var_cmd, file_path)
+
+                    LOGGER.info(f"Running ffmpeg cmd {cmd_idx} for: {f_path}")
+                    self.subsize = await get_path_size(f_path)
+                    self.subname = ospath.basename(f_path)
+                    res = await ffmpeg.ffmpeg_cmds(var_cmd, f_path)
                     if res:
-                        if delete_files:
-                            await remove(file_path)
-                            if len(await listdir(new_folder)) == 1:
-                                folder = new_folder.rsplit("/", 1)[0]
-                                self.name = ospath.basename(res[0])
-                                if self.name.startswith("ffmpeg"):
-                                    self.name = self.name.split(".", 1)[-1]
-                                dl_path = ospath.join(folder, self.name)
-                                await move(res[0], dl_path)
-                                await rmtree(new_folder)
-                            else:
-                                dl_path = new_folder
-                                self.name = new_folder.rsplit("/", 1)[-1]
-                        else:
-                            dl_path = new_folder
-                            self.name = new_folder.rsplit("/", 1)[-1]
-                    else:
-                        await move(file_path, dl_path)
-                        await rmtree(new_folder)
+                        output_files.extend(res)
+
+            if output_files:
+                for rf in files_to_remove:
+                    with suppress(Exception):
+                        await remove(rf)
+
+                work_dir = ospath.dirname(input_files[0]) if self.is_file else dl_path
+                all_current = []
+                for dirpath, _, files in await sync_to_async(walk, work_dir, topdown=False):
+                    for file_ in files:
+                        all_current.append(ospath.join(dirpath, file_))
+
+                if len(all_current) == 1:
+                    self.is_file = True
+                    return all_current[0]
                 else:
-                    for dirpath, _, files in await sync_to_async(
-                        walk, dl_path, topdown=False
-                    ):
-                        for file_ in files:
-                            var_cmd = cmd.copy()
-                            if self.is_cancelled:
-                                return False
-                            f_path = ospath.join(dirpath, file_)
-                            is_video, is_audio, _ = await get_document_type(f_path)
-                            if not is_video and not is_audio:
-                                continue
-                            elif is_video and ext == "audio":
-                                continue
-                            elif is_audio and not is_video and ext == "video":
-                                continue
-                            elif ext not in [
-                                "all",
-                                "audio",
-                                "video",
-                            ] and not f_path.strip().lower().endswith(ext):
-                                continue
-                            self.proceed_count += 1
-                            var_cmd[index + 1] = f_path
-                            if not checked:
-                                checked = True
-                                async with task_dict_lock:
-                                    task_dict[self.mid] = FFmpegStatus(
-                                        self, ffmpeg, gid, "FFmpeg"
-                                    )
-                                self.progress = False
-                                await ff_lock.acquire()
-                                lock_acquired = True
-                                self.progress = True
-                            LOGGER.info(f"Running ffmpeg cmd for: {f_path}")
-                            self.subsize = await get_path_size(f_path)
-                            self.subname = file_
-                            res = await ffmpeg.ffmpeg_cmds(var_cmd, f_path)
-                            if res and delete_files:
-                                await remove(f_path)
-                                if len(res) == 1:
-                                    file_name = ospath.basename(res[0])
-                                    if file_name.startswith("ffmpeg"):
-                                        newname = file_name.split(".", 1)[-1]
-                                        newres = ospath.join(dirpath, newname)
-                                        await move(res[0], newres)
+                    self.is_file = False
+                    return work_dir
         finally:
             if lock_acquired:
                 await ff_lock.release()

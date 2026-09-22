@@ -210,8 +210,8 @@ def get_progress_bar_string(pct):
         p = 0.0
     p = min(max(p, 0), 100)
     filled = int(round(p / 10))
-    bar = "■" * filled + "□" * (10 - filled)
-    return f"[{bar}]"
+    bar = "▰" * filled + "▱" * (10 - filled)
+    return bar
 
 
 async def get_readable_message(sid, is_user, page_no=1, status="All", page_step=1):
