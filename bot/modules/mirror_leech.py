@@ -7,7 +7,7 @@ from re import match as re_match, search as re_search
 from time import time
 
 from aiofiles import open as aiopen
-from aiofiles.os import makedirs, path as aiopath
+from aiofiles.os import makedirs, listdir, path as aiopath
 from bot.core.config_manager import Config
 
 from .. import DOWNLOAD_DIR, LOGGER, bot_loop, task_dict_lock, user_data

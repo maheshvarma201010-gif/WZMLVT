@@ -10,8 +10,9 @@ from os import getcwd
 from re import sub
 from time import time
 import zipfile
+from shutil import rmtree
 
-from aiofiles.os import makedirs, remove
+from aiofiles.os import makedirs, remove, rename
 from aiofiles.os import path as aiopath
 from aioshutil import move
 from langcodes import Language
@@ -19,7 +20,7 @@ from pyrogram.filters import create
 from pyrogram.handlers import MessageHandler
 
 
-from .. import auth_chats, excluded_extensions, sudo_users, user_data
+from .. import DOWNLOAD_DIR, auth_chats, excluded_extensions, sudo_users, user_data
 from ..core.config_manager import Config
 from ..core.seedr_client import SeedrClient
 from ..core.tg_client import TgClient
@@ -1678,7 +1679,7 @@ async def set_option(_, message, option, rfunc, target_user_id=None):
             value = {}
 
     elif option == "FFMPEG_DUMP":
-        user_dump = user_dict.get("FFMPEG_DUMP", {})
+        user_dump = user_data.get(user_id, {}).get("FFMPEG_DUMP", {})
         if not isinstance(user_dump, dict):
             user_dump = {}
         if value.startswith("{") and value.endswith("}"):
@@ -2425,7 +2426,7 @@ async def chthumb_command(client, message):
                 )
                 return
         else:
-            downloaded = await download_image_url(thumb_url)
+            downloaded = await download_image_thumb(thumb_url)
             if downloaded and await aiopath.exists(downloaded):
                 if await aiopath.exists(thumb_path):
                     await remove(thumb_path)
@@ -2476,7 +2477,7 @@ async def chthumb_command(client, message):
             url_arg = reply_to.text.strip()
 
     if url_arg and ("http://" in url_arg or "https://" in url_arg):
-        downloaded = await download_image_url(url_arg)
+        downloaded = await download_image_thumb(url_arg)
         if downloaded and await aiopath.exists(downloaded):
             if await aiopath.exists(thumb_path):
                 await remove(thumb_path)

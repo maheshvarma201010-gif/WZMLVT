@@ -46,6 +46,7 @@ from ... import (
     queued_dl,
     queued_up,
     task_dict,
+    task_dict_lock,
     user_data,
 )
 from ...core.config_manager import Config
