@@ -123,8 +123,16 @@ async def add_mega_download(listener, path):
         )
         return
 
+    if MegaApi is None:
+        await _release_link(listener.link)
+        await listener.on_download_error(
+            "MEGA C++ SDK is not installed on this system."
+        )
+        return
+
     async_api = None
     mega_base = ""
+    is_folder = False
     try:
         sdk_gid = token_hex(5)
         await makedirs(path, exist_ok=True)

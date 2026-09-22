@@ -51,10 +51,14 @@ async def gen_mediainfo(message, link=None, media=None, mmsg=None):
             tc += parseinfo(stdout, file_size)
     except Exception as e:
         LOGGER.error(e)
-        await edit_message(temp_send, f"MediaInfo Stopped due to {str(e)}")
+        return await edit_message(temp_send, f"MediaInfo Stopped due to {str(e)}")
     finally:
         if des_path and await aiopath.exists(des_path):
             await aioremove(des_path)
+
+    if not tc or not tc.strip():
+        return await edit_message(temp_send, "MediaInfo Generation Failed: No content extracted from file.")
+
     link_id = (await telegraph.create_page(title="MediaInfo X", content=tc))["path"]
     await temp_send.edit(
         f"<b>MediaInfo:</b>\n\n➲ <b>Link :</b> https://graph.org/{link_id}",

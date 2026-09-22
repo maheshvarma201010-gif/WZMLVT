@@ -1478,10 +1478,12 @@ async def edit_bot_settings(client, query):
         "setonoff",
         "settoggle",
         "setlimit",
+        "ffmpegcmds",
+        "dumpcmds",
     ] or data[
         1
     ].startswith("nzbser"):
-        if data[1] in ("nzbserver", "setlimit"):
+        if data[1] in ("nzbserver", "setlimit", "ffmpegcmds", "dumpcmds"):
             globals()["start"] = 0
         await query.answer()
         await update_buttons(message, data[1])
