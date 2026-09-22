@@ -50,6 +50,7 @@ leech_options = [
     "LEECH_PREFIX",
     "LEECH_SUFFIX",
     "LEECH_CAPTION",
+    "LEECH_FONT",
     "THUMBNAIL_LAYOUT",
 ]
 uphoster_options = [
@@ -532,6 +533,14 @@ async def get_user_settings(from_user, stype="main"):
         else:
             lcap = "Not Exists"
 
+        buttons.data_button("Caption Font", f"userset {user_id} lfont")
+        if user_dict.get("LEECH_FONT", False):
+            lfont = user_dict["LEECH_FONT"]
+        elif "LEECH_FONT" not in user_dict and Config.LEECH_FONT:
+            lfont = Config.LEECH_FONT
+        else:
+            lfont = "Normal (None)"
+
         if (
             user_dict.get("AS_DOCUMENT", False)
             or "AS_DOCUMENT" not in user_dict
@@ -982,6 +991,35 @@ Configure custom video encoding, compression, and watermark overlays for uploads
 • <b>Folder ID:</b> <code>{gffolder}</code>
 • <b>Auto-Create Folder:</b> <code>{"Enabled" if auto_create else "Disabled"}</code></blockquote>"""
 
+    elif stype == "lfont":
+        await query.answer()
+        fonts = [
+            ("Bold", "b"),
+            ("Italic", "i"),
+            ("Monospace", "code"),
+            ("Spoiler", "tg-spoiler"),
+            ("Strikethrough", "s"),
+            ("Underline", "u"),
+            ("None (Normal)", "none"),
+        ]
+        buttons = ButtonMaker()
+        cur_font = user_dict.get("LEECH_FONT") or Config.LEECH_FONT or "none"
+        for label, tag in fonts:
+            st = "✓ " if cur_font == tag else ""
+            buttons.data_button(f"{st}{label}", f"userset {user_id} setfont {tag}")
+        buttons.data_button("◀️ Back", f"userset {user_id} leech", position="footer")
+        msg = f"<b>📄 Select Caption Font Style:</b>\nCurrent: <code>{cur_font}</code>"
+        await edit_message(message, msg, buttons.build_menu(2))
+    elif stype == "setfont":
+        await query.answer()
+        tag = data[2]
+        if tag == "none":
+            user_dict.pop("LEECH_FONT", None)
+        else:
+            user_dict["LEECH_FONT"] = tag
+        await update_user_settings(query, "leech")
+        if Config.DATABASE_URL:
+            await database.update_user_data(user_id)
     elif stype == "rclone":
         buttons.data_button("Rclone Config", f"userset {user_id} menu RCLONE_CONFIG")
         buttons.data_button(

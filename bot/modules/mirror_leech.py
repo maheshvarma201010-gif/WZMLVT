@@ -350,6 +350,14 @@ class Mirror(TaskListener):
         await self.get_tag(text)
 
         if self.ht_flag:
+            is_subtask = getattr(self.message, "_is_bulk_subtask", False)
+            if not is_subtask and getattr(self, "same_dir", None):
+                for fd in self.same_dir.values():
+                    if isinstance(fd, dict) and fd.get("total", 0) > 1:
+                        is_subtask = len(fd.get("tasks", set())) > 1
+                        if is_subtask:
+                            break
+
             user_id = self.user_id
             event_done = bot_loop.create_future()
             ht_tasks[self.mid] = {
@@ -379,17 +387,23 @@ class Mirror(TaskListener):
                 buttons.data_button("Done", f"htmerge done {mid}", position="footer")
                 return buttons
 
-            prompt_msg = await send_message(
-                self.message,
-                f"<b>Task Received with -ht flag.</b>\nChoose pre-upload options:\n\n• <b>Merge:</b> OFF\n• <b>Trim:</b> OFF\n• <b>Extract:</b> OFF",
-                build_ht_menu(self.mid).build_menu(2),
-            )
-            try:
-                await event_done
-            except Exception:
-                pass
+            if is_subtask and hasattr(Mirror, "_last_ht_config") and Mirror._last_ht_config.get("user_id") == user_id:
+                saved_ht = Mirror._last_ht_config.copy()
+            else:
+                prompt_msg = await send_message(
+                    self.message,
+                    f"<b>Task Received with -ht flag.</b>\nChoose pre-upload options:\n\n• <b>Merge:</b> OFF\n• <b>Trim:</b> OFF\n• <b>Extract:</b> OFF",
+                    build_ht_menu(self.mid).build_menu(2),
+                )
+                try:
+                    await event_done
+                except Exception:
+                    pass
 
-            saved_ht = ht_tasks.get(self.mid, {})
+                saved_ht = ht_tasks.get(self.mid, {})
+                Mirror._last_ht_config = saved_ht.copy()
+                await delete_message(prompt_msg)
+
             self.manual_merge = saved_ht.get("merge", False)
             self.manual_rm_stream = saved_ht.get("rm_stream", False)
             self.manual_reorder = saved_ht.get("reorder", False)
@@ -401,7 +415,6 @@ class Mirror(TaskListener):
             self.extract_types = saved_ht.get("extract_types", [])
 
             ht_tasks.pop(self.mid, None)
-            await delete_message(prompt_msg)
 
         path = f"{DOWNLOAD_DIR}{self.mid}{self.folder_name}"
 

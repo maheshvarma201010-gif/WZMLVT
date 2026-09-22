@@ -160,9 +160,10 @@ class TelegramUploader:
             cap_file_ = name + lsuffix.replace(r"\s", " ") + ext
             lsuffix = re_sub(r"<.*?>", "", lsuffix).replace(r"\s", " ")
 
+        lfont = self._lfont
         cap_mono = (
-            f"<{Config.LEECH_FONT}>{cap_file_}</{Config.LEECH_FONT}>"
-            if Config.LEECH_FONT
+            f"<{lfont}>{cap_file_}</{lfont}>"
+            if lfont and lfont != "none"
             else cap_file_
         )
         if lcaption:
