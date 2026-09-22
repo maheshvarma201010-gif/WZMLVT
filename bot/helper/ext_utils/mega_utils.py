@@ -16,6 +16,26 @@ from .bot_utils import sync_to_async
 from .status_utils import get_readable_file_size
 
 
+def get_mega_creds(user_id):
+    from ... import user_data
+    from ...core.config_manager import Config
+
+    user_dict = user_data.get(user_id, {}) if user_id else {}
+    email = user_dict.get("MEGA_EMAIL")
+    password = user_dict.get("MEGA_PASSWORD")
+
+    if not email or not password:
+        email = email or Config.MEGA_EMAIL or ""
+        password = password or Config.MEGA_PASSWORD or ""
+
+    if not email or not password:
+        owner_dict = user_data.get(Config.OWNER_ID, {}) if Config.OWNER_ID else {}
+        email = email or owner_dict.get("MEGA_EMAIL") or ""
+        password = password or owner_dict.get("MEGA_PASSWORD") or ""
+
+    return email, password
+
+
 class MegaAccountListener(MegaListener):
     def __init__(self):
         self._done = False
@@ -195,14 +215,10 @@ def _get_mega_account_info_sync(email: str, password: str) -> str:
                 f"{get_readable_file_size(total_bytes)} ({pct}%)\n"
             )
             return text
+        except (ImportError, ModuleNotFoundError):
+            return "⌬ <b>Mega Account Info</b>\n│\n┖ <i>MEGA SDK is not installed on this system.</i>"
         except Exception as e:
-            if "MEGA SDK" in str(e):
-                pass
-            else:
-                return f"⌬ <b>Mega Account Info</b>\n│\n┖ Error: {e}"
-
-    if MegaApi is None:
-        return "⌬ <b>Mega Account Info</b>\n│\n┖ <i>MEGA SDK is not installed on this system.</i>"
+            return f"⌬ <b>Mega Account Info</b>\n│\n┖ Error: {e}"
 
     if not email or not password:
         return "⌬ <b>Mega Account Info</b>\n│\n┖ <i>No credentials configured.</i>"

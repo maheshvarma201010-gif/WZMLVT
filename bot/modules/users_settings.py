@@ -29,7 +29,7 @@ from ..helper.ext_utils.bot_utils import (
     update_user_ldata,
 )
 from ..helper.ext_utils.db_handler import database
-from ..helper.ext_utils.mega_utils import get_mega_account_info
+from ..helper.ext_utils.mega_utils import get_mega_account_info, get_mega_creds
 from ..helper.ext_utils.media_utils import create_thumb, download_image_thumb
 from ..helper.ext_utils.status_utils import get_readable_file_size
 from ..helper.telegram_helper.button_build import ButtonMaker
@@ -1164,8 +1164,7 @@ Configure custom video encoding, compression, and watermark overlays for uploads
 • <b>Stop Duplicate Checks:</b> <b>{sd_msg}</b></blockquote>"""
 
     elif stype == "mega":
-        mega_email = user_dict.get("MEGA_EMAIL", "")
-        mega_password = user_dict.get("MEGA_PASSWORD", "")
+        mega_email, mega_password = get_mega_creds(user_id)
         has_creds = bool(mega_email and mega_password)
         masked_pass = (
             (
@@ -1988,8 +1987,7 @@ async def edit_user_settings(client, query):
         await query.answer()
         msg, button = await get_user_settings(query.from_user, "mega")
         await edit_message(message, msg, button)
-        mega_email = user_dict.get("MEGA_EMAIL", "")
-        mega_password = user_dict.get("MEGA_PASSWORD", "")
+        mega_email, mega_password = get_mega_creds(user_id)
         if mega_email and mega_password:
             info_text = await get_mega_account_info(mega_email, mega_password)
             msg += f"\n\n{info_text}"

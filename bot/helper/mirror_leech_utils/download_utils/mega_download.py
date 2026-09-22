@@ -124,11 +124,28 @@ async def add_mega_download(listener, path):
         return
 
     if MegaApi is None:
-        await _release_link(listener.link)
-        await listener.on_download_error(
-            "MEGA C++ SDK is not installed on this system."
-        )
-        return
+        try:
+            from mega import Mega
+            mega_inst = Mega()
+            if mega_email and mega_password:
+                m_user = mega_inst.login(mega_email, mega_password)
+            else:
+                m_user = mega_inst.login()
+            await listener.on_download_start()
+            await sync_to_async(m_user.download_url, listener.link, path)
+            await listener.on_download_complete()
+            await _release_link(listener.link)
+            return
+        except (ImportError, ModuleNotFoundError):
+            await _release_link(listener.link)
+            await listener.on_download_error(
+                "MEGA C++ SDK is not installed on this system."
+            )
+            return
+        except Exception as err:
+            await _release_link(listener.link)
+            await listener.on_download_error(f"Mega download error: {err}")
+            return
 
     async_api = None
     mega_base = ""
