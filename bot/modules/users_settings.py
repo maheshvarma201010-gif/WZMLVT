@@ -2280,7 +2280,7 @@ async def edit_user_settings(client, query):
             if not doc or not doc.file_name.endswith(".zip"):
                 await send_message(msg, "Invalid file! Please send a valid backup ZIP archive.")
                 return
-            temp_zip = f"import_{user_id}.zip"
+            temp_zip = os.path.abspath(f"import_{user_id}.zip")
             try:
                 await msg.download(file_name=temp_zip)
                 with zipfile.ZipFile(temp_zip, "r") as zipf:
