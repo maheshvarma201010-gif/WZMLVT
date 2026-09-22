@@ -1010,16 +1010,6 @@ Configure custom video encoding, compression, and watermark overlays for uploads
         buttons.data_button("◀️ Back", f"userset {user_id} leech", position="footer")
         msg = f"<b>📄 Select Caption Font Style:</b>\nCurrent: <code>{cur_font}</code>"
         await edit_message(message, msg, buttons.build_menu(2))
-    elif stype == "setfont":
-        await query.answer()
-        tag = data[2]
-        if tag == "none":
-            user_dict.pop("LEECH_FONT", None)
-        else:
-            user_dict["LEECH_FONT"] = tag
-        await update_user_settings(query, "leech")
-        if Config.DATABASE_URL:
-            await database.update_user_data(user_id)
     elif stype == "rclone":
         buttons.data_button("Rclone Config", f"userset {user_id} menu RCLONE_CONFIG")
         buttons.data_button(
@@ -1978,6 +1968,7 @@ async def edit_user_settings(client, query):
         "general",
         "mirror",
         "leech",
+        "lfont",
         "vtools",
         "uphoster",
         "gofile",
@@ -2408,6 +2399,16 @@ async def edit_user_settings(client, query):
 
         rfunc = partial(update_user_settings, query, stype="main")
         await event_handler(client, query, import_file_handler, rfunc, document=True)
+    elif data[2] == "setfont":
+        await query.answer()
+        tag = data[3]
+        if tag == "none":
+            user_dict.pop("LEECH_FONT", None)
+        else:
+            user_dict["LEECH_FONT"] = tag
+        await update_user_settings(query, stype="leech")
+        if Config.DATABASE_URL:
+            await database.update_user_data(user_id)
     elif data[2] == "split_mode":
         await query.answer()
         update_user_ldata(user_id, "SPLIT_MODE", data[3])
