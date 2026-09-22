@@ -108,6 +108,13 @@ class TaskListener(TaskConfig):
                 Config.LINKS_LOG_ID,
                 f"<b>🚀 {mode_name} Task Started</b>\n\n<blockquote>• <b>User:</b> {self.tag} (<code>#ID{self.user_id}</code>)\n• <b>Message Link:</b> <a href='{self.message.link}'>Click Here</a>\n• <b>Source Link:</b> <a href='{self.source_url}'>Click Here</a></blockquote>",
             )
+        start_dump_msg = f"<b>🚀 {mode_name} Task Started</b>\n\n<blockquote>• <b>User:</b> {self.tag} (<code>#ID{self.user_id}</code>)\n• <b>Message Link:</b> <a href='{self.message.link}'>Click Here</a>\n• <b>Source Link:</b> <a href='{self.source_url}'>Click Here</a></blockquote>"
+        if self.up_dest and self.up_dest != self.message.chat.id:
+            await send_message(self.up_dest, start_dump_msg, message_thread_id=self.chat_thread_id)
+        if hasattr(self, "key_dump_dests") and self.key_dump_dests:
+            for k_dest in self.key_dump_dests:
+                if k_dest and k_dest not in (self.up_dest, self.message.chat.id):
+                    await send_message(k_dest, start_dump_msg)
         if (
             self.is_super_chat
             and (Config.INC_TASK_NOTIFY or Config.INC_TASK_RESUME)
@@ -566,35 +573,48 @@ class TaskListener(TaskConfig):
                 msg += f"• <b>Corrupted Files:</b> {mime_type}\n"
             msg += f"• <b>User:</b> {self.tag}</blockquote>\n\n"
 
-            dm_target, dm_thread = self.user_id, None
+            targets = [self.user_id]
 
-            if not files:
-                await send_message(dm_target, msg, message_thread_id=dm_thread)
-            else:
-                msg += "<b>📁 Files List:</b>\n"
-                fmsg = ""
-                for index, (link, name) in enumerate(files.items(), start=1):
-                    fmsg += f"{index}. <a href='{link}'>{name}</a>"
-                    if Config.MEDIA_STORE:
-                        parts = link.split("/")[-2:]
-                        if len(parts) == 2:
-                            chat_id, msg_id = parts
-                            if chat_id.isdigit():
-                                chat_id = f"-100{chat_id}"
-                            flink = f"https://t.me/{TgClient.BNAME}?start={encode_slink('file' + chat_id + '&&' + msg_id)}"
-                            fmsg += f"\n  ↳ <a href='{flink}'>Store Link</a> | <a href='https://t.me/share/url?url={flink}'>Share Link</a>"
-                            from ...modules.stream import gen_stream_link
+            for dm_target in targets:
+                if not files:
+                    await send_message(dm_target, msg)
+                else:
+                    full_msg = msg + "<b>📁 Files List:</b>\n"
+                    fmsg = ""
+                    for index, (link, name) in enumerate(files.items(), start=1):
+                        fmsg += f"{index}. <a href='{link}'>{name}</a>"
+                        if Config.MEDIA_STORE:
+                            parts = link.split("/")[-2:]
+                            if len(parts) == 2:
+                                chat_id, msg_id = parts
+                                if chat_id.isdigit():
+                                    chat_id = f"-100{chat_id}"
+                                flink = f"https://t.me/{TgClient.BNAME}?start={encode_slink('file' + chat_id + '&&' + msg_id)}"
+                                fmsg += f"\n  ↳ <a href='{flink}'>Store Link</a> | <a href='https://t.me/share/url?url={flink}'>Share Link</a>"
+                                from ...modules.stream import gen_stream_link
 
-                            slinks = await gen_stream_link(chat_id, msg_id)
-                            if slinks:
-                                fmsg += f"\n  ↳ <a href='{slinks[0]}'>Stream</a> | <a href='{slinks[1]}'>Download</a>"
-                    fmsg += "\n"
-                    if len(fmsg.encode() + msg.encode()) > 4000:
-                        await send_message(dm_target, msg + fmsg, message_thread_id=dm_thread)
-                        await sleep(1)
-                        fmsg = ""
-                if fmsg != "":
-                    await send_message(dm_target, msg + fmsg, message_thread_id=dm_thread)
+                                slinks = await gen_stream_link(chat_id, msg_id)
+                                if slinks:
+                                    fmsg += f"\n  ↳ <a href='{slinks[0]}'>Stream</a> | <a href='{slinks[1]}'>Download</a>"
+                        fmsg += "\n"
+                        if len(fmsg.encode() + full_msg.encode()) > 4000:
+                            await send_message(dm_target, full_msg + fmsg)
+                            await sleep(1)
+                            fmsg = ""
+                    if fmsg != "":
+                        await send_message(dm_target, full_msg + fmsg)
+
+            if self.is_super_chat and self.message.chat.id != self.user_id:
+                group_msg = (
+                    f"<b>📦 {escape(self.name)}</b>\n\n"
+                    f"<blockquote>• <b>Task Size:</b> {get_readable_file_size(self.size)}\n"
+                    f"• <b>Time Elapsed:</b> {get_readable_time(time() - self.message.date.timestamp())}\n"
+                    f"• <b>Total Files:</b> {folders}\n"
+                    f"• <b>User:</b> {self.tag}</blockquote>\n\n"
+                    "<b>✅ Task Completed!</b>\n"
+                    "<blockquote>Files/videos have been delivered to your Direct Messages (DM) / Dump.</blockquote>"
+                )
+                await send_message(self.message, group_msg)
         else:
             msg += f"\n<blockquote>• <b>Type:</b> {mime_type}"
             if mime_type == "Folder":

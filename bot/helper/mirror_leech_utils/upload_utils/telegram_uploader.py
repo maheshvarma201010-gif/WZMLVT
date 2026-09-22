@@ -100,11 +100,13 @@ class TelegramUploader:
         if self._user_session and TgClient.user is None:
             self._user_session = False
 
+        target_chat_id = self._listener.up_dest or self._listener.user_id
+
         if self._user_session:
             try:
                 self._sent_msg = await _call_with_flood_retry(
                     self._listener.client.get_messages,
-                    chat_id=self._listener.message.chat.id,
+                    chat_id=target_chat_id,
                     message_ids=self._listener.mid,
                 )
             except Exception:
@@ -113,8 +115,8 @@ class TelegramUploader:
                 try:
                     self._sent_msg = await _call_with_flood_retry(
                         self._listener.client.send_message,
-                        chat_id=self._listener.message.chat.id,
-                        text="Deleted Cmd Message! Don't delete the cmd message again!",
+                        chat_id=target_chat_id,
+                        text="Starting upload...",
                         disable_web_page_preview=True,
                         disable_notification=True,
                     )
@@ -124,7 +126,19 @@ class TelegramUploader:
                 self._sent_msg = self._listener.message
             self._is_private = self._sent_msg.chat.type == ChatType.PRIVATE
         else:
-            self._sent_msg = self._listener.message
+            if target_chat_id == self._listener.message.chat.id:
+                self._sent_msg = self._listener.message
+            else:
+                try:
+                    self._sent_msg = await _call_with_flood_retry(
+                        self._listener.client.send_message,
+                        chat_id=target_chat_id,
+                        text="Starting upload...",
+                        disable_web_page_preview=True,
+                        disable_notification=True,
+                    )
+                except Exception:
+                    self._sent_msg = self._listener.message
             self._is_private = self._sent_msg.chat.type == ChatType.PRIVATE
 
         return True
@@ -363,6 +377,14 @@ class TelegramUploader:
             if g_chat and (g_chat, g_thread) not in destinations:
                 destinations.append((g_chat, g_thread))
 
+        # Key-specific leech dump destinations
+        if hasattr(self._listener, "key_dump_dests") and self._listener.key_dump_dests:
+            for k_dest in self._listener.key_dump_dests:
+                if k_dest:
+                    k_chat, k_thread = parse_dest(k_dest) if not isinstance(k_dest, int) else (k_dest, None)
+                    if k_chat and (k_chat, k_thread) not in destinations:
+                        destinations.append((k_chat, k_thread))
+
         for entry in self._upload_seq:
             if entry is None:
                 continue
@@ -466,13 +488,10 @@ class TelegramUploader:
                         self._user_session = True
                     self._last_msg_in_group = False
                     self._upload_seq.append(None)
-                    task = ensure_future(
-                        self._upload_file_task(
-                            file_, f_path, dirpath, self._user_session, seq_idx
-                        )
+                    sent = await self._upload_file_task(
+                        file_, f_path, dirpath, self._user_session, seq_idx
                     )
-                    upload_tasks.append(task)
-                    await task
+                    upload_tasks.append(sent)
                     seq_idx += 1
                     if self._listener.is_cancelled:
                         return
@@ -482,12 +501,7 @@ class TelegramUploader:
                     self._corrupted += 1
                     if self._listener.is_cancelled:
                         return
-        if upload_tasks:
-            results = await gather(*upload_tasks, return_exceptions=True)
-            for r in results:
-                if isinstance(r, Exception):
-                    LOGGER.error(f"Upload task error: {r}")
-            await sleep(1)
+        await sleep(1)
         for key, value in list(self._media_dict.items()):
             for subkey, msgs in list(value.items()):
                 if len(msgs) > 1:

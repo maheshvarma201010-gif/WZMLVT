@@ -225,6 +225,7 @@ class TaskConfig:
         self.cmd_thread_id = None
         self.leech_thread_id = None
         self.dump_dest = ""
+        self.key_dump_dests = []
         self.rc_flags = ""
         self.tag = ""
         self.name = ""
@@ -488,18 +489,16 @@ class TaskConfig:
 
             user_dump = self.user_dict.get("FFMPEG_DUMP") or {}
             global_dump = Config.FFMPEG_DUMP or {}
-            key_dump_dest = None
+            dump_chats = Config.LEECH_DUMP_CHATS or {}
             for k in keys:
-                if k in user_dump:
-                    key_dump_dest = user_dump[k]
-                    break
-            if not key_dump_dest:
-                for k in keys:
-                    if k in global_dump:
-                        key_dump_dest = global_dump[k]
-                        break
-            if key_dump_dest:
-                self.dump_dest = key_dump_dest
+                d_val = user_dump.get(k) or global_dump.get(k)
+                if d_val:
+                    resolved_dest = dump_chats.get(d_val) or d_val
+                    if resolved_dest and resolved_dest not in self.key_dump_dests:
+                        self.key_dump_dests.append(resolved_dest)
+
+            if self.key_dump_dests:
+                self.dump_dest = self.key_dump_dests[0]
             elif not self.dump_dest:
                 self.dump_dest = self.user_dict.get("LEECH_DUMP_CHAT") or Config.LEECH_LOG_CHAT or ""
 

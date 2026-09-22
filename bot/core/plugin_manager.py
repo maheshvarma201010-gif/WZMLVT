@@ -463,7 +463,14 @@ class PluginManager:
 
     def _suffixed(self, names):
         suffix = Config.CMD_SUFFIX or ""
-        return [f"{item}{suffix}" for item in names]
+        return [
+            (
+                item
+                if item in ["start", "restartall", "statusall"]
+                else f"{item}{suffix}"
+            )
+            for item in names
+        ]
 
     def _build_handlers(self, rec):
         built = []
