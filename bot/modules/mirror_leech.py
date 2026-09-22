@@ -887,6 +887,113 @@ async def merge_command(client, message):
     custom_name = args["-n"] if args["-n"] else "merged_video.mkv"
     count = int(args["-i"]) if str(args["-i"]).isdigit() else 0
 
+    # Check for batch Telegram link range e.g. https://t.me/c/12345/10-20 or https://t.me/c/12345/10-https://t.me/c/12345/20
+    batch_link = ""
+    for item in input_list[1:]:
+        if "t.me/" in item:
+            batch_link = item
+            break
+
+    if batch_link:
+        match = re_search(
+            r"https://t\.me/(?:c/)?([^/]+)/(\d+)(?:-https://t\.me/(?:c/)?(?:[^/]+)/|-)(\d+)",
+            batch_link,
+        )
+        if match:
+            chat_identifier = match.group(1)
+            try:
+                chat_id = int(f"-100{chat_identifier}") if chat_identifier.isdigit() else f"@{chat_identifier}"
+            except Exception:
+                chat_id = chat_identifier
+            start_id = int(match.group(2))
+            end_id = int(match.group(3))
+            if start_id > end_id:
+                start_id, end_id = end_id, start_id
+
+            up_target = args["-up"] or args["-ud"]
+            is_telegram_dest = False
+            if up_target:
+                up_lower = up_target.lower()
+                dump_chats = Config.LEECH_DUMP_CHATS or {}
+                if (
+                    up_lower == "pm"
+                    or up_lower.startswith(("b:", "u:", "h:", "@"))
+                    or up_lower.lstrip("-").isdigit()
+                    or up_target in dump_chats
+                ):
+                    is_telegram_dest = True
+
+            is_leech = not up_target or is_telegram_dest
+
+            mirror_task = Mirror(client, message, is_leech=is_leech)
+            mirror_task.name = custom_name
+            mirror_task.split_size = args["-sp"]
+            mirror_task.as_doc = args["-doc"]
+            mirror_task.as_med = args["-med"]
+            mirror_task.manual_merge = True
+            mirror_task.merge_custom_name = custom_name
+
+            if args["-ff"]:
+                mirror_task.ffmpeg_cmds = args["-ff"]
+
+            if is_leech:
+                if up_target:
+                    mirror_task.dump_dest = up_target
+                    mirror_task.up_dest = up_target
+            else:
+                mirror_task.up_dest = up_target
+
+            try:
+                await mirror_task.before_start()
+            except Exception as e:
+                await send_message(message, str(e))
+                return
+
+            mirror_task._set_mode_engine()
+            path = f"{DOWNLOAD_DIR}{mirror_task.mid}"
+            await makedirs(path, exist_ok=True)
+
+            status_msg = await send_message(
+                message,
+                f"<b>Fetching media range from {start_id} to {end_id} for merge task...</b>",
+            )
+
+            found_count = 0
+            for curr_id in range(start_id, end_id + 1):
+                try:
+                    curr_msg = await client.get_messages(chat_id, curr_id)
+                except Exception:
+                    curr_msg = None
+                if not curr_msg or curr_msg.empty:
+                    continue
+                curr_file = (
+                    curr_msg.video
+                    or curr_msg.document
+                    or curr_msg.audio
+                    if curr_msg
+                    else None
+                )
+                if not curr_file:
+                    continue
+
+                idx_prefix = f"{found_count+1:04d}_"
+                dl_helper = TelegramDownloadHelper(mirror_task)
+                mirror_task.name = f"{idx_prefix}{getattr(curr_file, 'file_name', None) or 'video.mkv'}"
+                await dl_helper.add_download(curr_msg, f"{path}/", session="")
+                found_count += 1
+
+            await delete_message(status_msg)
+            if found_count < 2:
+                await send_message(
+                    message,
+                    "<b>Merge failed!</b> Less than 2 media files found in the specified link range.",
+                )
+                return
+
+            mirror_task.name = custom_name
+            await mirror_task.on_download_complete()
+            return
+
     # If count is provided and replied to a message, run legacy batch merge
     if count > 0 and reply_to and (reply_to.video or reply_to.document or reply_to.audio):
         up_target = args["-up"] or args["-ud"]
