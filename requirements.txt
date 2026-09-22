@@ -24,6 +24,7 @@ par2cmdline-turbo
 pillow
 psutil
 pycountry
+motor==3.3.0
 pymongo
 wzgram
 python-magic

@@ -58,6 +58,7 @@ class BotCommands:
         "Memory": ["memory", "mem"],
         "Merge": "merge",
         "Done": "done",
+        "ChThumb": "chthumb",
     }
 
     @classmethod

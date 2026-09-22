@@ -2379,6 +2379,116 @@ async def edit_user_settings(client, query):
         await delete_message(message, message.reply_to_message)
 
 
+_PENDING_CHTHUMB = {}
+
+
+@new_task
+async def chthumb_command(client, message):
+    user_id = message.from_user.id if message.from_user else message.chat.id
+    reply_to = message.reply_to_message
+
+    text_args = message.text.split(" ", 1)
+    url_arg = text_args[1].strip() if len(text_args) > 1 else ""
+
+    # Case 1: Reply to video message with /chthumb <image_url> or photo/document
+    if reply_to and reply_to.video:
+        thumb_url = url_arg
+        thumb_path = f"thumbnails/{user_id}.jpg"
+        await makedirs("thumbnails", exist_ok=True)
+
+        if not thumb_url:
+            if reply_to.reply_to_message and (
+                reply_to.reply_to_message.photo
+                or reply_to.reply_to_message.document
+            ):
+                img_msg = reply_to.reply_to_message
+                await img_msg.download(file_name=thumb_path)
+            else:
+                await send_message(
+                    message,
+                    "<blockquote>Provide an image URL or reply to a video message with an image URL/photo to change cover!</blockquote>",
+                )
+                return
+        else:
+            downloaded = await download_image_url(thumb_url)
+            if downloaded and await aiopath.exists(downloaded):
+                if await aiopath.exists(thumb_path):
+                    await remove(thumb_path)
+                await rename(downloaded, thumb_path)
+            else:
+                await send_message(
+                    message, "<blockquote>Failed to download image from provided URL!</blockquote>"
+                )
+                return
+
+        # Update user custom thumbnail in DB
+        update_user_ldata(user_id, "THUMBNAIL", thumb_path)
+        await database.update_user_doc(user_id, "THUMBNAIL", thumb_path)
+        await database.update_user_data(user_id)
+
+        status_msg = await send_message(message, "<b>Updating video cover/thumbnail...</b>")
+
+        # Download target video locally
+        vid_dir = f"{DOWNLOAD_DIR}chthumb_{user_id}_{time()}"
+        await makedirs(vid_dir, exist_ok=True)
+        video_file_path = await reply_to.download(file_name=f"{vid_dir}/video.mp4")
+
+        # Resend modified video with new thumbnail
+        sent_msg = await client.send_video(
+            chat_id=message.chat.id,
+            video=video_file_path,
+            thumb=thumb_path,
+            caption=reply_to.caption or "",
+            reply_to_message_id=message.id,
+        )
+
+        await delete_message(status_msg)
+        if await aiopath.exists(vid_dir):
+            await rmtree(vid_dir, ignore_errors=True)
+        return
+
+    # Case 2: Reply to photo, image URL, or image document -> prompt for video
+    thumb_path = f"thumbnails/{user_id}.jpg"
+    await makedirs("thumbnails", exist_ok=True)
+
+    img_source = None
+    if reply_to:
+        if reply_to.photo or (
+            reply_to.document and reply_to.document.mime_type and reply_to.document.mime_type.startswith("image/")
+        ):
+            img_source = reply_to
+        elif reply_to.text and ("http://" in reply_to.text or "https://" in reply_to.text):
+            url_arg = reply_to.text.strip()
+
+    if url_arg and ("http://" in url_arg or "https://" in url_arg):
+        downloaded = await download_image_url(url_arg)
+        if downloaded and await aiopath.exists(downloaded):
+            if await aiopath.exists(thumb_path):
+                await remove(thumb_path)
+            await rename(downloaded, thumb_path)
+            img_source = True
+
+    if img_source is not None:
+        if img_source is not True:
+            await img_source.download(file_name=thumb_path)
+
+        update_user_ldata(user_id, "THUMBNAIL", thumb_path)
+        await database.update_user_doc(user_id, "THUMBNAIL", thumb_path)
+        await database.update_user_data(user_id)
+
+        _PENDING_CHTHUMB[user_id] = thumb_path
+        await send_message(
+            message,
+            "<b>🖼️ Thumbnail saved!</b>\n\nNow send or reply with a <b>video</b> to apply this thumbnail/cover.",
+        )
+        return
+
+    await send_message(
+        message,
+        "<blockquote>Reply to a video with <code>/chthumb &lt;image_url&gt;</code> or reply to an image/photo with <code>/chthumb</code>.</blockquote>",
+    )
+
+
 @new_task
 async def get_users_settings(_, message):
     msg = ""
