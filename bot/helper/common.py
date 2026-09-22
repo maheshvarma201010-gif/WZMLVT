@@ -1701,6 +1701,16 @@ class TaskConfig:
         total_inputs = len(v_files) + len(a_files) + len(s_files)
         if total_inputs < 2 and len(v_files) < 2:
             LOGGER.info("Merge skipped: Less than 2 mergeable files found.")
+            if custom_name and len(v_files) == 1:
+                single_v = v_files[0]
+                parent_d = ospath.dirname(single_v)
+                v_ext = ospath.splitext(single_v)[1]
+                target_n = custom_name if custom_name.lower().endswith(v_ext.lower()) else f"{custom_name}{v_ext}"
+                target_p = ospath.join(parent_d, target_n)
+                if single_v != target_p:
+                    await move(single_v, target_p)
+                    self.name = target_n
+                    return target_p
             return dl_path
 
         if custom_name:
