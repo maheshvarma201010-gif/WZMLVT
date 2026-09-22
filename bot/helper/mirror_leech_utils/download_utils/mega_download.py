@@ -124,6 +124,20 @@ async def add_mega_download(listener, path):
         return
 
     if MegaApi is None:
+        if Config.DEBRID_LINK_API:
+            try:
+                from .direct_link_generator import direct_link_generator
+                from .direct_downloader import add_direct_download
+                res = direct_link_generator(listener.link)
+                if isinstance(res, (str, dict, tuple)):
+                    await _release_link(listener.link)
+                    if isinstance(res, tuple):
+                        res, _ = res
+                    listener.link = res
+                    await add_direct_download(listener, path)
+                    return
+            except Exception as e:
+                LOGGER.warning(f"Failed to fallback Mega download via Debrid-Link: {e}")
         await _release_link(listener.link)
         await listener.on_download_error(
             "MEGA C++ SDK is not installed on this system."
