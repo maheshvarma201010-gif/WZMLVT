@@ -137,19 +137,19 @@ async def get_media_info(path, extra_info=False):
         )
     except Exception as e:
         LOGGER.error(f"Get Media Info: {e}. Mostly File not found! - File: {path}")
-        return (0, "", "", "") if extra_info else (0, None, None)
+        return (0, "", "", "", "") if extra_info else (0, None, None)
     if result[0] and result[2] == 0:
         ffresult = literal_eval(result[0])
         if not isinstance(ffresult, dict):
             LOGGER.error(f"get_media_info: unexpected ffprobe payload: {result}")
-            return (0, "", "", "") if extra_info else (0, None, None)
+            return (0, "", "", "", "") if extra_info else (0, None, None)
         fields = ffresult.get("format")
         if fields is None:
             LOGGER.error(f"get_media_info: {result}")
-            return (0, "", "", "") if extra_info else (0, None, None)
+            return (0, "", "", "", "") if extra_info else (0, None, None)
         duration = round(float(fields.get("duration", 0)))
         if extra_info:
-            lang, qual, stitles = "", "", ""
+            lang, langr, qual, stitles = "", "", "", ""
             if (streams := ffresult.get("streams")) and streams[0].get(
                 "codec_type"
             ) == "video":
@@ -159,10 +159,16 @@ async def get_media_info(path, extra_info=False):
                     if stream.get("codec_type") == "audio" and (
                         lc := stream.get("tags", {}).get("language")
                     ):
+                        d_name = lc
+                        native_name = lc
                         with suppress(Exception):
-                            lc = Language.get(lc).display_name()
-                        if lc not in lang:
-                            lang += f"{lc}, "
+                            l_obj = Language.get(lc)
+                            d_name = l_obj.display_name()
+                            native_name = l_obj.autonym()
+                        if d_name not in lang:
+                            lang += f"{d_name}, "
+                        if native_name not in langr:
+                            langr += f"{native_name}, "
                     if stream.get("codec_type") == "subtitle" and (
                         st := stream.get("tags", {}).get("language")
                     ):
@@ -170,12 +176,12 @@ async def get_media_info(path, extra_info=False):
                             st = Language.get(st).display_name()
                         if st not in stitles:
                             stitles += f"{st}, "
-            return duration, qual, lang[:-2], stitles[:-2]
+            return duration, qual, lang[:-2], stitles[:-2], langr[:-2]
         tags = fields.get("tags", {})
         artist = tags.get("artist") or tags.get("ARTIST") or tags.get("Artist")
         title = tags.get("title") or tags.get("TITLE") or tags.get("Title")
         return duration, artist, title
-    return (0, "", "", "") if extra_info else (0, None, None)
+    return (0, "", "", "", "") if extra_info else (0, None, None)
 
 
 async def get_document_type(path):
