@@ -56,8 +56,6 @@ class BotCommands:
         "GDClean": ["gdclean", "gdc"],
         "Plugins": "plugins",
         "Memory": ["memory", "mem"],
-        "Merge": "merge",
-        "Done": "done",
         "ChThumb": "chthumb",
     }
 
