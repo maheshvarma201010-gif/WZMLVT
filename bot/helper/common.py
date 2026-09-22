@@ -1105,7 +1105,8 @@ class TaskConfig:
                     if res:
                         if delete_files:
                             await remove(file_path)
-                            if len(await listdir(new_folder)) == 1:
+                            remaining = await listdir(new_folder)
+                            if len(remaining) == 1:
                                 folder = new_folder.rsplit("/", 1)[0]
                                 self.name = ospath.basename(res[0])
                                 if self.name.startswith("ffmpeg"):
@@ -1113,12 +1114,15 @@ class TaskConfig:
                                 dl_path = ospath.join(folder, self.name)
                                 await move(res[0], dl_path)
                                 await rmtree(new_folder)
+                                self.is_file = True
                             else:
                                 dl_path = new_folder
                                 self.name = new_folder.rsplit("/", 1)[-1]
+                                self.is_file = False
                         else:
                             dl_path = new_folder
                             self.name = new_folder.rsplit("/", 1)[-1]
+                            self.is_file = False
                     else:
                         await move(file_path, dl_path)
                         await rmtree(new_folder)

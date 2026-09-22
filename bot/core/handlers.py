@@ -401,6 +401,20 @@ async def add_handlers():
     )
     TgClient.bot.add_handler(
         MessageHandler(
+            merge_command,
+            filters=command(BotCommands.MergeCommand, case_sensitive=True)
+            & CustomFilters.authorized,
+        )
+    )
+    TgClient.bot.add_handler(
+        MessageHandler(
+            done_command,
+            filters=command(BotCommands.DoneCommand, case_sensitive=True)
+            & CustomFilters.authorized,
+        )
+    )
+    TgClient.bot.add_handler(
+        MessageHandler(
             ytdl,
             filters=command(BotCommands.YtdlCommand, case_sensitive=True)
             & CustomFilters.authorized,

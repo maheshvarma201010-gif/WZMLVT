@@ -862,50 +862,175 @@ async def nzb_leech(client, message):
     bot_loop.create_task(mirror_task.new_event())
 
 
+_MERGE_SESSIONS = {}
+
+
 @new_task
 async def merge_command(client, message):
+    user_id = message.from_user.id if message.from_user else message.chat.id
     reply_to = message.reply_to_message
-    if not reply_to:
-        await send_message(
-            message,
-            "<blockquote>Reply to the first Telegram file or video in sequence to merge!</blockquote>",
-        )
-        return
-
-    file_ = reply_to.video or reply_to.document
-    if file_ is None:
-        await send_message(
-            message,
-            "<blockquote>Unsupported media! Reply to first Telegram file or video in sequence.</blockquote>",
-        )
-        return
 
     text = message.text.split("\n")
     input_list = text[0].split(" ")
     args = {
         "-i": 0,
-        "-n": "",
+        "-n": "merged_video.mkv",
         "-up": "",
         "-ud": "",
         "-sp": 0,
         "-doc": False,
         "-med": False,
+        "-ff": "",
     }
     arg_parser(input_list[1:], args)
 
+    custom_name = args["-n"] if args["-n"] else "merged_video.mkv"
     count = int(args["-i"]) if str(args["-i"]).isdigit() else 0
-    if count <= 0:
+
+    # If count is provided and replied to a message, run legacy batch merge
+    if count > 0 and reply_to and (reply_to.video or reply_to.document or reply_to.audio):
+        up_target = args["-up"] or args["-ud"]
+        is_telegram_dest = False
+        if up_target:
+            up_lower = up_target.lower()
+            dump_chats = Config.LEECH_DUMP_CHATS or {}
+            if (
+                up_lower == "pm"
+                or up_lower.startswith(("b:", "u:", "h:", "@"))
+                or up_lower.lstrip("-").isdigit()
+                or up_target in dump_chats
+            ):
+                is_telegram_dest = True
+
+        is_leech = not up_target or is_telegram_dest
+
+        mirror_task = Mirror(client, message, is_leech=is_leech)
+        mirror_task.name = custom_name
+        mirror_task.split_size = args["-sp"]
+        mirror_task.as_doc = args["-doc"]
+        mirror_task.as_med = args["-med"]
+        mirror_task.manual_merge = True
+        mirror_task.merge_custom_name = custom_name
+
+        if args["-ff"]:
+            mirror_task.ffmpeg_cmds = args["-ff"]
+
+        if is_leech:
+            if up_target:
+                mirror_task.dump_dest = up_target
+                mirror_task.up_dest = up_target
+        else:
+            mirror_task.up_dest = up_target
+
+        try:
+            await mirror_task.before_start()
+        except Exception as e:
+            await send_message(message, str(e))
+            return
+
+        mirror_task._set_mode_engine()
+        path = f"{DOWNLOAD_DIR}{mirror_task.mid}"
+        await makedirs(path, exist_ok=True)
+
+        start_id = reply_to.id
+        chat_id = message.chat.id
+        target_user_id = reply_to.from_user.id if reply_to.from_user else (reply_to.sender_chat.id if reply_to.sender_chat else 0)
+
+        msg = await send_message(message, f"<b>Fetching {count} files for merge task...</b>")
+
+        curr_id = start_id
+        found_count = 0
+
+        while found_count < count and curr_id < start_id + 500:
+            try:
+                curr_msg = await client.get_messages(chat_id, curr_id)
+            except Exception:
+                curr_msg = None
+            curr_id += 1
+            if not curr_msg or curr_msg.empty:
+                continue
+            c_user = curr_msg.from_user or curr_msg.sender_chat
+            if target_user_id and c_user and c_user.id != target_user_id:
+                continue
+            curr_file = curr_msg.video or curr_msg.document or curr_msg.audio if curr_msg else None
+            if not curr_file:
+                continue
+
+            idx_prefix = f"{found_count+1:04d}_"
+            dl_helper = TelegramDownloadHelper(mirror_task)
+            mirror_task.name = f"{idx_prefix}{getattr(curr_file, 'file_name', None) or 'video.mkv'}"
+            await dl_helper.add_download(curr_msg, f"{path}/", session="")
+            found_count += 1
+
+        await delete_message(msg)
+        mirror_task.name = custom_name
+        await mirror_task.on_download_complete()
+        return
+
+    # Interactive session mode: initialize or reset merge session for user
+    session_key = (message.chat.id, user_id)
+    _MERGE_SESSIONS[session_key] = {
+        "client": client,
+        "init_message": message,
+        "args": args,
+        "custom_name": custom_name,
+        "collected": [],
+    }
+
+    # If merge command itself replied to a message, add it as first file/item
+    if reply_to:
+        _MERGE_SESSIONS[session_key]["collected"].append(reply_to)
+
+    done_cmd = f"done{Config.CMD_SUFFIX}" if getattr(Config, "CMD_SUFFIX", None) else "done"
+    await send_message(
+        message,
+        f"<b>🎬 Merge Session Started!</b>\n\n"
+        f"Send or forward videos, files, or direct links sequentially in the order you want them merged.\n"
+        f"When finished, send <code>/{done_cmd}</code> to start downloading &amp; merging!\n\n"
+        f"• <b>Output Name:</b> <code>{custom_name}</code>",
+    )
+
+
+@new_task
+async def done_command(client, message):
+    user_id = message.from_user.id if message.from_user else message.chat.id
+    session_key = (message.chat.id, user_id)
+
+    session = _MERGE_SESSIONS.pop(session_key, None)
+    if not session:
         await send_message(
             message,
-            "<blockquote>Specify file count using -i. Usage: <code>/merge -i 5 -n name.mkv</code></blockquote>",
+            "<blockquote>No active merge session found! Use /merge to start a new session.</blockquote>",
         )
         return
 
-    custom_name = args["-n"]
-    if not custom_name:
+    init_message = session["init_message"]
+    args = session["args"]
+    custom_name = session["custom_name"]
+    collected = session["collected"]
+
+    # If user sent replies/media after start, fetch active chat history or replied items
+    # Check if there are messages between init_message and current done message
+    if not collected:
+        start_id = init_message.id + 1
+        end_id = message.id
+        chat_id = message.chat.id
+        for mid in range(start_id, end_id):
+            try:
+                msg = await client.get_messages(chat_id, mid)
+                if not msg or msg.empty:
+                    continue
+                c_user = msg.from_user or msg.sender_chat
+                if c_user and c_user.id == user_id:
+                    if msg.video or msg.document or msg.audio or (msg.text and ("http://" in msg.text or "https://" in msg.text)):
+                        collected.append(msg)
+            except Exception:
+                pass
+
+    if not collected:
         await send_message(
             message,
-            "<blockquote>Specify custom output name using -n. Usage: <code>/merge -i 5 -n name.mkv</code></blockquote>",
+            "<blockquote>No files or links were collected! Merge session cancelled.</blockquote>",
         )
         return
 
@@ -924,13 +1049,16 @@ async def merge_command(client, message):
 
     is_leech = not up_target or is_telegram_dest
 
-    mirror_task = Mirror(client, message, is_leech=is_leech)
+    mirror_task = Mirror(client, init_message, is_leech=is_leech)
     mirror_task.name = custom_name
     mirror_task.split_size = args["-sp"]
     mirror_task.as_doc = args["-doc"]
     mirror_task.as_med = args["-med"]
     mirror_task.manual_merge = True
     mirror_task.merge_custom_name = custom_name
+
+    if args["-ff"]:
+        mirror_task.ffmpeg_cmds = args["-ff"]
 
     if is_leech:
         if up_target:
@@ -949,37 +1077,27 @@ async def merge_command(client, message):
     path = f"{DOWNLOAD_DIR}{mirror_task.mid}"
     await makedirs(path, exist_ok=True)
 
-    start_id = reply_to.id
-    chat_id = message.chat.id
-    target_user_id = reply_to.from_user.id if reply_to.from_user else (reply_to.sender_chat.id if reply_to.sender_chat else 0)
+    status_msg = await send_message(message, f"<b>📥 Downloading {len(collected)} collected items sequentially for merge...</b>")
 
-    msg = await send_message(message, f"<b>Fetching {count} files for merge task...</b>")
+    for idx, item in enumerate(collected, 1):
+        idx_prefix = f"{idx:04d}_"
+        if isinstance(item, str) or (getattr(item, "text", None) and ("http://" in item.text or "https://" in item.text)):
+            link = item if isinstance(item, str) else item.text.strip()
+            mirror_task.link = link
+            mirror_task.name = f"{idx_prefix}downloaded_video.mkv"
+            try:
+                from .mirror_leech import direct_download
+                await direct_download(mirror_task, f"{path}/")
+            except Exception as e:
+                LOGGER.error(f"Error downloading link in merge session: {e}")
+        else:
+            curr_file = item.video or item.document or item.audio if item else None
+            if curr_file:
+                dl_helper = TelegramDownloadHelper(mirror_task)
+                mirror_task.name = f"{idx_prefix}{getattr(curr_file, 'file_name', None) or 'video.mkv'}"
+                await dl_helper.add_download(item, f"{path}/", session="")
 
-    curr_id = start_id
-    found_count = 0
-
-    while found_count < count and curr_id < start_id + 500:
-        try:
-            curr_msg = await client.get_messages(chat_id, curr_id)
-        except Exception:
-            curr_msg = None
-        curr_id += 1
-        if not curr_msg or curr_msg.empty:
-            continue
-        c_user = curr_msg.from_user or curr_msg.sender_chat
-        if target_user_id and c_user and c_user.id != target_user_id:
-            continue
-        curr_file = curr_msg.video or curr_msg.document or curr_msg.audio if curr_msg else None
-        if not curr_file:
-            continue
-
-        idx_prefix = f"{found_count+1:04d}_"
-        dl_helper = TelegramDownloadHelper(mirror_task)
-        mirror_task.name = f"{idx_prefix}{getattr(curr_file, 'file_name', None) or 'video.mkv'}"
-        await dl_helper.add_download(curr_msg, f"{path}/", session="")
-        found_count += 1
-
-    await delete_message(msg)
+    await delete_message(status_msg)
     mirror_task.name = custom_name
     await mirror_task.on_download_complete()
 
