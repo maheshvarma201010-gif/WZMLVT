@@ -132,6 +132,7 @@ class Config:
     HYDRA_API_KEY = ""
     NAME_SWAP = ""
     OWNER_ID = 0
+    PROGRESS_BAR = "■□"
     QUEUE_ALL = 0
     QUEUE_DOWNLOAD = 0
     QUEUE_UPLOAD = 0

@@ -210,7 +210,14 @@ def get_progress_bar_string(pct):
         p = 0.0
     p = min(max(p, 0), 100)
     filled = int(round(p / 10))
-    bar = "■" * filled + "□" * (10 - filled)
+    p_bar = getattr(Config, "PROGRESS_BAR", "") or "■□"
+    if len(p_bar) >= 2:
+        fill_char = p_bar[0]
+        empty_char = p_bar[1]
+    else:
+        fill_char = "■"
+        empty_char = "□"
+    bar = fill_char * filled + empty_char * (10 - filled)
     return f"[{bar}]"
 
 

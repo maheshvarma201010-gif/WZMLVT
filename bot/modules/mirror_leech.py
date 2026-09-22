@@ -958,7 +958,7 @@ async def merge_command(client, message):
                 f"<b>Fetching media range from {start_id} to {end_id} for merge task...</b>",
             )
 
-            found_count = 0
+            range_items = []
             for curr_id in range(start_id, end_id + 1):
                 try:
                     curr_msg = await client.get_messages(chat_id, curr_id)
@@ -966,23 +966,21 @@ async def merge_command(client, message):
                     curr_msg = None
                 if not curr_msg or curr_msg.empty:
                     continue
-                curr_file = (
-                    curr_msg.video
-                    or curr_msg.document
-                    or curr_msg.audio
-                    if curr_msg
-                    else None
-                )
-                idx_prefix = f"{found_count+1:04d}_"
-                if curr_file:
-                    dl_helper = TelegramDownloadHelper(mirror_task)
-                    mirror_task.name = f"{idx_prefix}{getattr(curr_file, 'file_name', None) or 'video.mkv'}"
-                    await dl_helper.add_download(curr_msg, f"{path}/", session="")
-                    found_count += 1
-                elif curr_msg.text and ("http://" in curr_msg.text or "https://" in curr_msg.text):
-                    link = curr_msg.text.strip().split("\n", 1)[0].strip()
+                if curr_msg.video or curr_msg.document or curr_msg.audio or (curr_msg.text and ("http://" in curr_msg.text or "https://" in curr_msg.text)):
+                    range_items.append(curr_msg)
+
+            if not range_items:
+                await delete_message(status_msg)
+                await send_message(message, "<b>Merge failed!</b> No valid media or links found in range.")
+                return
+
+            for idx, item in enumerate(range_items, 1):
+                idx_prefix = f"{idx:04d}_"
+                if isinstance(item, str) or (getattr(item, "text", None) and ("http://" in item.text or "https://" in item.text)):
+                    link = item if isinstance(item, str) else item.text.strip().split("\n", 1)[0].strip()
                     mirror_task.link = link
-                    mirror_task.name = f"{idx_prefix}downloaded_video.mkv"
+                    fname = f"{idx_prefix}downloaded_video.mkv"
+                    mirror_task.name = fname
                     try:
                         if is_mega_link(link):
                             await add_mega_download(mirror_task, f"{path}/")
@@ -990,17 +988,28 @@ async def merge_command(client, message):
                             await add_gd_download(mirror_task, f"{path}/")
                         else:
                             await add_aria2_download(mirror_task, f"{path}/", "", None, None)
-                        found_count += 1
                     except Exception as e:
                         LOGGER.error(f"Error downloading link in range merge task: {e}")
+                else:
+                    curr_file = item.video or item.document or item.audio if item else None
+                    if curr_file:
+                        dl_helper = TelegramDownloadHelper(mirror_task)
+                        fname = f"{idx_prefix}{getattr(curr_file, 'file_name', None) or 'video.mkv'}"
+                        mirror_task.name = fname
+                        await dl_helper.add_download(item, f"{path}/", session="")
+                        fname = mirror_task.name
 
-            await delete_message(status_msg)
+                await edit_message(
+                    status_msg,
+                    f"File name: {fname} — Downloaded. Waiting for other files to download...",
+                )
 
             downloaded_files = []
             if await aiopath.exists(path):
                 downloaded_files = await listdir(path)
 
             if len(downloaded_files) < 2:
+                await delete_message(status_msg)
                 await clean_download(path)
                 await send_message(
                     message,
@@ -1008,6 +1017,7 @@ async def merge_command(client, message):
                 )
                 return
 
+            await delete_message(status_msg)
             mirror_task.name = custom_name
             mirror_task.manual_merge = True
             mirror_task.merge_custom_name = custom_name
@@ -1063,12 +1073,12 @@ async def merge_command(client, message):
         chat_id = message.chat.id
         target_user_id = reply_to.from_user.id if reply_to.from_user else (reply_to.sender_chat.id if reply_to.sender_chat else 0)
 
-        msg = await send_message(message, f"<b>Fetching {count} files for merge task...</b>")
+        status_msg = await send_message(message, f"<b>Fetching {count} files for merge task...</b>")
 
         curr_id = start_id
-        found_count = 0
+        collected_msgs = []
 
-        while found_count < count and curr_id < start_id + 500:
+        while len(collected_msgs) < count and curr_id < start_id + 500:
             try:
                 curr_msg = await client.get_messages(chat_id, curr_id)
             except Exception:
@@ -1082,15 +1092,44 @@ async def merge_command(client, message):
             curr_file = curr_msg.video or curr_msg.document or curr_msg.audio if curr_msg else None
             if not curr_file:
                 continue
+            collected_msgs.append(curr_msg)
 
-            idx_prefix = f"{found_count+1:04d}_"
+        if not collected_msgs:
+            await delete_message(status_msg)
+            await send_message(message, "<b>Merge failed!</b> No matching files found to download.")
+            return
+
+        for idx, curr_msg in enumerate(collected_msgs, 1):
+            idx_prefix = f"{idx:04d}_"
+            curr_file = curr_msg.video or curr_msg.document or curr_msg.audio
             dl_helper = TelegramDownloadHelper(mirror_task)
-            mirror_task.name = f"{idx_prefix}{getattr(curr_file, 'file_name', None) or 'video.mkv'}"
+            fname = f"{idx_prefix}{getattr(curr_file, 'file_name', None) or 'video.mkv'}"
+            mirror_task.name = fname
             await dl_helper.add_download(curr_msg, f"{path}/", session="")
-            found_count += 1
+            fname = mirror_task.name
 
-        await delete_message(msg)
+            await edit_message(
+                status_msg,
+                f"File name: {fname} — Downloaded. Waiting for other files to download...",
+            )
+
+        downloaded_files = []
+        if await aiopath.exists(path):
+            downloaded_files = await listdir(path)
+
+        if len(downloaded_files) < 2:
+            await delete_message(status_msg)
+            await clean_download(path)
+            await send_message(
+                message,
+                "<b>Merge failed!</b> Less than 2 files/videos were successfully downloaded.",
+            )
+            return
+
+        await delete_message(status_msg)
         mirror_task.name = custom_name
+        mirror_task.manual_merge = True
+        mirror_task.merge_custom_name = custom_name
         await mirror_task.on_download_complete()
         return
 
@@ -1220,7 +1259,8 @@ async def done_command(client, message):
         if isinstance(item, str) or (getattr(item, "text", None) and ("http://" in item.text or "https://" in item.text)):
             link = item if isinstance(item, str) else item.text.strip().split("\n", 1)[0].strip()
             mirror_task.link = link
-            mirror_task.name = f"{idx_prefix}downloaded_video.mkv"
+            fname = f"{idx_prefix}downloaded_video.mkv"
+            mirror_task.name = fname
             try:
                 if is_mega_link(link):
                     await add_mega_download(mirror_task, f"{path}/")
@@ -1234,8 +1274,15 @@ async def done_command(client, message):
             curr_file = item.video or item.document or item.audio if item else None
             if curr_file:
                 dl_helper = TelegramDownloadHelper(mirror_task)
-                mirror_task.name = f"{idx_prefix}{getattr(curr_file, 'file_name', None) or 'video.mkv'}"
+                fname = f"{idx_prefix}{getattr(curr_file, 'file_name', None) or 'video.mkv'}"
+                mirror_task.name = fname
                 await dl_helper.add_download(item, f"{path}/", session="")
+                fname = mirror_task.name
+
+        await edit_message(
+            status_msg,
+            f"File name: {fname} — Downloaded. Waiting for other files to download...",
+        )
 
     await delete_message(status_msg)
 

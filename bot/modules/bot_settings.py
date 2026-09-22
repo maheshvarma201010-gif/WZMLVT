@@ -255,6 +255,7 @@ DEFAULT_DESP = {
     "HYDRA_API_KEY": "Hydra API key.",
     "NAME_SWAP": "Rename pattern rules.",
     "OWNER_ID": "Bot owner user ID.",
+    "PROGRESS_BAR": "Custom progress bar characters (filled and empty). Default: ■□.",
     "QUEUE_ALL": "Max parallel tasks.",
     "QUEUE_DOWNLOAD": "Max parallel download tasks.",
     "QUEUE_UPLOAD": "Max parallel upload tasks.",
