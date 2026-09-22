@@ -1007,6 +1007,7 @@ Configure custom video encoding, compression, and watermark overlays for uploads
             buttons.data_button(f"{st}{label}", f"userset {user_id} setfont {tag}")
         buttons.data_button("◀️ Back", f"userset {user_id} leech", position="footer")
         text = f"<b>📄 Select Caption Font Style:</b>\nCurrent: <code>{cur_font}</code>"
+        btns = buttons.build_menu(2)
     elif stype == "rclone":
         buttons.data_button("Rclone Config", f"userset {user_id} menu RCLONE_CONFIG")
         buttons.data_button(
