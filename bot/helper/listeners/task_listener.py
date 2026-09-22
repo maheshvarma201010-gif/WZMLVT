@@ -108,6 +108,13 @@ class TaskListener(TaskConfig):
                 Config.LINKS_LOG_ID,
                 f"<b>🚀 {mode_name} Task Started</b>\n\n<blockquote>• <b>User:</b> {self.tag} (<code>#ID{self.user_id}</code>)\n• <b>Message Link:</b> <a href='{self.message.link}'>Click Here</a>\n• <b>Source Link:</b> <a href='{self.source_url}'>Click Here</a></blockquote>",
             )
+        univ_dump = self.user_dict.get("LEECH_DUMP_CHAT") or Config.LEECH_LOG_CHAT or getattr(Config, "LEECH_DUMP_CHAT", "") or ""
+        dump_chats = Config.LEECH_DUMP_CHATS or {}
+        if univ_dump:
+            resolved_univ = dump_chats.get(univ_dump) or univ_dump
+            if hasattr(self, "key_dump_dests") and resolved_univ and resolved_univ not in self.key_dump_dests:
+                self.key_dump_dests.append(resolved_univ)
+
         start_dump_msg = f"<b>🚀 {mode_name} Task Started</b>\n\n<blockquote>• <b>User:</b> {self.tag} (<code>#ID{self.user_id}</code>)\n• <b>Message Link:</b> <a href='{self.message.link}'>Click Here</a>\n• <b>Source Link:</b> <a href='{self.source_url}'>Click Here</a></blockquote>"
         if self.up_dest and self.up_dest != self.message.chat.id:
             await send_message(self.up_dest, start_dump_msg, message_thread_id=self.chat_thread_id)
