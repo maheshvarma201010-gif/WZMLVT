@@ -1852,10 +1852,13 @@ async def get_menu(option, message, user_id, start=0):
         "❌ Close", f"userset {user_id} close", "footer", style=ButtonStyle.DANGER
     )
     val_setting = user_dict.get(option)
+    val = ""
     if option in file_dict and await aiopath.exists(file_dict[option]):
         val = "<b>Exists</b>"
     elif option == "LEECH_SPLIT_SIZE":
-        val = get_readable_file_size(val_setting)
+        val = get_readable_file_size(val_setting) if val_setting else "<b>Not Set</b>"
+    elif option in ["LEECH_PREFIX", "LEECH_SUFFIX", "LEECH_CAPTION", "LEECH_FONT", "WM_TEXT", "WM_COLOR", "WM_SIZE", "WM_POSITION"]:
+        val = f"<code>{escape(str(val_setting))}</code>" if val_setting else "<b>Not Set</b>"
     elif option in ["SET_ALL_METADATA", "METADATA", "AUDIO_METADATA", "VIDEO_METADATA", "SUBTITLE_METADATA"]:
         current_meta_val = user_dict.get(option)
         if isinstance(current_meta_val, dict) and current_meta_val:
