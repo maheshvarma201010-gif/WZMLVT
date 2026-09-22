@@ -44,34 +44,13 @@ from .button_build import ButtonMaker
 
 
 async def send_message(message, text, buttons=None, block=True, photo=None, **kwargs):
+    img_photo = choice(Config.IMAGES) if (photo == "IMAGES" and Config.USE_IMAGES and Config.IMAGES) else (None if photo == "IMAGES" else photo)
     try:
-        if photo:
+        if img_photo:
             try:
-                if photo == "IMAGES":
-                    if Config.USE_IMAGES and Config.IMAGES:
-                        photo = choice(Config.IMAGES)
-                    else:
-                        photo = None
-                if photo is None:
-                    if isinstance(message, Message):
-                        return await message.reply(
-                            text=text,
-                            reply_parameters=ReplyParameters(message_id=message.id),
-                            disable_web_page_preview=True,
-                            disable_notification=True,
-                            reply_markup=buttons,
-                            **kwargs,
-                        )
-                    return await TgClient.bot.send_message(
-                        chat_id=message,
-                        text=text,
-                        disable_web_page_preview=True,
-                        disable_notification=True,
-                        reply_markup=buttons,
-                    )
                 if isinstance(message, Message):
                     return await message.reply_photo(
-                        photo=photo,
+                        photo=img_photo,
                         caption=text,
                         reply_parameters=ReplyParameters(message_id=message.id),
                         reply_markup=buttons,
@@ -80,7 +59,7 @@ async def send_message(message, text, buttons=None, block=True, photo=None, **kw
                     )
                 return await TgClient.bot.send_photo(
                     chat_id=message,
-                    photo=photo,
+                    photo=img_photo,
                     caption=text,
                     reply_markup=buttons,
                     disable_notification=True,
@@ -107,7 +86,7 @@ async def send_message(message, text, buttons=None, block=True, photo=None, **kw
                 MediaEmpty,
             ):
                 try:
-                    des_dir = await download_image_url(photo)
+                    des_dir = await download_image_url(img_photo)
                     if des_dir:
                         msg = await send_message(message, text, buttons, block, des_dir)
                         from aiofiles.os import remove as aioremove
@@ -161,6 +140,7 @@ async def send_message(message, text, buttons=None, block=True, photo=None, **kw
 
 
 async def edit_message(message, text, buttons=None, block=True, photo=None):
+    img_photo = choice(Config.IMAGES) if (photo == "IMAGES" and Config.USE_IMAGES and Config.IMAGES) else (None if photo == "IMAGES" else photo)
     try:
         if not isinstance(text, str):
             return await TgClient.bot.edit_message_text(
@@ -172,35 +152,29 @@ async def edit_message(message, text, buttons=None, block=True, photo=None):
             )
         if message.media:
             caption_text = text[:1020] + "..." if len(text) > 1024 else text
-            if photo:
-                if photo == "IMAGES":
-                    if Config.USE_IMAGES and Config.IMAGES:
-                        photo = choice(Config.IMAGES)
-                    else:
-                        photo = None
-                if photo:
-                    try:
-                        return await message.edit_media(
-                            InputMediaPhoto(photo, caption_text), reply_markup=buttons
+            if img_photo:
+                try:
+                    return await message.edit_media(
+                        InputMediaPhoto(img_photo, caption_text), reply_markup=buttons
+                    )
+                except (
+                    PhotoInvalidDimensions,
+                    WebpageCurlFailed,
+                    WebpageMediaEmpty,
+                    MediaEmpty,
+                ):
+                    des_dir = await download_image_url(img_photo)
+                    if des_dir:
+                        msg = await message.edit_media(
+                            InputMediaPhoto(des_dir, caption_text), reply_markup=buttons
                         )
-                    except (
-                        PhotoInvalidDimensions,
-                        WebpageCurlFailed,
-                        WebpageMediaEmpty,
-                        MediaEmpty,
-                    ):
-                        des_dir = await download_image_url(photo)
-                        if des_dir:
-                            msg = await message.edit_media(
-                                InputMediaPhoto(des_dir, caption_text), reply_markup=buttons
-                            )
-                            from aiofiles.os import remove as aioremove
+                        from aiofiles.os import remove as aioremove
 
-                            await aioremove(des_dir)
-                            return msg
-                        return await message.edit_caption(
-                            caption=caption_text, reply_markup=buttons
-                        )
+                        await aioremove(des_dir)
+                        return msg
+                    return await message.edit_caption(
+                        caption=caption_text, reply_markup=buttons
+                    )
             return await message.edit_caption(caption=caption_text, reply_markup=buttons)
 
         msg_text = text[:4090] + "..." if len(text) > 4096 else text

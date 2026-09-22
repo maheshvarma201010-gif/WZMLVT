@@ -1006,6 +1006,7 @@ Configure custom video encoding, compression, and watermark overlays for uploads
             st = "✓ " if cur_font == tag else ""
             buttons.data_button(f"{st}{label}", f"userset {user_id} setfont {tag}")
         buttons.data_button("◀️ Back", f"userset {user_id} leech", position="footer")
+        btns = buttons.build_menu(2)
         text = f"<b>📄 Select Caption Font Style:</b>\nCurrent: <code>{cur_font}</code>"
     elif stype == "rclone":
         buttons.data_button("Rclone Config", f"userset {user_id} menu RCLONE_CONFIG")
@@ -1397,11 +1398,8 @@ Configure custom video encoding, compression, and watermark overlays for uploads
         if ex_ex != "None":
             ex_ex = ", ".join(ex_ex)
 
-        ns_msg = (
-            f"<code>{swap}</code>"
-            if (swap := user_dict.get("NAME_SWAP", False))
-            else "<b>Not Set</b>"
-        )
+        swap = user_dict.get("NAME_SWAP", False)
+        ns_msg = f"<code>{swap}</code>" if swap else "<b>Not Set</b>"
         buttons.data_button("Name Swap", f"userset {user_id} menu NAME_SWAP")
 
         buttons.data_button("YT-DLP Options", f"userset {user_id} menu YT_DLP_OPTIONS")

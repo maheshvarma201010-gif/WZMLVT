@@ -31,6 +31,7 @@ async def chat_info(channel_id):
 
 
 async def forcesub(message, ids, button=None):
+    button = ButtonMaker() if button is None else button
     join_button = {}
     _msg = ""
 
@@ -76,12 +77,11 @@ async def user_info(user_id):
 
 
 async def check_botpm(message, button=None):
+    button = ButtonMaker() if button is None else button
     try:
         await TgClient.bot.send_chat_action(message.from_user.id, ChatAction.TYPING)
         return None, button
     except Exception:
-        if button is None:
-            button = ButtonMaker()
         _msg = "┠ <i>Bot isn't Started in PM or Inbox (Private)</i>"
         button.url_button(
             "Start Bot Now", f"https://t.me/{TgClient.BNAME}?start=start", "header"
@@ -90,6 +90,7 @@ async def check_botpm(message, button=None):
 
 
 async def verify_token(user_id, button=None):
+    button = ButtonMaker() if button is None else button
     if not Config.VERIFY_TIMEOUT or bool(
         user_id == Config.OWNER_ID
         or user_id in user_data
@@ -116,8 +117,6 @@ async def verify_token(user_id, button=None):
             del data["VERIFY_TIME"]
         data["VERIFY_TOKEN"] = token
         user_data[user_id].update(data)
-        if button is None:
-            button = ButtonMaker()
         encrypt_url = encode_slink(f"{token}&&{user_id}")
         button.url_button(
             "Verify Access Token",
