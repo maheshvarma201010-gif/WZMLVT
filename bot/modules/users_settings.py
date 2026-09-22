@@ -1890,29 +1890,30 @@ async def get_menu(option, message, user_id):
         key = "file"
     else:
         key = "set"
-    if option == "WM_IMAGE":
-        buttons.data_button("Set Image URL / Text", f"userset {user_id} set WM_IMAGE")
-    buttons.data_button(
-        "Change" if user_dict.get(option, False) else "Set",
-        f"userset {user_id} {key} {option}",
-    )
-    if user_dict.get(option, False):
-        if option == "THUMBNAIL":
-            buttons.data_button(
-                "View Thumb", f"userset {user_id} view THUMBNAIL", "header"
-            )
-        elif option in ["YT_DLP_OPTIONS", "FFMPEG_CMDS", "UPLOAD_PATHS", "DRIVE_CAT"]:
-            buttons.data_button(
-                "Add One", f"userset {user_id} addone {option}", "header"
-            )
-            buttons.data_button(
-                "Remove One", f"userset {user_id} rmone {option}", "header"
-            )
+    if option != "FFMPEG_CMDS":
+        if option == "WM_IMAGE":
+            buttons.data_button("Set Image URL / Text", f"userset {user_id} set WM_IMAGE")
+        buttons.data_button(
+            "Change" if user_dict.get(option, False) else "Set",
+            f"userset {user_id} {key} {option}",
+        )
+        if user_dict.get(option, False):
+            if option == "THUMBNAIL":
+                buttons.data_button(
+                    "View Thumb", f"userset {user_id} view THUMBNAIL", "header"
+                )
+            elif option in ["YT_DLP_OPTIONS", "UPLOAD_PATHS", "DRIVE_CAT"]:
+                buttons.data_button(
+                    "Add One", f"userset {user_id} addone {option}", "header"
+                )
+                buttons.data_button(
+                    "Remove One", f"userset {user_id} rmone {option}", "header"
+                )
 
-        if key != "file":
-            buttons.data_button("Reset", f"userset {user_id} reset {option}")
-        elif await aiopath.exists(file_dict[option]):
-            buttons.data_button("Remove", f"userset {user_id} remove {option}")
+            if key != "file":
+                buttons.data_button("Reset", f"userset {user_id} reset {option}")
+            elif await aiopath.exists(file_dict[option]):
+                buttons.data_button("Remove", f"userset {user_id} remove {option}")
     if option in leech_options:
         back_to = "leech"
     elif option in rclone_options:

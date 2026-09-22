@@ -1076,6 +1076,13 @@ async def _handle_service_toggle(key, disabled):
 async def edit_ff_or_dump(_, message, pre_message, target_var, key):
     handler_dict[message.chat.id] = False
     value = message.text.strip()
+    if value.lower() in ("reset", "ff=reset", "dump=reset", "clear"):
+        Config.set(target_var, {})
+        await database.update_config({target_var: {}})
+        await update_buttons(pre_message, key)
+        await delete_message(message)
+        return
+
     current_dict = dict(Config.get(target_var) or {})
     if value.startswith("{") and value.endswith("}"):
         try:
