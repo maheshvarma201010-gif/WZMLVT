@@ -265,14 +265,6 @@ class TaskListener(TaskConfig):
             self.size = await get_path_size(up_dir)
             self.clear()
 
-        up_path = await self.proceed_auto_remove(up_path, gid)
-        if self.is_cancelled or not up_path:
-            return
-        self.is_file = await aiopath.isfile(up_path)
-        self.name = up_path.replace(f"{up_dir}/", "").split("/", 1)[0]
-        self.size = await get_path_size(up_dir)
-        self.clear()
-
         up_path = await self.proceed_reorder(up_path, gid)
         if self.is_cancelled or not up_path:
             return

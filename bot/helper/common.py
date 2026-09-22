@@ -30,6 +30,7 @@ from .telegram_helper.button_build import ButtonMaker
 from .ext_utils.bot_utils import (
     fetch_drive_cat,
     get_size_bytes,
+    get_user_tag,
     new_task,
     parse_dest,
     sync_to_async,
@@ -75,123 +76,14 @@ from .telegram_helper.message_utils import (
 )
 
 
-def parse_track_selectors(config_str):
-    aud_langs, aud_positions = set(), set()
-    sub_langs, sub_positions = set(), set()
-
-    if not config_str:
-        return aud_langs, aud_positions, sub_langs, sub_positions
-
-    parts = config_str.replace("\n", ",").replace("|", ",").split(",")
-    current_mode = "aud"
-
-    for part in parts:
-        part = part.strip().lower()
-        if not part:
-            continue
-
-        if "=" in part:
-            prefix, val = part.split("=", 1)
-            prefix = prefix.strip()
-            if prefix in ("audio", "aud"):
-                current_mode = "aud"
-            elif prefix in ("subtitle", "sub"):
-                current_mode = "sub"
-            else:
-                current_mode = "aud"
-            part = val.strip()
-
-        tokens = part.split()
-        for token in tokens:
-            token = token.strip()
-            if token in ("audio", "aud"):
-                current_mode = "aud"
-                continue
-            elif token in ("subtitle", "sub"):
-                current_mode = "sub"
-                continue
-
-            if token.isdigit():
-                pos = int(token)
-                if current_mode == "aud":
-                    aud_positions.add(pos)
-                else:
-                    sub_positions.add(pos)
-            else:
-                if current_mode == "aud":
-                    aud_langs.add(token)
-                else:
-                    sub_langs.add(token)
-
-    return aud_langs, aud_positions, sub_langs, sub_positions
-
-
-def match_stream_track(stream, pos_1based, target_langs, target_positions):
-    if pos_1based in target_positions:
-        return True
-    if not target_langs:
-        return False
-    lang = stream.get("tags", {}).get("language", "").lower()
-    title = stream.get("tags", {}).get("title", "").lower()
-    for l in target_langs:
-        if l in lang or l in title:
-            return True
-        with suppress(Exception):
-            from langcodes import Language
-            display = Language.get(l).display_name().lower()
-            if display in lang or display in title or lang in display:
-                return True
-    return False
-
-
-def parse_reorder_rules(config_str):
-    aud_swaps = []
-    sub_swaps = []
-    if not config_str:
-        return aud_swaps, sub_swaps
-
-    for item in config_str.split(","):
-        item = item.strip().lower()
-        if not item:
-            continue
-        if "-" in item and item.replace("-", "").isdigit():
-            nums = [int(x) for x in item.split("-") if x.isdigit()]
-            if len(nums) == 2:
-                aud_swaps.append([nums[0], nums[1]])
-        elif item.startswith("aud="):
-            val = item.split("=", 1)[1]
-            if ":" in val:
-                for sub_item in val.split(","):
-                    parts = sub_item.split(":")
-                    if len(parts) == 2:
-                        p1 = int(parts[0]) if parts[0].strip().isdigit() else parts[0].strip()
-                        p2 = int(parts[1]) if parts[1].strip().isdigit() else parts[1].strip()
-                        aud_swaps.append([p1, p2])
-        elif item.startswith("sub="):
-            val = item.split("=", 1)[1]
-            if ":" in val:
-                for sub_item in val.split(","):
-                    parts = sub_item.split(":")
-                    if len(parts) == 2:
-                        p1 = int(parts[0]) if parts[0].strip().isdigit() else parts[0].strip()
-                        p2 = int(parts[1]) if parts[1].strip().isdigit() else parts[1].strip()
-                        sub_swaps.append([p1, p2])
-        elif ":" in item:
-            parts = item.split(":", 1)
-            pos_str = parts[0].strip()
-            val_str = parts[1].strip()
-            if pos_str.isdigit():
-                pos = int(pos_str)
-                aud_swaps.append([pos, val_str])
-
-    return aud_swaps, sub_swaps
 
 
 class TaskConfig:
     def __init__(self):
         self.mid = self.message.id
         self.user = self.message.from_user or self.message.sender_chat
-        self.user_id = self.user.id
+        self.user_id = self.user.id if self.user else (self.message.chat.id if self.message.chat else 0)
+        self.tag = get_user_tag(self.user, self.user_id)
         self.user_dict = user_data.get(self.user_id, {})
         self.metadata_processor = MetadataProcessor()
         set_all_meta = self.user_dict.get("SET_ALL_METADATA_ENABLE", False) and self.user_dict.get("SET_ALL_METADATA")
@@ -831,12 +723,7 @@ class TaskConfig:
             with suppress(Exception):
                 await self.message.unpin()
         if self.user:
-            if username := self.user.username:
-                self.tag = f"@{username}"
-            elif hasattr(self.user, "mention"):
-                self.tag = self.user.mention
-            else:
-                self.tag = self.user.title
+            self.tag = get_user_tag(self.user, self.user_id)
 
     @new_task
     async def run_multi(self, input_list, obj):
@@ -1099,7 +986,7 @@ class TaskConfig:
                                 self, ffmpeg, gid, "FFmpeg"
                             )
                         self.progress = False
-                        await ff_lock.acquire()
+                        await ff_lock.acquire(self.user_id)
                         lock_acquired = True
                         self.progress = True
                     LOGGER.info(f"Running ffmpeg cmd for: {file_path}")
@@ -1158,7 +1045,7 @@ class TaskConfig:
                                         self, ffmpeg, gid, "FFmpeg"
                                     )
                                 self.progress = False
-                                await ff_lock.acquire()
+                                await ff_lock.acquire(self.user_id)
                                 lock_acquired = True
                                 self.progress = True
                             LOGGER.info(f"Running ffmpeg cmd for: {f_path}")
@@ -1175,7 +1062,7 @@ class TaskConfig:
                                         await move(res[0], newres)
         finally:
             if lock_acquired:
-                await ff_lock.release()
+                await ff_lock.release(self.user_id)
         return dl_path
 
     async def substitute(self, dl_path):
@@ -1328,7 +1215,7 @@ class TaskConfig:
             async with task_dict_lock:
                 task_dict[self.mid] = FFmpegStatus(self, ffmpeg, gid, "Convert")
             self.progress = False
-            async with ff_lock:
+            async with ff_lock.for_user(self.user_id):
                 self.progress = True
                 for f_path, f_type in self.files_to_proceed.items():
                     self.proceed_count += 1
@@ -1378,7 +1265,7 @@ class TaskConfig:
             async with task_dict_lock:
                 task_dict[self.mid] = FFmpegStatus(self, ffmpeg, gid, "Sample Video")
             self.progress = False
-            async with ff_lock:
+            async with ff_lock.for_user(self.user_id):
                 self.progress = True
                 LOGGER.info(f"Creating Sample video: {self.name}")
                 for f_path, file_ in self.files_to_proceed.items():
@@ -1550,94 +1437,6 @@ class TaskConfig:
             task_dict[self.mid] = SevenZStatus(self, sevenz, gid, "Zip")
         return await sevenz.zip(dl_path, up_path, pswd)
 
-    async def proceed_auto_remove(self, dl_path, gid):
-        if not dl_path or not await aiopath.exists(dl_path) or is_archive(dl_path) or is_archive_split(dl_path):
-            return dl_path
-
-        auto_rem_enable = self.user_dict.get("AUTO_REMOVE_ENABLE", False)
-        kept_enable = self.user_dict.get("AUTO_REMOVE_KEPT_ENABLE", False)
-        rem_enable = self.user_dict.get("AUTO_REMOVE_REMOVE_ENABLE", False)
-        reord_enable = self.user_dict.get("AUTO_REMOVE_REORDER_ENABLE", False)
-
-        if not auto_rem_enable:
-            return dl_path
-
-        all_files = [dl_path] if self.is_file else []
-        if not self.is_file:
-            for dirpath, _, files in await sync_to_async(walk, dl_path, topdown=False):
-                for file_ in files:
-                    fp = ospath.join(dirpath, file_)
-                    is_vid, is_aud, _ = await get_document_type(fp)
-                    if is_vid or is_aud:
-                        all_files.append(fp)
-
-        if not all_files:
-            return dl_path
-
-        ffmpeg = FFMpeg(self)
-
-        kept_cfg = self.user_dict.get("AUTO_REMOVE_KEPT_CONFIG", "") if (auto_rem_enable and kept_enable) else ""
-        rem_cfg = self.user_dict.get("AUTO_REMOVE_REMOVE_CONFIG", "") if (auto_rem_enable and rem_enable) else ""
-        reord_cfg = self.user_dict.get("AUTO_REMOVE_REORDER_CONFIG", "") if (auto_rem_enable and reord_enable) else ""
-
-        for f_path in all_files:
-            if self.is_cancelled:
-                return False
-
-            streams = await ffmpeg.get_streams(f_path)
-            if not streams or len(streams) <= 1:
-                continue
-
-            video_streams = [s for s in streams if s.get("codec_type") == "video"]
-            audio_streams = [s for s in streams if s.get("codec_type") == "audio"]
-            sub_streams = [s for s in streams if s.get("codec_type") == "subtitle"]
-
-            if kept_cfg or rem_cfg:
-                kept_indices = [v.get("index") for v in video_streams]
-
-                if kept_cfg:
-                    aud_l, aud_p, sub_l, sub_p = parse_track_selectors(kept_cfg)
-                    m_aud = [s.get("index") for i, s in enumerate(audio_streams, 1) if match_stream_track(s, i, aud_l, aud_p)]
-                    m_sub = [s.get("index") for i, s in enumerate(sub_streams, 1) if match_stream_track(s, i, sub_l, sub_p)]
-
-                    if not m_aud and audio_streams:
-                        m_aud = [audio_streams[0].get("index")]
-
-                    kept_indices.extend(m_aud)
-                    kept_indices.extend(m_sub)
-
-                elif rem_cfg:
-                    aud_l, aud_p, sub_l, sub_p = parse_track_selectors(rem_cfg)
-                    r_aud = {s.get("index") for i, s in enumerate(audio_streams, 1) if match_stream_track(s, i, aud_l, aud_p)}
-                    r_sub = {s.get("index") for i, s in enumerate(sub_streams, 1) if match_stream_track(s, i, sub_l, sub_p)}
-
-                    k_aud = [s.get("index") for s in audio_streams if s.get("index") not in r_aud]
-                    k_sub = [s.get("index") for s in sub_streams if s.get("index") not in r_sub]
-
-                    if not k_aud and audio_streams:
-                        k_aud = [audio_streams[0].get("index")]
-
-                    kept_indices.extend(k_aud)
-                    kept_indices.extend(k_sub)
-
-                if kept_indices and len(kept_indices) < len(streams):
-                    async with task_dict_lock:
-                        task_dict[self.mid] = FFmpegStatus(self, ffmpeg, gid, "Auto Remove Tracks")
-                    res = await ffmpeg.remove_streams(f_path, kept_indices)
-                    if res and await aiopath.exists(res):
-                        await remove(f_path)
-                        await move(res, f_path)
-
-            # Reorder rules
-            if reord_cfg:
-                aud_swaps, sub_swaps = parse_reorder_rules(reord_cfg)
-                if aud_swaps or sub_swaps:
-                    async with task_dict_lock:
-                        task_dict[self.mid] = FFmpegStatus(self, ffmpeg, gid, "Reorder Streams")
-                    await ffmpeg.reorder_tracks(f_path, aud_swaps, sub_swaps)
-
-        return dl_path
-
     async def proceed_reorder(self, dl_path, gid):
         if not dl_path or not await aiopath.exists(dl_path):
             return dl_path
@@ -1673,58 +1472,6 @@ class TaskConfig:
                 async with task_dict_lock:
                     task_dict[self.mid] = FFmpegStatus(self, ffmpeg, gid, "Reorder Streams")
                 await ffmpeg.reorder_tracks(f_path, aud_swaps, sub_swaps)
-
-        return dl_path
-
-    async def proceed_audio_split(self, dl_path, gid):
-        if not dl_path or not await aiopath.exists(dl_path) or is_archive(dl_path) or is_archive_split(dl_path):
-            return dl_path
-
-        as_enable = self.user_dict.get("AUDIO_SPLIT_ENABLE", False)
-        as_cfg = self.user_dict.get("AUDIO_SPLIT_CONFIG", "")
-        if not as_enable or not as_cfg:
-            return dl_path
-
-        all_files = [dl_path] if self.is_file else []
-        if not self.is_file:
-            for dirpath, _, files in await sync_to_async(walk, dl_path, topdown=False):
-                for file_ in files:
-                    fp = ospath.join(dirpath, file_)
-                    is_vid, is_aud, _ = await get_document_type(fp)
-                    if is_vid or is_aud:
-                        all_files.append(fp)
-
-        if not all_files:
-            return dl_path
-
-        ffmpeg = FFMpeg(self)
-        aud_l, aud_p, _, _ = parse_track_selectors(f"aud={as_cfg}")
-
-        for f_path in all_files:
-            if self.is_cancelled:
-                return False
-
-            streams = await ffmpeg.get_streams(f_path)
-            if not streams:
-                continue
-
-            audio_streams = [s for s in streams if s.get("codec_type") == "audio"]
-            if not audio_streams:
-                continue
-
-            matched = [(i, s) for i, s in enumerate(audio_streams, 1) if match_stream_track(s, i, aud_l, aud_p)]
-            if matched:
-                async with task_dict_lock:
-                    task_dict[self.mid] = FFmpegStatus(self, ffmpeg, gid, "Splitting Audio")
-                for i, s in matched:
-                    st_idx = s.get("index")
-                    lang = s.get("tags", {}).get("language", "und")
-                    codec = s.get("codec_name", "m4a")
-                    dir_name = ospath.dirname(f_path)
-                    base_name = ospath.splitext(ospath.basename(f_path))[0]
-                    out_file = ospath.join(dir_name, f"{base_name}_audio_{i}_{lang}.{codec}")
-                    cmd = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", f_path, "-map", f"0:{st_idx}", "-c", "copy", out_file]
-                    await cmd_exec(cmd)
 
         return dl_path
 

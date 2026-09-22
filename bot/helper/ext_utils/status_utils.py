@@ -246,7 +246,7 @@ async def get_readable_message(sid, is_user, page_no=1, status="All", page_step=
             msg += f"┖ <b>Sub Name:</b> {task.listener.subname}\n"
         elapsed = time() - task.listener.message.date.timestamp()
 
-        msg += f"👤 <b>User:</b> {task.listener.message.from_user.mention(style='html')} (<code>#ID{task.listener.message.from_user.id}</code>)"
+        msg += f"👤 <b>User:</b> {task.listener.tag} (<code>#ID{task.listener.user_id}</code>)"
         if task.listener.is_super_chat:
             msg += f" [<a href='{task.listener.message.link}'>Link</a>]"
         msg += "\n"

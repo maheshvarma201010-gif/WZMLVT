@@ -25,6 +25,7 @@ from ..core.seedr_client import SeedrClient
 from ..core.tg_client import TgClient
 from ..helper.ext_utils.bot_utils import (
     get_size_bytes,
+    get_user_tag,
     new_task,
     update_user_ldata,
 )
@@ -386,32 +387,12 @@ user_settings_text = {
         "Color for text watermark.",
         "<blockquote>Send text watermark color name or hex code (e.g. white, yellow, #FF0000).\n⏱️ <b>Time Left:</b> <code>60 sec</code></blockquote>",
     ),
-    "AUTO_REMOVE_KEPT_CONFIG": (
-        "String",
-        "Audio/subtitle tracks or languages to KEEP.",
-        "<blockquote>Send audio/subtitle languages or positions to keep.\nExamples:\n• <code>aud=tel</code>\n• <code>aud=1, 2</code>\n• <code>aud=tel, tam, sub=eng</code>\n⏱️ <b>Time Left:</b> <code>60 sec</code></blockquote>",
-    ),
-    "AUTO_REMOVE_REMOVE_CONFIG": (
-        "String",
-        "Audio/subtitle tracks or languages to REMOVE.",
-        "<blockquote>Send audio/subtitle languages or positions to remove.\nExamples:\n• <code>aud=tel</code>\n• <code>aud=1, 3</code>\n• <code>sub=tel, tam</code>\n⏱️ <b>Time Left:</b> <code>60 sec</code></blockquote>",
-    ),
-    "AUTO_REMOVE_REORDER_CONFIG": (
-        "String",
-        "Track reorder rules.",
-        "<blockquote>Send track reordering rules.\nExamples:\n• <code>1-2</code>\n• <code>1:tel</code>\n• <code>1:tel, 2:tam, 3:hin</code>\n⏱️ <b>Time Left:</b> <code>60 sec</code></blockquote>",
-    ),
-    "AUDIO_SPLIT_CONFIG": (
-        "String",
-        "Audio languages or track positions to split.",
-        "<blockquote>Send audio languages or positions to split.\nExamples:\n• <code>tel</code>\n• <code>1</code>\n• <code>tel, tam, hin</code>\n• <code>1, 2, 3</code>\n⏱️ <b>Time Left:</b> <code>60 sec</code></blockquote>",
-    ),
 }
 
 
 async def get_user_settings(from_user, stype="main"):
     user_id = from_user.id
-    user_name = from_user.mention(style="html")
+    user_name = get_user_tag(from_user, user_id)
     buttons = ButtonMaker()
     rclone_conf = f"rclone/{user_id}.conf"
     token_pickle = f"tokens/{user_id}.pickle"
@@ -622,6 +603,12 @@ async def get_user_settings(from_user, stype="main"):
             f"userset {user_id} split_mode {next_split_mode}",
         )
 
+        sequence = user_dict.get("SEQUENCE", False)
+        buttons.data_button(
+            f"Sequence Upload: {'✓ ON' if sequence else 'OFF'}",
+            f"userset {user_id} tog SEQUENCE {'f' if sequence else 't'} leech",
+        )
+
         buttons.data_button("◀️ Back", f"userset {user_id} back", "footer")
         buttons.data_button(
             "❌ Close", f"userset {user_id} close", "footer", style=ButtonStyle.DANGER
@@ -642,7 +629,8 @@ async def get_user_settings(from_user, stype="main"):
 • <b>Destination Chat:</b> <code>{leech_dest}</code>
 • <b>Grid Layout:</b> <b>{thumb_layout}</b>
 • <b>Split Mode:</b> <b>{split_mode.capitalize()}</b>
-• <b>Auto Thumbnail:</b> <b>{auto_thumb}</b></blockquote>"""
+• <b>Auto Thumbnail:</b> <b>{auto_thumb}</b>
+• <b>Sequential Upload:</b> <b>{'Enabled' if sequence else 'Disabled'}</b></blockquote>"""
 
     elif stype == "enc_com_wm":
         enc_enabled = user_dict.get("ENABLE_ENCODE") if "ENABLE_ENCODE" in user_dict else Config.ENABLE_ENCODE
@@ -790,143 +778,16 @@ Configure custom video encoding, compression, and watermark overlays for uploads
             f"userset {user_id} tog AUTO_MERGE {'f' if auto_merge else 't'} vtools",
         )
 
-        auto_remove_enable = user_dict.get("AUTO_REMOVE_ENABLE", False)
-        buttons.data_button(
-            f"Auto Remove: {'✓ ON' if auto_remove_enable else 'OFF'}",
-            f"userset {user_id} tog AUTO_REMOVE_ENABLE {'f' if auto_remove_enable else 't'} vtools",
-        )
-        buttons.data_button("Auto Remove Config", f"userset {user_id} auto_remove_menu")
-
-        audio_split_enable = user_dict.get("AUDIO_SPLIT_ENABLE", False)
-        buttons.data_button(
-            f"Audio Split: {'✓ ON' if audio_split_enable else 'OFF'}",
-            f"userset {user_id} tog AUDIO_SPLIT_ENABLE {'f' if audio_split_enable else 't'} vtools",
-        )
-        buttons.data_button("Audio Split Config", f"userset {user_id} audio_split_menu")
-
         buttons.data_button("◀️ Back", f"userset {user_id} back", "footer")
         buttons.data_button(
             "❌ Close", f"userset {user_id} close", "footer", style=ButtonStyle.DANGER
         )
-        btns = buttons.build_menu(2)
+        btns = buttons.build_menu(1)
 
         text = f"""<b>🎬 Video Processing Tools</b>
 
 <blockquote>• <b>User:</b> {user_name}
-• <b>Auto Video Merge:</b> <b>{'Enabled' if auto_merge else 'Disabled'}</b>
-• <b>Auto Remove:</b> <b>{'Enabled' if auto_remove_enable else 'Disabled'}</b>
-• <b>Audio Split:</b> <b>{'Enabled' if audio_split_enable else 'Disabled'}</b></blockquote>"""
-
-    elif stype == "auto_remove_menu":
-        ar_enable = user_dict.get("AUTO_REMOVE_ENABLE", False)
-        buttons.data_button(
-            f"Auto Remove Master: {'✓ ON' if ar_enable else 'OFF'}",
-            f"userset {user_id} tog AUTO_REMOVE_ENABLE {'f' if ar_enable else 't'} auto_remove_menu",
-            position="header",
-        )
-        buttons.data_button("Kept Settings", f"userset {user_id} kept_menu")
-
-        buttons.data_button("◀️ Back", f"userset {user_id} vtools", "footer")
-        buttons.data_button(
-            "❌ Close", f"userset {user_id} close", "footer", style=ButtonStyle.DANGER
-        )
-        btns = buttons.build_menu(1)
-
-        kept_en = user_dict.get("AUTO_REMOVE_KEPT_ENABLE", False)
-
-        text = f"""<b>✂️ Auto Remove Settings</b>
-
-<blockquote>• <b>User:</b> {user_name}
-• <b>Master Status:</b> <b>{'Enabled' if ar_enable else 'Disabled'}</b>
-• <b>Kept Status:</b> <b>{'Enabled' if kept_en else 'Disabled'}</b></blockquote>"""
-
-    elif stype == "kept_menu":
-        kept_en = user_dict.get("AUTO_REMOVE_KEPT_ENABLE", False)
-        buttons.data_button(
-            f"Kept Feature: {'✓ ON' if kept_en else 'OFF'}",
-            f"userset {user_id} tog AUTO_REMOVE_KEPT_ENABLE {'f' if kept_en else 't'} kept_menu",
-            position="header",
-        )
-        buttons.data_button("Configure Tracks to Keep", f"userset {user_id} menu AUTO_REMOVE_KEPT_CONFIG")
-
-        buttons.data_button("◀️ Back", f"userset {user_id} auto_remove_menu", "footer")
-        buttons.data_button(
-            "❌ Close", f"userset {user_id} close", "footer", style=ButtonStyle.DANGER
-        )
-        btns = buttons.build_menu(1)
-
-        val = user_dict.get("AUTO_REMOVE_KEPT_CONFIG", "Not Set")
-        text = f"""<b>✅ Auto Remove → Kept Settings</b>
-
-<blockquote>• <b>User:</b> {user_name}
-• <b>Status:</b> <b>{'Enabled' if kept_en else 'Disabled'}</b>
-• <b>Configured Tracks:</b> <code>{escape(str(val))}</code></blockquote>"""
-
-    elif stype == "remove_menu":
-        rem_en = user_dict.get("AUTO_REMOVE_REMOVE_ENABLE", False)
-        buttons.data_button(
-            f"Remove Feature: {'✓ ON' if rem_en else 'OFF'}",
-            f"userset {user_id} tog AUTO_REMOVE_REMOVE_ENABLE {'f' if rem_en else 't'}",
-            position="header",
-        )
-        buttons.data_button("Configure Tracks to Remove", f"userset {user_id} menu AUTO_REMOVE_REMOVE_CONFIG")
-
-        buttons.data_button("◀️ Back", f"userset {user_id} auto_remove_menu", "footer")
-        buttons.data_button(
-            "❌ Close", f"userset {user_id} close", "footer", style=ButtonStyle.DANGER
-        )
-        btns = buttons.build_menu(1)
-
-        val = user_dict.get("AUTO_REMOVE_REMOVE_CONFIG", "Not Set")
-        text = f"""<b>❌ Auto Remove → Remove Settings</b>
-
-<blockquote>• <b>User:</b> {user_name}
-• <b>Status:</b> <b>{'Enabled' if rem_en else 'Disabled'}</b>
-• <b>Configured Tracks:</b> <code>{escape(str(val))}</code></blockquote>"""
-
-    elif stype == "reorder_menu":
-        reord_en = user_dict.get("AUTO_REMOVE_REORDER_ENABLE", False)
-        buttons.data_button(
-            f"Reorder Feature: {'✓ ON' if reord_en else 'OFF'}",
-            f"userset {user_id} tog AUTO_REMOVE_REORDER_ENABLE {'f' if reord_en else 't'}",
-            position="header",
-        )
-        buttons.data_button("Configure Track Reordering", f"userset {user_id} menu AUTO_REMOVE_REORDER_CONFIG")
-
-        buttons.data_button("◀️ Back", f"userset {user_id} auto_remove_menu", "footer")
-        buttons.data_button(
-            "❌ Close", f"userset {user_id} close", "footer", style=ButtonStyle.DANGER
-        )
-        btns = buttons.build_menu(1)
-
-        val = user_dict.get("AUTO_REMOVE_REORDER_CONFIG", "Not Set")
-        text = f"""<b>🔀 Auto Remove → Reorder Settings</b>
-
-<blockquote>• <b>User:</b> {user_name}
-• <b>Status:</b> <b>{'Enabled' if reord_en else 'Disabled'}</b>
-• <b>Configured Order:</b> <code>{escape(str(val))}</code></blockquote>"""
-
-    elif stype == "audio_split_menu":
-        as_en = user_dict.get("AUDIO_SPLIT_ENABLE", False)
-        buttons.data_button(
-            f"Audio Split Feature: {'✓ ON' if as_en else 'OFF'}",
-            f"userset {user_id} tog AUDIO_SPLIT_ENABLE {'f' if as_en else 't'} audio_split_menu",
-            position="header",
-        )
-        buttons.data_button("Configure Audio Split Tracks", f"userset {user_id} menu AUDIO_SPLIT_CONFIG")
-
-        buttons.data_button("◀️ Back", f"userset {user_id} vtools", "footer")
-        buttons.data_button(
-            "❌ Close", f"userset {user_id} close", "footer", style=ButtonStyle.DANGER
-        )
-        btns = buttons.build_menu(1)
-
-        val = user_dict.get("AUDIO_SPLIT_CONFIG", "Not Set")
-        text = f"""<b>🎵 Audio Split Settings</b>
-
-<blockquote>• <b>User:</b> {user_name}
-• <b>Status:</b> <b>{'Enabled' if as_en else 'Disabled'}</b>
-• <b>Configured Tracks:</b> <code>{escape(str(val))}</code></blockquote>"""
+• <b>Auto Video Merge:</b> <b>{'Enabled' if auto_merge else 'Disabled'}</b></blockquote>"""
 
     elif stype == "uphoster":
         uphoster_service = user_dict.get("UPHOSTER_SERVICE", "gofile")
@@ -1890,7 +1751,7 @@ async def get_menu(option, message, user_id):
         key = "file"
     else:
         key = "set"
-    if option != "FFMPEG_CMDS":
+    if option not in ["FFMPEG_CMDS", "FFMPEG_DUMP"]:
         if option == "WM_IMAGE":
             buttons.data_button("Set Image URL / Text", f"userset {user_id} set WM_IMAGE")
         buttons.data_button(
@@ -1938,14 +1799,6 @@ async def get_menu(option, message, user_id):
         back_to = "compress_menu"
     elif option.startswith("WM_"):
         back_to = "watermark_menu"
-    elif option == "AUTO_REMOVE_KEPT_CONFIG":
-        back_to = "kept_menu"
-    elif option == "AUTO_REMOVE_REMOVE_CONFIG":
-        back_to = "remove_menu"
-    elif option == "AUTO_REMOVE_REORDER_CONFIG":
-        back_to = "reorder_menu"
-    elif option == "AUDIO_SPLIT_CONFIG":
-        back_to = "audio_split_menu"
     else:
         back_to = "back"
     buttons.data_button("◀️ Back", f"userset {user_id} {back_to}", "footer")
@@ -2091,11 +1944,6 @@ async def edit_user_settings(client, query):
         "encode_menu",
         "compress_menu",
         "watermark_menu",
-        "auto_remove_menu",
-        "kept_menu",
-        "remove_menu",
-        "reorder_menu",
-        "audio_split_menu",
     ]:
         await query.answer()
         await update_user_settings(query, data[2])
@@ -2249,10 +2097,8 @@ async def edit_user_settings(client, query):
                 back_to = "gofile"
             elif data[3] == "SEEDR_DELETE_FOLDER":
                 back_to = "seedr"
-            elif data[3] in ["AUTO_MERGE", "AUTO_REMOVE_ENABLE", "AUDIO_SPLIT_ENABLE"]:
+            elif data[3] == "AUTO_MERGE":
                 back_to = "vtools"
-            elif data[3] == "AUTO_REMOVE_KEPT_ENABLE":
-                back_to = "kept_menu"
             elif data[3] == "SET_ALL_METADATA_ENABLE":
                 back_to = "ffset"
             elif data[3] == "ENABLE_ENCODE":
@@ -2372,7 +2218,8 @@ async def edit_user_settings(client, query):
             await update_user_settings(query)
     elif data[2] == "view":
         await query.answer()
-        await send_file(message, thumb_path, name)
+        user_tag_name = get_user_tag(from_user, user_id)
+        await send_file(message, thumb_path, user_tag_name)
     elif data[2] == "export_settings":
         await query.answer("Exporting user settings...", show_alert=False)
         zip_path = f"US{user_id}.zip"

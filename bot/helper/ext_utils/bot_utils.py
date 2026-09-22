@@ -10,6 +10,7 @@ from concurrent.futures import ThreadPoolExecutor
 from functools import partial, wraps
 from hashlib import sha256
 from hmac import new as hmac_new
+from html import escape
 from os import path as ospath
 from re import compile as re_compile
 from secrets import token_bytes
@@ -414,6 +415,22 @@ def safe_int(value, default=0):
         return int(value)
     except (ValueError, TypeError):
         return default
+
+
+def get_user_tag(user, user_id=None):
+    if not user:
+        return f'<a href="tg://user?id={user_id}">User #{user_id}</a>' if user_id else "User"
+    uid = getattr(user, "id", user_id)
+    if username := getattr(user, "username", None):
+        return f"@{username}"
+    first_name = getattr(user, "first_name", None)
+    last_name = getattr(user, "last_name", None)
+    full_name = f"{first_name or ''} {last_name or ''}".strip()
+    if full_name:
+        return f'<a href="tg://user?id={uid}">{escape(full_name)}</a>'
+    if title := getattr(user, "title", None):
+        return escape(title)
+    return f'<a href="tg://user?id={uid}">User #{uid}</a>'
 
 
 def parse_dest(value):

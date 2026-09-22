@@ -1478,6 +1478,8 @@ async def edit_bot_settings(client, query):
         "setonoff",
         "settoggle",
         "setlimit",
+        "ffmpegcmds",
+        "dumpcmds",
     ] or data[
         1
     ].startswith("nzbser"):
@@ -1804,6 +1806,19 @@ async def edit_bot_settings(client, query):
 @new_task
 async def send_bot_settings(_, message):
     handler_dict[message.chat.id] = False
+    args = message.text.split(maxsplit=1)
+    if len(args) > 1:
+        arg = args[1].strip().lower()
+        if arg in ("ff=reset", "resetff", "ffcmds=reset", "ffmpeg=reset", "clearff"):
+            Config.set("FFMPEG_CMDS", {})
+            await database.update_config({"FFMPEG_CMDS": {}})
+            await send_message(message, "<b>✓ All configured FFmpeg commands cleared successfully!</b>")
+            return
+        elif arg in ("dump=reset", "resetdump", "ffmpeg_dump=reset", "cleardump"):
+            Config.set("FFMPEG_DUMP", {})
+            await database.update_config({"FFMPEG_DUMP": {}})
+            await send_message(message, "<b>✓ All configured key DUMP destinations cleared successfully!</b>")
+            return
     msg, button = await get_buttons()
     globals()["start"] = 0
     await send_message(message, msg, button)

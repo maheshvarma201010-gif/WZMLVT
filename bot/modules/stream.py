@@ -19,6 +19,7 @@ from ..helper.telegram_helper.message_utils import (
     get_tg_link_message,
     send_message,
 )
+from ..helper.ext_utils.bot_utils import get_user_tag
 from ..helper.ext_utils.status_utils import (
     get_raw_time,
     get_readable_file_size,
@@ -253,7 +254,7 @@ async def _delete_link(message, args):
 
     from ..core.stream_server import forget
 
-    tag = message.from_user.mention(style="html") if message.from_user else "N/A"
+    tag = get_user_tag(message.from_user or message.sender_chat)
     listing = await database.get_playlist(target)
     if listing:
         for tok in listing["items"]:
@@ -369,7 +370,7 @@ async def stream_links(_, message):
         return
 
     base = Config.BASE_URL.rstrip("/")
-    tag = message.from_user.mention(style="html") if message.from_user else "N/A"
+    tag = get_user_tag(message.from_user or message.sender_chat)
     total = sum(getattr(m, "file_size", 0) or 0 for _t, m in minted)
     buttons = ButtonMaker()
 

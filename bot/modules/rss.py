@@ -19,6 +19,7 @@ from ..helper.ext_utils.bot_utils import (
     new_task,
     arg_parser,
     get_size_bytes,
+    get_user_tag,
     resolve_command,
 )
 from ..helper.ext_utils.status_utils import get_readable_file_size
@@ -196,10 +197,7 @@ async def get_rss_menu(_, message):
 async def rss_sub(_, message, pre_event):
     user_id = message.from_user.id
     handler_dict[user_id] = False
-    if username := message.from_user.username:
-        tag = f"@{username}"
-    else:
-        tag = message.from_user.mention(style="html")
+    tag = get_user_tag(message.from_user or message.sender_chat, user_id)
     msg = ""
     items = message.text.split("\n")
     for index, item in enumerate(items, start=1):

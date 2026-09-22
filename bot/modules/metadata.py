@@ -62,7 +62,7 @@ async def apply_metadata_title(
 
     lock_acquired = False
     try:
-        await ff_lock.acquire()
+        await ff_lock.acquire(self.user_id)
         lock_acquired = True
         self.progress = True
         for file_path, is_video, is_audio in files:
@@ -187,5 +187,5 @@ async def apply_metadata_title(
                     await remove(temp_out)
     finally:
         if lock_acquired:
-            await ff_lock.release()
+            await ff_lock.release(self.user_id)
     return dl_path

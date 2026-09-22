@@ -16,6 +16,7 @@ from ..helper.ext_utils.bot_utils import (
     COMMAND_USAGE,
     arg_parser,
     get_content_type,
+    get_user_tag,
     new_task,
     sync_to_async,
 )
@@ -1054,7 +1055,7 @@ async def seedr_link(client, message):
     if not await seedr_guard(message, user_id):
         return
     email, password = _seedr_creds(user_id)
-    tag = message.from_user.mention(style="html") if message.from_user else "N/A"
+    tag = get_user_tag(message.from_user or message.sender_chat, user_id)
     seedrlink_cmd = (
         f"/{BotCommands.SeedrLinkCommand[0]}"
         if isinstance(BotCommands.SeedrLinkCommand, list)

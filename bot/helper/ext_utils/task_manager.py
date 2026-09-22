@@ -53,7 +53,7 @@ from ..mirror_leech_utils.gdrive_utils.search import GoogleDriveSearch
 from ..telegram_helper.filters import CustomFilters
 from ..telegram_helper.button_build import ButtonMaker
 from ..telegram_helper.tg_utils import check_botpm, forcesub, verify_token
-from .bot_utils import get_telegraph_list, sync_to_async, safe_int
+from .bot_utils import get_telegraph_list, sync_to_async, safe_int, get_user_tag
 from .files_utils import get_base_name, check_storage_threshold
 from .links_utils import is_gdrive_id
 from .status_utils import get_readable_time, get_readable_file_size, get_specific_tasks
@@ -114,11 +114,20 @@ async def check_running_tasks(listener, state="dl"):
             non_queued_dl.remove(listener.mid)
 
         if not listener.force_run and not (listener.force_upload and state == "up") and not (listener.force_download and state == "dl"):
+            if state == "up" and (user_dict.get("SEQUENCE", False) or getattr(Config, "SEQUENCE", False)):
+                async with task_dict_lock:
+                    user_uploading = any(
+                        getattr(tk, "listener", None) and tk.listener.user_id == listener.user_id
+                        for m, tk in task_dict.items() if m in non_queued_up
+                    )
+                if user_uploading:
+                    is_over_limit = True
+
             dl_count = len(non_queued_dl)
             up_count = len(non_queued_up)
             t_count = dl_count if state == "dl" else up_count
 
-            if user_limit > 0:
+            if not is_over_limit and user_limit > 0:
                 async with task_dict_lock:
                     user_running = sum(
                         1 for tk in task_dict.values()
@@ -181,6 +190,31 @@ async def _can_start_user_task(mid):
         return user_running < user_limit
 
 
+async def _can_start_user_up_task(mid):
+    async with task_dict_lock:
+        task = task_dict.get(mid)
+        if not task or not getattr(task, "listener", None):
+            return True
+        user_id = task.listener.user_id
+        user_dict = user_data.get(user_id, {})
+        if user_dict.get("SEQUENCE", False) or getattr(Config, "SEQUENCE", False):
+            user_uploading = any(
+                getattr(tk, "listener", None) and tk.listener.user_id == user_id
+                for m, tk in task_dict.items() if m in non_queued_up
+            )
+            if user_uploading:
+                return False
+        user_limit = safe_int(user_dict.get("maxtask", Config.USER_MAX_TASKS))
+        if user_limit <= 0:
+            return True
+        user_running = sum(
+            1 for tk in task_dict.values()
+            if getattr(tk, "listener", None) and tk.listener.user_id == user_id
+            and (tk.listener.mid in non_queued_dl or tk.listener.mid in non_queued_up)
+        )
+        return user_running < user_limit
+
+
 async def start_from_queued():
     if all_limit := safe_int(Config.QUEUE_ALL):
         dl_limit = safe_int(Config.QUEUE_DOWNLOAD)
@@ -193,7 +227,7 @@ async def start_from_queued():
                 f_tasks = all_limit - all_
                 if queued_up and (not up_limit or up < up_limit):
                     for mid in list(queued_up.keys()):
-                        if await _can_start_user_task(mid):
+                        if await _can_start_user_up_task(mid):
                             await start_up_from_queued(mid)
                             f_tasks -= 1
                             up += 1
@@ -214,7 +248,7 @@ async def start_from_queued():
             up = len(non_queued_up)
             if queued_up and up < up_limit:
                 for mid in list(queued_up.keys()):
-                    if await _can_start_user_task(mid):
+                    if await _can_start_user_up_task(mid):
                         await start_up_from_queued(mid)
                         up += 1
                         if up >= up_limit:
@@ -223,7 +257,7 @@ async def start_from_queued():
         async with queue_dict_lock:
             if queued_up:
                 for mid in list(queued_up.keys()):
-                    if await _can_start_user_task(mid):
+                    if await _can_start_user_up_task(mid):
                         await start_up_from_queued(mid)
 
     if dl_limit := Config.QUEUE_DOWNLOAD:
@@ -330,7 +364,7 @@ async def pre_task_check(message):
     user_dict = user_data.get(user_id, {})
 
     def _format_result():
-        username = message.from_user.mention
+        username = get_user_tag(message.from_user or message.sender_chat, user_id)
         parts = [f"⌬ <b>Task Checks :</b>\n│\n┟ <b>Name</b> → {username}\n┃\n"]
         for i, m_part in enumerate(msg, 1):
             parts.append(m_part)

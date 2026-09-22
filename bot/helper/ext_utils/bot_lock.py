@@ -189,6 +189,52 @@ class SmartLock:
                 pass
 
 
-ff_lock = SmartLock(pause_targets=["nzb", "jd"], max_slots=1)
+class MultiUserSmartLock:
+    def __init__(self, pause_targets=None):
+        self._user_locks = {}
+        self._global_lock = Lock()
+        self._pause_targets = pause_targets or []
+
+    def _get_user_lock(self, user_id):
+        if user_id not in self._user_locks:
+            self._user_locks[user_id] = Lock()
+        return self._user_locks[user_id]
+
+    def for_user(self, user_id):
+        return _UserLockContext(self, user_id)
+
+    async def acquire(self, user_id=None):
+        if user_id is not None:
+            lock = self._get_user_lock(user_id)
+            await lock.acquire()
+
+    async def release(self, user_id=None):
+        if user_id is not None:
+            lock = self._get_user_lock(user_id)
+            if lock.locked():
+                lock.release()
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        return False
+
+
+class _UserLockContext:
+    def __init__(self, multi_lock, user_id):
+        self._multi_lock = multi_lock
+        self._user_id = user_id
+
+    async def __aenter__(self):
+        await self._multi_lock.acquire(self._user_id)
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        await self._multi_lock.release(self._user_id)
+        return False
+
+
+ff_lock = MultiUserSmartLock(pause_targets=["nzb", "jd"])
 sab_par2_lock = SmartLock(pause_targets=["jd"])
 jd_heavy_lock = SmartLock(pause_targets=["nzb"])

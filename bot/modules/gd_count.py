@@ -1,4 +1,4 @@
-from ..helper.ext_utils.bot_utils import sync_to_async, new_task
+from ..helper.ext_utils.bot_utils import sync_to_async, new_task, get_user_tag
 from ..helper.ext_utils.links_utils import is_gdrive_link
 from ..helper.ext_utils.status_utils import get_readable_file_size
 from ..helper.mirror_leech_utils.gdrive_utils.count import GoogleDriveCount
@@ -9,10 +9,7 @@ from ..helper.telegram_helper.message_utils import delete_message, send_message
 async def count_node(_, message):
     args = message.text.split()
     user = message.from_user or message.sender_chat
-    if username := user.username:
-        tag = f"@{username}"
-    else:
-        tag = message.from_user.mention(style="html")
+    tag = get_user_tag(user, user.id if user else 0)
 
     link = args[1] if len(args) > 1 else ""
     if len(link) == 0 and (reply_to := message.reply_to_message):
