@@ -10,17 +10,16 @@ from os import getcwd
 from re import sub
 from time import time
 import zipfile
-from shutil import rmtree
-
 from aiofiles.os import makedirs, remove, rename
 from aiofiles.os import path as aiopath
 from aioshutil import move
 from langcodes import Language
 from pyrogram.filters import create
 from pyrogram.handlers import MessageHandler
+from pyrogram.types import ReplyParameters
 
 
-from .. import DOWNLOAD_DIR, auth_chats, excluded_extensions, sudo_users, user_data
+from .. import auth_chats, excluded_extensions, sudo_users, user_data
 from ..core.config_manager import Config
 from ..core.seedr_client import SeedrClient
 from ..core.tg_client import TgClient
@@ -2481,23 +2480,26 @@ async def chthumb_command(client, message):
 
         status_msg = await send_message(message, "<b>Updating video cover/thumbnail...</b>")
 
-        # Download target video locally
-        vid_dir = f"{DOWNLOAD_DIR}chthumb_{user_id}_{time()}"
-        await makedirs(vid_dir, exist_ok=True)
-        video_file_path = await reply_to.download(file_name=f"{vid_dir}/video.mp4")
+        video_attr = reply_to.video
+        caption = reply_to.caption or ""
+        caption_entities = reply_to.caption_entities
 
-        # Resend modified video with new thumbnail
-        sent_msg = await client.send_video(
-            chat_id=message.chat.id,
-            video=video_file_path,
-            thumb=thumb_path,
-            caption=reply_to.caption or "",
-            reply_to_message_id=message.id,
-        )
-
-        await delete_message(status_msg)
-        if await aiopath.exists(vid_dir):
-            await rmtree(vid_dir, ignore_errors=True)
+        try:
+            await client.send_video(
+                chat_id=message.chat.id,
+                video=video_attr.file_id,
+                thumb=thumb_path,
+                caption=caption,
+                caption_entities=caption_entities,
+                duration=getattr(video_attr, "duration", 0),
+                width=getattr(video_attr, "width", 0),
+                height=getattr(video_attr, "height", 0),
+                supports_streaming=getattr(video_attr, "supports_streaming", True),
+                reply_parameters=ReplyParameters(message_id=message.id),
+            )
+            await delete_message(status_msg)
+        except Exception as e:
+            await edit_message(status_msg, f"<b>Failed to update cover:</b> {escape(str(e))}")
         return
 
     # Case 2: Reply to photo, image URL, or image document -> prompt for video
