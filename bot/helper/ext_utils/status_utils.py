@@ -211,6 +211,9 @@ def get_progress_bar_string(pct):
     p = min(max(p, 0), 100)
     filled = int(round(p / 10))
     bar = "■" * filled + "□" * (10 - filled)
+    pb_template = getattr(Config, "PROGRESS_BAR", "[{bar}]")
+    if "{bar}" in pb_template:
+        return pb_template.format(bar=bar)
     return f"[{bar}]"
 
 
