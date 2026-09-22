@@ -1,4 +1,4 @@
-from asyncio import ensure_future, gather, sleep
+from asyncio import sleep
 from logging import getLogger
 from os import path as ospath, walk
 from re import match as re_match, sub as re_sub
@@ -161,11 +161,12 @@ class TelegramUploader:
             lsuffix = re_sub(r"<.*?>", "", lsuffix).replace(r"\s", " ")
 
         lfont = self._lfont
-        cap_mono = (
-            f"<{lfont}>{cap_file_}</{lfont}>"
-            if lfont and lfont != "none"
-            else cap_file_
+        font_tag = lfont if (lfont and lfont != "none") else ""
+        formatted_filename = (
+            f"<{font_tag}>{cap_file_}</{font_tag}>" if font_tag else cap_file_
         )
+        cap_mono = formatted_filename
+
         if lcaption:
             lcaption = re_sub(
                 r"(\\\||\\\{|\\\}|\\s)",
@@ -187,7 +188,7 @@ class TelegramUploader:
                 dur, qual, lang, subs = media_info_res[:4]
                 langr = lang
             cap_mono = parts[0].format(
-                filename=cap_file_,
+                filename=formatted_filename,
                 size=get_readable_file_size(await aiopath.getsize(up_path)),
                 duration=get_readable_time(dur),
                 quality=qual,
