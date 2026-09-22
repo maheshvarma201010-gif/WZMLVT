@@ -497,10 +497,13 @@ class TaskConfig:
                     if resolved_dest and resolved_dest not in self.key_dump_dests:
                         self.key_dump_dests.append(resolved_dest)
 
+            universal_dump = self.user_dict.get("LEECH_DUMP_CHAT") or Config.LEECH_LOG_CHAT or ""
             if self.key_dump_dests:
                 self.dump_dest = self.key_dump_dests[0]
+                if universal_dump and universal_dump not in self.key_dump_dests:
+                    self.key_dump_dests.append(universal_dump)
             elif not self.dump_dest:
-                self.dump_dest = self.user_dict.get("LEECH_DUMP_CHAT") or Config.LEECH_LOG_CHAT or ""
+                self.dump_dest = universal_dump
 
         self.metadata_title = self.user_dict.get("METADATA")
 
@@ -624,7 +627,7 @@ class TaskConfig:
                     raise ValueError("You must use the same config to clone!")
         else:
             self.leech_dest, self.leech_thread_id = parse_dest(
-                self.user_dict.get("LEECH_DUMP_CHAT")
+                self.user_dict.get("LEECH_DUMP_CHAT") or Config.LEECH_LOG_CHAT
             )
 
             self.cmd_up_dest = self.up_dest
@@ -928,12 +931,15 @@ class TaskConfig:
                 raise ValueError("Bulk Empty!")
             b_msg = input_list[:1]
             self.options = input_list[1:]
-            index = self.options.index("-b")
-            del self.options[index]
-            if bulk_start or bulk_end:
+            if "-b" in self.options:
+                index = self.options.index("-b")
                 del self.options[index]
+                if (bulk_start or bulk_end) and index < len(self.options):
+                    del self.options[index]
             self.options = " ".join(self.options)
-            b_msg.append(f"{self.bulk[0]} -i {len(self.bulk)} {self.options}")
+            b_msg.append(f"{self.bulk[0]} -i {len(self.bulk)}")
+            if self.options:
+                b_msg.append(self.options)
             msg = " ".join(b_msg)
             if len(self.bulk) > 2:
                 self.multi_tag = token_hex(3)

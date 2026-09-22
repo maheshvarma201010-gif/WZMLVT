@@ -60,9 +60,30 @@ commands = {
         r"ffmpeg version ([\d.]+(-\w+)?).*",
     ),
     "7z": (["7z", "i"], r"7-Zip ([\d.]+)"),
-    "aiohttp": (["uv", "pip", "show", "aiohttp"], r"Version: ([\d.]+)"),
-    "wzgram": (["uv", "pip", "show", "wzgram"], r"Version: ([\d.]+)"),
-    "gapi": (["uv", "pip", "show", "google-api-python-client"], r"Version: ([\d.]+)"),
+    "aiohttp": (
+        [
+            "python3",
+            "-c",
+            "import importlib.metadata; print(importlib.metadata.version('aiohttp'))",
+        ],
+        r"([\d.]+)",
+    ),
+    "wzgram": (
+        [
+            "python3",
+            "-c",
+            "import importlib.metadata; print(importlib.metadata.version('wzgram'))",
+        ],
+        r"([\d.]+)",
+    ),
+    "gapi": (
+        [
+            "python3",
+            "-c",
+            "import importlib.metadata; print(importlib.metadata.version('google-api-python-client'))",
+        ],
+        r"([\d.]+)",
+    ),
     "mega": (
         [
             "python3",
@@ -322,20 +343,18 @@ async def get_version_async(command, regex, timeout=5):
     try:
         out, err, code = await wait_for(cmd_exec(command), timeout=timeout)
         if code != 0:
-            return f"Error: {err}"
+            return "N/A"
         match = research(regex, out)
-        return match.group(1) if match else "-"
-    except TimeoutError:
-        return "Timeout"
-    except Exception as e:
-        return f"Exception: {str(e)}"
+        return match.group(1) if match else "N/A"
+    except Exception:
+        return "N/A"
 
 
 async def retry_mega_version():
     await sleep(60)
     command, regex = commands["mega"]
     version = await get_version_async(command, regex, timeout=10)
-    if version != "Timeout" and not version.startswith("Exception"):
+    if version != "N/A":
         bot_cache["eng_versions"]["mega"] = version
         LOGGER.info(f"MegaSDK Version Fetched: {version}")
     else:
