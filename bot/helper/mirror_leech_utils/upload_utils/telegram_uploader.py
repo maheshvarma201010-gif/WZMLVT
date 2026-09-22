@@ -161,7 +161,7 @@ class TelegramUploader:
             lsuffix = re_sub(r"<.*?>", "", lsuffix).replace(r"\s", " ")
 
         lfont = self._lfont
-        font_tag = lfont if (lfont and lfont != "none") else ""
+        font_tag = "tg-spoiler" if lfont in ("tg-spoiler", "spoiler") else (lfont if (lfont and lfont != "none") else "")
         formatted_filename = (
             f"<{font_tag}>{cap_file_}</{font_tag}>" if font_tag else cap_file_
         )
@@ -213,6 +213,10 @@ class TelegramUploader:
                 lambda m: {"%%": "|", "&%&": "{", "$%$": "}"}[m.group()],
                 cap_mono,
             )
+            if font_tag == "tg-spoiler" and not cap_mono.strip().startswith("<tg-spoiler>"):
+                cap_mono = f"<tg-spoiler>{cap_mono}</tg-spoiler>"
+        elif font_tag == "tg-spoiler" and not cap_mono.strip().startswith("<tg-spoiler>"):
+            cap_mono = f"<tg-spoiler>{cap_mono}</tg-spoiler>"
 
         if len(file_) > 60:
             if is_archive(file_):
