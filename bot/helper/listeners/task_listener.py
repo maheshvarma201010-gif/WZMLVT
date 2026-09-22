@@ -566,10 +566,6 @@ class TaskListener(TaskConfig):
                 msg += f"• <b>Corrupted Files:</b> {mime_type}\n"
             msg += f"• <b>User:</b> {self.tag}</blockquote>\n\n"
 
-            if self.is_super_chat:
-                pmsg = msg + "<b>✅ Action Performed:</b>\n<blockquote>File(s) sent to User PM / Dump Channel.</blockquote>\n\n"
-                await send_message(self.message, pmsg)
-
             dm_target, dm_thread = self.user_id, None
 
             if not files:
