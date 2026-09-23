@@ -1112,11 +1112,15 @@ async def prompt_track_manager(listener, media_file):
         )
     except Exception as err:
         LOGGER.warning(f"Failed to send Track Manager menu to DM ({err}), falling back to chat message.")
+        buttons = render_trackmgr_menu(mid)
+        if TgClient.BNAME:
+            start_url = f"https://t.me/{TgClient.BNAME}?start=start"
+            buttons.url_button("⚡ Start Bot in DM", start_url, position="footer")
         try:
             prompt_msg = await send_message(
                 listener.message,
-                f"<b>🎵 Track Manager ({ospath.basename(media_file)}):</b>\nSelect, reorder, or filter audio and subtitle tracks before upload:",
-                render_trackmgr_menu(mid).build_menu(3),
+                f"<b>🎵 Track Manager ({ospath.basename(media_file)}):</b>\nPlease start the bot in DM to receive private prompts, or select options below:",
+                buttons.build_menu(3),
             )
         except Exception as e:
             LOGGER.error(f"Failed to send Track Manager menu: {e}")
