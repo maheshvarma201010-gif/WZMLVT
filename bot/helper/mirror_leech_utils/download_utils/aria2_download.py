@@ -26,7 +26,7 @@ async def add_aria2_download(listener, dpath, header, ratio, seed_time):
         "min-split-size": "1M",
         "piece-length": "1M",
         "disk-cache": "128M",
-        "max-file-not-found": "10",
+        "max-file-not-found": "0",
         "stream-piece-selector": "geom",
     }
     if listener.name:

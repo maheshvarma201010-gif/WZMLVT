@@ -74,7 +74,7 @@ async def update_aria2_options():
         "min-split-size": "1M",
         "piece-length": "1M",
         "disk-cache": "128M",
-        "max-file-not-found": "10",
+        "max-file-not-found": "0",
         "stream-piece-selector": "geom",
     }
     if not aria2_options:

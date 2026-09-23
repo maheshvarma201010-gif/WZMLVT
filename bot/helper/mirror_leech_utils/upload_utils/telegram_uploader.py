@@ -162,10 +162,7 @@ class TelegramUploader:
 
         lfont = self._lfont
         font_tag = "tg-spoiler" if lfont in ("tg-spoiler", "spoiler") else (lfont if (lfont and lfont != "none") else "")
-        formatted_filename = (
-            f"<{font_tag}>{cap_file_}</{font_tag}>" if font_tag else cap_file_
-        )
-        cap_mono = formatted_filename
+        cap_mono = cap_file_
 
         if lcaption:
             lcaption = re_sub(
@@ -188,7 +185,7 @@ class TelegramUploader:
                 dur, qual, lang, subs = media_info_res[:4]
                 langr = lang
             cap_mono = parts[0].format(
-                filename=formatted_filename,
+                filename=cap_file_,
                 size=get_readable_file_size(await aiopath.getsize(up_path)),
                 duration=get_readable_time(dur),
                 quality=qual,
@@ -213,10 +210,9 @@ class TelegramUploader:
                 lambda m: {"%%": "|", "&%&": "{", "$%$": "}"}[m.group()],
                 cap_mono,
             )
-            if font_tag == "tg-spoiler" and not cap_mono.strip().startswith("<tg-spoiler>"):
-                cap_mono = f"<tg-spoiler>{cap_mono}</tg-spoiler>"
-        elif font_tag == "tg-spoiler" and not cap_mono.strip().startswith("<tg-spoiler>"):
-            cap_mono = f"<tg-spoiler>{cap_mono}</tg-spoiler>"
+
+        if font_tag and not cap_mono.strip().startswith(f"<{font_tag}>"):
+            cap_mono = f"<{font_tag}>{cap_mono}</{font_tag}>"
 
         if len(file_) > 60:
             if is_archive(file_):

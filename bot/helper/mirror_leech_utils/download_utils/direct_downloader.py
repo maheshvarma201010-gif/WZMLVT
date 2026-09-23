@@ -57,7 +57,7 @@ async def add_direct_download(listener, path):
         "min-split-size": "1M",
         "piece-length": "1M",
         "disk-cache": "128M",
-        "max-file-not-found": "10",
+        "max-file-not-found": "0",
         "stream-piece-selector": "geom",
     }
     if header := details.get("header"):
