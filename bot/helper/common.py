@@ -1200,11 +1200,13 @@ class TaskConfig:
             Config, "AUTO_RENAME_FORMAT", "{TITLE} - {SEASON} {EPISODE} {QUALITY}"
         )
 
-        caption = self.file_details.get("caption") or ""
+        file_details = getattr(self, "file_details", None) or {}
+        caption = file_details.get("caption") or ""
 
         if self.is_file:
-            up_dir, file_name = dl_path.rsplit("/", 1)
-            metadata = extract_media_metadata(file_name, caption, self.file_details)
+            up_dir = ospath.dirname(dl_path)
+            file_name = ospath.basename(dl_path)
+            metadata = extract_media_metadata(file_name, caption, file_details)
             new_name = format_auto_rename(format_template, metadata)
             if not new_name or new_name == file_name:
                 return dl_path
@@ -1216,7 +1218,7 @@ class TaskConfig:
             for dirpath, _, files in await sync_to_async(walk, dl_path, topdown=False):
                 for file_ in files:
                     f_path = ospath.join(dirpath, file_)
-                    metadata = extract_media_metadata(file_, caption, self.file_details)
+                    metadata = extract_media_metadata(file_, caption, file_details)
                     new_name = format_auto_rename(format_template, metadata)
                     if not new_name or new_name == file_:
                         continue

@@ -34,9 +34,8 @@ pyyaml
 qbittorrent-api
 niquests
 speedtest-cli
-tenacity>=9.0.0
+tenacity>=8.2.0
 uvicorn
 uvloop
 xattr
 yt-dlp[default,curl-cffi]
-
