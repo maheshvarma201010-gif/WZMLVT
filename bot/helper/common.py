@@ -805,19 +805,19 @@ class TaskConfig:
                     and getattr(Config, "AUTO_MERGE", False)
                 )
 
-            if not self.thumb:
-                user_thumb = self.user_dict.get("THUMBNAIL") or f"thumbnails/{self.user_id}.jpg"
-                if await aiopath.exists(user_thumb):
-                    self.thumb = user_thumb
+        if not self.thumb:
+            user_thumb = self.user_dict.get("THUMBNAIL") or f"thumbnails/{self.user_id}.jpg"
+            if await aiopath.exists(user_thumb):
+                self.thumb = user_thumb
 
-            if self.thumb and self.thumb != "none":
-                if is_telegram_link(self.thumb):
-                    msg = (await get_tg_link_message(self.thumb))[0]
-                    self.thumb = (
-                        await create_thumb(msg) if msg.photo or msg.document else ""
-                    )
-                elif self.thumb.startswith("http"):
-                    self.thumb = await download_image_thumb(self.thumb)
+        if self.thumb and self.thumb != "none":
+            if is_telegram_link(self.thumb):
+                msg = (await get_tg_link_message(self.thumb))[0]
+                self.thumb = (
+                    await create_thumb(msg) if msg.photo or msg.document else ""
+                )
+            elif self.thumb.startswith("http"):
+                self.thumb = await download_image_thumb(self.thumb)
 
     async def get_tag(self, text: list):
         if len(text) > 1 and text[1].startswith("Tag: "):
@@ -1776,6 +1776,8 @@ class TaskConfig:
 
         if custom_name:
             out_base = custom_name
+        elif self.extract and getattr(self, "name", ""):
+            out_base = self.name
         else:
             main_f = v_files[0] if v_files else (a_files[0] if a_files else all_files[0])
             out_base = ospath.basename(main_f)

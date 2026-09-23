@@ -803,6 +803,14 @@ Configure custom video encoding, compression, and watermark overlays for uploads
             f"userset {user_id} tog AUTO_MERGE {'f' if auto_merge else 't'} vtools",
         )
 
+        track_manager = user_dict.get("TRACK_MANAGER", False) or (
+            "TRACK_MANAGER" not in user_dict and getattr(Config, "TRACK_MANAGER", False)
+        )
+        buttons.data_button(
+            f"Track Manager: {'✓ ON' if track_manager else 'OFF'}",
+            f"userset {user_id} tog TRACK_MANAGER {'f' if track_manager else 't'} vtools",
+        )
+
         save_files = user_dict.get("SAVE_FILES", False)
         buttons.data_button(
             f"Keep Original Files: {'✓ ON' if save_files else 'OFF'}",
@@ -819,6 +827,7 @@ Configure custom video encoding, compression, and watermark overlays for uploads
 
 <blockquote>• <b>User:</b> {user_name}
 • <b>Auto Video Merge:</b> <b>{'Enabled' if auto_merge else 'Disabled'}</b>
+• <b>Track Manager:</b> <b>{'Enabled' if track_manager else 'Disabled'}</b>
 • <b>Keep Original Files on Merge:</b> <b>{'Enabled' if save_files else 'Disabled'}</b></blockquote>"""
 
     elif stype == "uphoster":
@@ -2208,7 +2217,7 @@ async def edit_user_settings(client, query):
                 back_to = "gofile"
             elif data[3] == "SEEDR_DELETE_FOLDER":
                 back_to = "seedr"
-            elif data[3] in ["AUTO_MERGE", "SAVE_FILES"]:
+            elif data[3] in ["AUTO_MERGE", "SAVE_FILES", "TRACK_MANAGER"]:
                 back_to = "vtools"
             elif data[3] == "SET_ALL_METADATA_ENABLE":
                 back_to = "ffset"
@@ -2590,7 +2599,7 @@ async def chthumb_command(client, message):
             await edit_message(status_msg, f"<b>Failed to update cover:</b> {escape(str(e))}")
         return
 
-    # Case 2: Reply to photo, image URL, or image document -> prompt for video
+    # Case 2: Set thumbnail directly from photo, image URL, or document without needing a download/video reply
     thumb_path = f"thumbnails/{user_id}.jpg"
     await makedirs("thumbnails", exist_ok=True)
 
@@ -2602,6 +2611,9 @@ async def chthumb_command(client, message):
             img_source = reply_to
         elif reply_to.text and ("http://" in reply_to.text or "https://" in reply_to.text):
             url_arg = reply_to.text.strip()
+
+    if message.photo or (message.document and message.document.mime_type and message.document.mime_type.startswith("image/")):
+        img_source = message
 
     if url_arg and ("http://" in url_arg or "https://" in url_arg):
         downloaded = await download_image_thumb(url_arg)
@@ -2624,16 +2636,15 @@ async def chthumb_command(client, message):
         await database.update_user_doc(user_id, "THUMBNAIL", thumb_path)
         await database.update_user_data(user_id)
 
-        _PENDING_CHTHUMB[user_id] = thumb_path
         await send_message(
             message,
-            "<b>🖼️ Thumbnail saved!</b>\n\nNow send or reply with a <b>video</b> to apply this thumbnail/cover.",
+            "<b>🖼️ Custom thumbnail set successfully!</b>\nThis thumbnail will automatically be applied to all your uploaded Telegram videos and documents.",
         )
         return
 
     await send_message(
         message,
-        "<blockquote>Reply to a video with <code>/chthumb &lt;image_url&gt;</code> or reply to an image/photo with <code>/chthumb</code>.</blockquote>",
+        "<blockquote>Send <code>/chthumb &lt;image_url&gt;</code>, or reply to an image/photo with <code>/chthumb</code>, or reply to a video message with <code>/chthumb &lt;image_url&gt;</code> to set thumbnail!</blockquote>",
     )
 
 

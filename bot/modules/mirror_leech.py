@@ -252,6 +252,12 @@ class Mirror(TaskListener):
         if user_auto_merge:
             self.auto_merge = True
 
+        user_track_manager = self.user_dict.get("TRACK_MANAGER", False) or (
+            "TRACK_MANAGER" not in self.user_dict and getattr(Config, "TRACK_MANAGER", False)
+        )
+        if user_track_manager:
+            self.manual_reorder = True
+
         self.ht_flag = args["-ht"] or "-ht" in self.options
 
         from ..helper.ext_utils.task_manager import get_task_key
@@ -1015,7 +1021,7 @@ async def ht_merge_callback(client, query):
 
 
 async def prompt_track_manager(listener, media_file):
-    from asyncio import wait_for
+    from asyncio import wait_for, get_running_loop
     from ..helper.ext_utils.media_utils import FFMpeg
     from ..helper.mirror_leech_utils.status_utils.trackmgr_status import TrackManagerStatus
 
@@ -1043,7 +1049,12 @@ async def prompt_track_manager(listener, media_file):
         return
 
     mid = listener.mid
-    event_done = bot_loop.create_future()
+    try:
+        loop = get_running_loop()
+        event_done = loop.create_future()
+    except Exception:
+        event_done = bot_loop.create_future()
+
     ht_tasks[mid] = {
         "user_id": listener.user_id,
         "tm_aud_tracks": aud_tracks,
@@ -1092,14 +1103,30 @@ async def prompt_track_manager(listener, media_file):
         buttons.data_button("Done", f"htmerge tm_done {mid}", position="footer")
         return buttons
 
-    prompt_msg = await send_message(
-        listener.message,
-        f"<b>🎵 Track Manager ({ospath.basename(media_file)}):</b>\nSelect, reorder, or filter audio and subtitle tracks before upload:",
-        render_trackmgr_menu(mid).build_menu(3),
-    )
+    prompt_msg = None
+    try:
+        prompt_msg = await send_message(
+            listener.user_id,
+            f"<b>🎵 Track Manager ({ospath.basename(media_file)}):</b>\nSelect, reorder, or filter audio and subtitle tracks before upload:",
+            render_trackmgr_menu(mid).build_menu(3),
+        )
+    except Exception as err:
+        LOGGER.warning(f"Failed to send Track Manager menu to DM ({err}), falling back to chat message.")
+        buttons = render_trackmgr_menu(mid)
+        if TgClient.BNAME:
+            start_url = f"https://t.me/{TgClient.BNAME}?start=start"
+            buttons.url_button("⚡ Start Bot in DM", start_url, position="footer")
+        try:
+            prompt_msg = await send_message(
+                listener.message,
+                f"<b>🎵 Track Manager ({ospath.basename(media_file)}):</b>\nPlease start the bot in DM to receive private prompts, or select options below:",
+                buttons.build_menu(3),
+            )
+        except Exception as e:
+            LOGGER.error(f"Failed to send Track Manager menu: {e}")
 
     try:
-        await wait_for(event_done, timeout=120)
+        await wait_for(event_done, timeout=180)
     except Exception:
         pass
 
@@ -1111,7 +1138,8 @@ async def prompt_track_manager(listener, media_file):
     listener.sub_order = saved_ht.get("sub_order", None)
 
     ht_tasks.pop(mid, None)
-    await delete_message(prompt_msg)
+    if prompt_msg:
+        await delete_message(prompt_msg)
 
 
 async def mirror(client, message):

@@ -159,11 +159,12 @@ async def add_bot_cb(client, query):
             MessageHandler(token_handler, filters=create(token_filter)), group=-1
         )
 
-        from asyncio import wait_for, Future
-        event_done = bot_loop.create_future() if 'bot_loop' in globals() else None
-        if event_done is None:
-            import asyncio
-            event_done = asyncio.get_event_loop().create_future()
+        from asyncio import wait_for, get_running_loop
+        try:
+            event_done = get_running_loop().create_future()
+        except Exception:
+            from bot import bot_loop
+            event_done = bot_loop.create_future()
 
         # Update handler to resolve future
         async def token_handler_v2(_, msg):
