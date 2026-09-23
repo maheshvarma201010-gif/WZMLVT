@@ -62,8 +62,11 @@ class HypertgUpload(HypertgTransfer):
 
         is_video, is_audio, is_image = await get_document_type(file_path)
 
+        user_perm = self._listener.user_dict.get("THUMBNAIL") or f"thumbnails/{self._listener.user_id}.jpg"
         if user_thumb and user_thumb != "none" and await aiopath.exists(user_thumb):
             thumb = user_thumb
+        elif await aiopath.exists(user_perm):
+            thumb = user_perm
         else:
             thumb = None
 
@@ -93,11 +96,27 @@ class HypertgUpload(HypertgTransfer):
             key = "videos"
             duration = (await get_media_info(file_path))[0]
             if thumb is not None and thumb != "none" and await aiopath.exists(thumb):
-                with Image.open(thumb) as img:
-                    width, height = img.size
+                try:
+                    with Image.open(thumb) as img:
+                        width, height = img.size
+                except Exception:
+                    pass
+            else:
+                auto_t = await get_video_thumbnail(file_path, duration)
+                if auto_t and await aiopath.exists(auto_t):
+                    thumb = auto_t
+                    try:
+                        with Image.open(thumb) as img:
+                            width, height = img.size
+                    except Exception:
+                        pass
         elif is_audio:
             key = "audios"
             duration, artist, title = await get_media_info(file_path)
+            if not thumb or not await aiopath.exists(thumb):
+                auto_a = await get_audio_thumbnail(file_path)
+                if auto_a and await aiopath.exists(auto_a):
+                    thumb = auto_a
         else:
             key = "photos"
 

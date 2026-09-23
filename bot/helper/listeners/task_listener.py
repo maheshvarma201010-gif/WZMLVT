@@ -303,7 +303,13 @@ class TaskListener(TaskConfig):
             self.clear()
 
 
-        if getattr(self, "ht_flag", False) or getattr(self, "manual_reorder", False) or self.extract:
+        if (
+            getattr(self, "ht_flag", False)
+            or getattr(self, "manual_reorder", False)
+            or getattr(self, "auto_merge", False)
+            or getattr(self, "manual_merge", False)
+            or self.extract
+        ):
             from ...modules.mirror_leech import prompt_track_manager
             target_media = up_path
             if not self.is_file and await aiopath.isdir(up_path):
