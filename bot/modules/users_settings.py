@@ -76,6 +76,7 @@ ffset_options = [
 advanced_options = [
     "EXCLUDED_EXTENSIONS",
     "NAME_SWAP",
+    "AUTO_RENAME_FORMAT",
     "YT_DLP_OPTIONS",
     "UPLOAD_PATHS",
     "USER_COOKIE_FILE",
@@ -169,6 +170,11 @@ user_settings_text = {
         "Pattern Rules",
         "Filename text substitution rules.",
         "<blockquote>Send substitution rules in format: <code>word1/word2/s</code>\n⏱️ <b>Time Left:</b> <code>60 sec</code></blockquote>",
+    ),
+    "AUTO_RENAME_FORMAT": (
+        "Template String",
+        "Format template for auto renaming media files.",
+        "<blockquote>Send custom rename format template (e.g. <code>{TITLE} - {SEASON} {EPISODE} {QUALITY}</code>).\nPlaceholders: {TITLE}, {SEASON}, {EPISODE}, {QUALITY}, {YEAR}, {LANGUAGE}, {CODEC}, {AUDIO}, {GROUP}, {EXT}\n⏱️ <b>Time Left:</b> <code>60 sec</code></blockquote>",
     ),
     "YT_DLP_OPTIONS": (
         "Dict",
@@ -1401,6 +1407,19 @@ Configure custom video encoding, compression, and watermark overlays for uploads
         ns_msg = f"<code>{swap}</code>" if swap else "<b>Not Set</b>"
         buttons.data_button("Name Swap", f"userset {user_id} menu NAME_SWAP")
 
+        auto_rename = user_dict.get("AUTO_RENAME", False) or (
+            "AUTO_RENAME" not in user_dict and getattr(Config, "AUTO_RENAME", False)
+        )
+        buttons.data_button(
+            f"Auto Rename: {'ON' if auto_rename else 'OFF'}",
+            f"userset {user_id} tog AUTO_RENAME {'f' if auto_rename else 't'} advanced",
+        )
+
+        rename_fmt = user_dict.get("AUTO_RENAME_FORMAT") or getattr(
+            Config, "AUTO_RENAME_FORMAT", "{TITLE} - {SEASON} {EPISODE} {QUALITY}"
+        )
+        buttons.data_button("Rename Format", f"userset {user_id} menu AUTO_RENAME_FORMAT")
+
         buttons.data_button("YT-DLP Options", f"userset {user_id} menu YT_DLP_OPTIONS")
         if user_dict.get("YT_DLP_OPTIONS", False):
             ytopt = user_dict["YT_DLP_OPTIONS"]
@@ -1435,6 +1454,8 @@ Configure custom video encoding, compression, and watermark overlays for uploads
 
 <blockquote>• <b>User:</b> {user_name}
 • <b>Name Swap Patterns:</b> {ns_msg}
+• <b>Auto Rename:</b> <b>{'Enabled' if auto_rename else 'Disabled'}</b>
+• <b>Rename Format:</b> <code>{escape(str(rename_fmt))}</code>
 • <b>Excluded Extensions:</b> <code>{ex_ex}</code>
 • <b>Upload Paths Dict:</b> <b>{upload_paths}</b>
 • <b>YT-DLP Custom Options:</b> <code>{ytopt}</code>

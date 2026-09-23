@@ -1187,6 +1187,42 @@ class TaskConfig:
                 await ff_lock.release()
         return dl_path
 
+    async def auto_rename(self, dl_path):
+        auto_rename_enabled = self.user_dict.get("AUTO_RENAME", False) or (
+            "AUTO_RENAME" not in self.user_dict and getattr(Config, "AUTO_RENAME", False)
+        )
+        if not auto_rename_enabled or not dl_path or not await aiopath.exists(dl_path):
+            return dl_path
+
+        from .ext_utils.rename_utils import extract_media_metadata, format_auto_rename
+
+        format_template = self.user_dict.get("AUTO_RENAME_FORMAT") or getattr(
+            Config, "AUTO_RENAME_FORMAT", "{TITLE} - {SEASON} {EPISODE} {QUALITY}"
+        )
+
+        caption = self.file_details.get("caption") or ""
+
+        if self.is_file:
+            up_dir, file_name = dl_path.rsplit("/", 1)
+            metadata = extract_media_metadata(file_name, caption, self.file_details)
+            new_name = format_auto_rename(format_template, metadata)
+            if not new_name or new_name == file_name:
+                return dl_path
+            new_path = ospath.join(up_dir, new_name)
+            await move(dl_path, new_path)
+            self.name = new_name
+            return new_path
+        else:
+            for dirpath, _, files in await sync_to_async(walk, dl_path, topdown=False):
+                for file_ in files:
+                    f_path = ospath.join(dirpath, file_)
+                    metadata = extract_media_metadata(file_, caption, self.file_details)
+                    new_name = format_auto_rename(format_template, metadata)
+                    if not new_name or new_name == file_:
+                        continue
+                    await move(f_path, ospath.join(dirpath, new_name))
+            return dl_path
+
     async def substitute(self, dl_path):
         def perform_swap(name, swaps):
             name, ext = ospath.splitext(name)

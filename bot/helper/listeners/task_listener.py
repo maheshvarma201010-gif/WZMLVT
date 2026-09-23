@@ -396,6 +396,12 @@ class TaskListener(TaskConfig):
                 0
             ] or "application/octet-stream"
 
+        up_path = await self.auto_rename(up_path)
+        if self.is_cancelled:
+            return
+        self.is_file = await aiopath.isfile(up_path)
+        self.name = up_path.replace(f"{up_dir}/", "").split("/", 1)[0]
+
         if self.name_swap:
             up_path = await self.substitute(up_path)
             if self.is_cancelled:
