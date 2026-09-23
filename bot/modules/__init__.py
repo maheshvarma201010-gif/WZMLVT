@@ -53,7 +53,6 @@ from .users_settings import (
     get_users_settings,
     edit_user_settings,
     send_user_settings,
-    chthumb_command,
 )
 from .addbot import add_bot_command, add_bot_cb
 from .request_ff import request_ff, reqff_callback
@@ -134,7 +133,6 @@ __all__ = [
     "get_users_settings",
     "edit_user_settings",
     "send_user_settings",
-    "chthumb_command",
     "add_bot_command",
     "add_bot_cb",
     "request_ff",
