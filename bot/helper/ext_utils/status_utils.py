@@ -41,6 +41,7 @@ class MirrorStatus:
     STATUS_FFMPEG = "FFmpeg Processing"
     STATUS_YT = "YouTube Uploading"
     STATUS_METADATA = "Applying Metadata"
+    STATUS_TRACKMGR = "Track Managering"
     STATUS_SEEDR = "Seedr Downloading"
     STATUS_COMPLETED = "Completed"
 

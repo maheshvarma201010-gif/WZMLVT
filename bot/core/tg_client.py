@@ -32,6 +32,7 @@ class TgClient:
     helper_user_loads = {}
     stream_bots = {}
     stream_loads = {}
+    user_bots = {}
 
     BNAME = ""
     ID = 0
@@ -350,6 +351,34 @@ class TgClient:
                 cls.IS_PREMIUM_USER = False
                 cls.MAX_SPLIT_SIZE = 2097152000
                 cls.user = None
+
+    @classmethod
+    async def get_user_bots(cls, user_id, bot_tokens):
+        if not bot_tokens or not isinstance(bot_tokens, list):
+            return {}
+        res = {}
+        async with cls._hlock:
+            for idx, token in enumerate(bot_tokens):
+                key = (user_id, idx)
+                if key in cls.user_bots:
+                    cli = cls.user_bots[key]
+                    if getattr(cli, "is_connected", False):
+                        res[idx] = cli
+                        continue
+                try:
+                    cli = cls.wztgClient(
+                        f"WZ-UserBot-{user_id}-{idx}",
+                        bot_token=token,
+                        no_updates=True,
+                    )
+                    await cli.start()
+                    cls.user_bots[key] = cli
+                    res[idx] = cli
+                except Exception as e:
+                    LOGGER.error(
+                        f"Failed to start user bot token {idx} for user {user_id}: {e}"
+                    )
+        return res
 
     @classmethod
     async def stop(cls):

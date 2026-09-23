@@ -1800,6 +1800,9 @@ class TaskConfig:
 
         a_langs = []
         for af in a_files:
+            if self.extract:
+                a_langs.append("eng")
+                continue
             prompt_str = f"<b>🗣️ Track Language:</b>\nPlease send the language name for audio track: <code>{ospath.basename(af)}</code>\n⏱️ <i>Timeout: 30s</i>"
             prompt_msg = await send_message(self.user_id, prompt_str)
             lang = "eng"
@@ -1833,6 +1836,9 @@ class TaskConfig:
 
         s_langs = []
         for sf in s_files:
+            if self.extract:
+                s_langs.append("eng")
+                continue
             prompt_str = f"<b>📝 Track Language:</b>\nPlease send the language name for subtitle track: <code>{ospath.basename(sf)}</code>\n⏱️ <i>Timeout: 30s</i>"
             prompt_msg = await send_message(self.user_id, prompt_str)
             lang = "eng"

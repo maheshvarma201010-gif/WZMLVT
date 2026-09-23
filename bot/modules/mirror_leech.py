@@ -1017,6 +1017,8 @@ async def ht_merge_callback(client, query):
 async def prompt_track_manager(listener, media_file):
     from asyncio import wait_for
     from ..helper.ext_utils.media_utils import FFMpeg
+    from ..helper.mirror_leech_utils.status_utils.trackmgr_status import TrackManagerStatus
+
     ffmpeg = FFMpeg(listener)
     streams = await ffmpeg.get_streams(media_file)
     if not streams:
@@ -1051,6 +1053,10 @@ async def prompt_track_manager(listener, media_file):
         "future": event_done,
         "reorder": True,
     }
+
+    gid = f"tm_{mid}"
+    async with task_dict_lock:
+        task_dict[mid] = TrackManagerStatus(listener, gid)
 
     def render_trackmgr_menu(mid):
         t_info = ht_tasks.get(mid, {})

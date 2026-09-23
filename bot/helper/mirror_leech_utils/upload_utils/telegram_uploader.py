@@ -96,6 +96,13 @@ class TelegramUploader:
         if self._thumb != "none" and not await aiopath.exists(self._thumb):
             self._thumb = None
 
+        # Check for user configured bot tokens
+        user_tokens = self._listener.user_dict.get("BOT_TOKENS", [])
+        if user_tokens and isinstance(user_tokens, list):
+            ubots = await TgClient.get_user_bots(self._listener.user_id, user_tokens)
+            if ubots:
+                self._hu_clients = ubots
+
     async def _msg_to_reply(self):
         if self._user_session and TgClient.user is None:
             self._user_session = False

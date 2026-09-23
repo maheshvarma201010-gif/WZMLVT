@@ -32,6 +32,14 @@ class HypertgUpload(HypertgTransfer):
         super().__init__(obj)
         self._up_file = ""
         self._file_progress = {}
+        if hasattr(obj, "_hu_clients") and obj._hu_clients:
+            self.clients = dict(obj._hu_clients)
+            self.client_ids = list(self.clients.keys())
+            self.work_loads = {k: 0 for k in self.client_ids}
+            self.num_clients = len(self.clients)
+            from ..telegram_helper.tg_transfer import MtprotoPool
+            self._pool = MtprotoPool(self.clients)
+            self._use_user_bots = True
 
     async def _progress(self, current, total, file_path):
         if self._listener.is_cancelled:
@@ -107,7 +115,7 @@ class HypertgUpload(HypertgTransfer):
                 hyper_user_only = True
                 user_session = False
         else:
-            use_hyper = Config.USE_HYPER and self.clients and up_size > 10 * 1024 * 1024
+            use_hyper = (Config.USE_HYPER or getattr(self, "_use_user_bots", False)) and self.clients and up_size > 10 * 1024 * 1024
         if self._listener.up_dest:
             upload_chat_id = self._listener.up_dest
             thread_id = self._listener.chat_thread_id

@@ -404,6 +404,16 @@ async def add_handlers():
         CallbackQueryHandler(edit_user_settings, filters=regex("^userset"))
     )
     TgClient.bot.add_handler(
+        MessageHandler(
+            add_bot_command,
+            filters=command(BotCommands.AddBotCommand, case_sensitive=True)
+            & CustomFilters.authorized,
+        )
+    )
+    TgClient.bot.add_handler(
+        CallbackQueryHandler(add_bot_cb, filters=regex("^addbot"))
+    )
+    TgClient.bot.add_handler(
         CallbackQueryHandler(ht_merge_callback, filters=regex("^htmerge"))
     )
     TgClient.bot.add_handler(
