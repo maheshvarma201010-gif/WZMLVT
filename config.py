@@ -7,7 +7,7 @@ DATABASE_URL = "mongodb+srv://hemanthbreaker2027:9550399779htr@cluster0.haybbxg.
 
 # OPTIONAL CONFIG
 DEFAULT_LANG = "en"
-PROGRESS_BAR = "■□"
+PROGRESS_BAR = "●○"
 TG_PROXY = {}  # {"scheme": ”socks5”, "hostname": ””, "port": 1234, "username": ”user”, "password": ”pass”}
 USER_SESSION_STRING = ""
 CMD_SUFFIX = "1"
