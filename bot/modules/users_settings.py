@@ -434,6 +434,9 @@ async def get_user_settings(from_user, stype="main"):
                 "DEFAULT_UPLOAD",
                 "AUTO_MERGE",
                 "SPLIT_MODE",
+                "AUTO_LEECH",
+                "AUTO_MIRROR",
+                "AUTO_DDL",
             ]
         ):
             buttons.data_button(
@@ -623,6 +626,12 @@ async def get_user_settings(from_user, stype="main"):
             f"userset {user_id} tog LEECH_SEQUENCE {'f' if sequence_enabled else 't'} leech",
         )
 
+        auto_leech = user_dict.get("AUTO_LEECH", False)
+        buttons.data_button(
+            f"Auto Leech: {'✓ ON' if auto_leech else 'OFF'}",
+            f"userset {user_id} tog AUTO_LEECH {'f' if auto_leech else 't'} leech",
+        )
+
         buttons.data_button("◀️ Back", f"userset {user_id} back", "footer")
         buttons.data_button(
             "❌ Close", f"userset {user_id} close", "footer", style=ButtonStyle.DANGER
@@ -644,7 +653,8 @@ async def get_user_settings(from_user, stype="main"):
 • <b>Grid Layout:</b> <b>{thumb_layout}</b>
 • <b>Split Mode:</b> <b>{split_mode.capitalize()}</b>
 • <b>Auto Thumbnail:</b> <b>{auto_thumb}</b>
-• <b>Sequence Upload:</b> <b>{'Enabled' if sequence_enabled else 'Disabled'}</b></blockquote>"""
+• <b>Sequence Upload:</b> <b>{'Enabled' if sequence_enabled else 'Disabled'}</b>
+• <b>Auto Leech:</b> <b>{'Enabled' if auto_leech else 'Disabled'}</b></blockquote>"""
 
     elif stype == "enc_com_wm":
         enc_enabled = user_dict.get("ENABLE_ENCODE") if "ENABLE_ENCODE" in user_dict else Config.ENABLE_ENCODE
@@ -805,6 +815,12 @@ Configure custom video encoding, compression, and watermark overlays for uploads
 
     elif stype == "uphoster":
         uphoster_service = user_dict.get("UPHOSTER_SERVICE", "gofile")
+        auto_ddl = user_dict.get("AUTO_DDL", False)
+        buttons.data_button(
+            f"Auto DDL: {'✓ ON' if auto_ddl else 'OFF'}",
+            f"userset {user_id} tog AUTO_DDL {'f' if auto_ddl else 't'} uphoster",
+            position="header",
+        )
         buttons.data_button(
             "Change Destination ⇋", f"userset {user_id} uphoster_destinations", "header"
         )
@@ -823,6 +839,7 @@ Configure custom video encoding, compression, and watermark overlays for uploads
         text = f"""<b>🌐 Uphoster Services Settings</b>
 
 <blockquote>• <b>User:</b> {user_name}
+• <b>Auto DDL:</b> <b>{'Enabled' if auto_ddl else 'Disabled'}</b>
 • <b>Active Services:</b> {", ".join(destinations)}</blockquote>"""
 
     elif stype == "pixeldrain":
@@ -1158,6 +1175,12 @@ Configure custom video encoding, compression, and watermark overlays for uploads
                 f"userset {user_id} tog drive_cat_mode {'f' if dc_enabled else 't'}",
                 "header",
             )
+        auto_mirror = user_dict.get("AUTO_MIRROR", False)
+        buttons.data_button(
+            f"Auto Mirror: {'✓ ON' if auto_mirror else 'OFF'}",
+            f"userset {user_id} tog AUTO_MIRROR {'f' if auto_mirror else 't'} mirror",
+            position="header",
+        )
         buttons.data_button("◀️ Back", f"userset {user_id} back", "footer")
         buttons.data_button(
             "❌ Close", f"userset {user_id} close", "footer", style=ButtonStyle.DANGER
@@ -1167,6 +1190,7 @@ Configure custom video encoding, compression, and watermark overlays for uploads
         text = f"""<b>☁️ Mirror Cloud Settings</b>
 
 <blockquote>• <b>User:</b> {user_name}
+• <b>Auto Mirror:</b> <b>{'Enabled' if auto_mirror else 'Disabled'}</b>
 • <b>Stop Duplicate Checks:</b> <b>{sd_msg}</b></blockquote>"""
 
     elif stype == "mega":
@@ -2188,6 +2212,10 @@ async def edit_user_settings(client, query):
                 back_to = "watermark_menu"
             elif data[3] == "ENABLE_FFMPEG_CMDS":
                 back_to = "ffset"
+            elif data[3] == "AUTO_MIRROR":
+                back_to = "mirror"
+            elif data[3] == "AUTO_DDL":
+                back_to = "uphoster"
             else:
                 back_to = "leech"
         await update_user_settings(query, stype=back_to)

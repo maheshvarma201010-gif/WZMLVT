@@ -1,3 +1,4 @@
+import re
 from ast import literal_eval
 from wzgram import Client
 from pyrogram import enums
@@ -134,6 +135,9 @@ class TgClient:
     async def start_helper_bots(cls):
         if not Config.HELPER_TOKENS:
             return
+        tokens = [t.strip() for t in re.split(r"[,\s]+", Config.HELPER_TOKENS) if t.strip()]
+        if not tokens:
+            return
         LOGGER.info("Generating helper client from HELPER_TOKENS")
         bot_proxies = cls._parse_proxies(Config.HELPER_BOT_PROXIES)
         async with cls._hlock:
@@ -146,7 +150,7 @@ class TgClient:
                         if bot_proxies and no - 1 < len(bot_proxies)
                         else None,
                     )
-                    for no, b_token in enumerate(Config.HELPER_TOKENS.split(), start=1)
+                    for no, b_token in enumerate(tokens, start=1)
                 )
             )
 
@@ -194,14 +198,15 @@ class TgClient:
     async def start_stream_bots(cls):
         if not Config.STREAM_TOKENS:
             return
+        tokens = [t.strip() for t in re.split(r"[,\s]+", Config.STREAM_TOKENS) if t.strip()]
+        if not tokens:
+            return
         LOGGER.info("Generating stream client from STREAM_TOKENS")
         async with cls._slock:
             await gather(
                 *(
                     cls.start_sclient(no, b_token)
-                    for no, b_token in enumerate(
-                        Config.STREAM_TOKENS.split(), start=1
-                    )
+                    for no, b_token in enumerate(tokens, start=1)
                 )
             )
 
@@ -253,6 +258,9 @@ class TgClient:
     async def start_helper_users(cls):
         if not Config.HELPER_STRINGS:
             return
+        sessions = [s.strip() for s in re.split(r"[,\s]+", Config.HELPER_STRINGS) if s.strip()]
+        if not sessions:
+            return
         LOGGER.info("Generating helper client from HELPER_STRINGS")
         user_proxies = cls._parse_proxies(Config.HELPER_USER_PROXIES)
         async with cls._ulock:
@@ -265,9 +273,7 @@ class TgClient:
                         if user_proxies and no - 1 < len(user_proxies)
                         else None,
                     )
-                    for no, session_string in enumerate(
-                        Config.HELPER_STRINGS.split(), start=1
-                    )
+                    for no, session_string in enumerate(sessions, start=1)
                 )
             )
 

@@ -129,8 +129,9 @@ class Mirror(TaskListener):
                 self.message, "<blockquote>The Mirror command is currently disabled.</blockquote>"
             )
             return
-        text = self.message.text.split("\n")
-        input_list = text[0].split(" ")
+        msg_text = self.message.text or self.message.caption or ""
+        text = msg_text.split("\n")
+        input_list = text[0].split(" ") if text[0] else []
 
         check_msg, check_button = await pre_task_check(self.message)
         if check_msg:
@@ -182,7 +183,10 @@ class Mirror(TaskListener):
             "-ff": set(),
         }
 
-        arg_parser(input_list[1:], args)
+        if input_list and input_list[0].startswith("/"):
+            arg_parser(input_list[1:], args)
+        else:
+            arg_parser(input_list, args)
 
         if Config.DISABLE_BULK and args.get("-b", False):
             await send_message(self.message, "<blockquote>Bulk downloads are currently disabled.</blockquote>")
@@ -845,6 +849,87 @@ async def nzb_mirror(client, message):
     if nzb_id:
         mirror_task.nzb_id = nzb_id
     bot_loop.create_task(mirror_task.new_event())
+
+
+@new_task
+async def auto_task_handler(client, message):
+    from .users_settings import handler_dict
+
+    user_id = message.from_user.id if message.from_user else (message.sender_chat.id if message.sender_chat else 0)
+    if not user_id or handler_dict.get(user_id, False):
+        return
+
+    msg_text = message.text or message.caption or ""
+    if msg_text.strip().startswith("/"):
+        return
+
+    user_dict = user_data.get(user_id, {})
+    auto_leech = user_dict.get("AUTO_LEECH", False)
+    auto_mirror = user_dict.get("AUTO_MIRROR", False)
+    auto_ddl = user_dict.get("AUTO_DDL", False)
+
+    if not (auto_leech or auto_mirror or auto_ddl):
+        return
+
+    file_ = (
+        message.document
+        or message.photo
+        or message.video
+        or message.audio
+        or message.voice
+        or message.video_note
+        or message.sticker
+        or message.animation
+        or None
+    )
+
+    reply_to = message.reply_to_message
+    if not file_ and reply_to:
+        file_ = (
+            reply_to.document
+            or reply_to.photo
+            or reply_to.video
+            or reply_to.audio
+            or reply_to.voice
+            or reply_to.video_note
+            or reply_to.sticker
+            or reply_to.animation
+            or None
+        )
+
+    has_link = bool(
+        is_url(msg_text)
+        or is_magnet(msg_text)
+        or is_telegram_link(msg_text)
+        or is_rclone_path(msg_text)
+        or is_gdrive_link(msg_text)
+        or is_gdrive_id(msg_text)
+        or is_mega_link(msg_text)
+        or ("http://" in msg_text or "https://" in msg_text or "magnet:" in msg_text)
+    )
+
+    if not file_ and not has_link and reply_to and reply_to.text:
+        rtext = reply_to.text
+        has_link = bool(
+            is_url(rtext)
+            or is_magnet(rtext)
+            or is_telegram_link(rtext)
+            or is_rclone_path(rtext)
+            or is_gdrive_link(rtext)
+            or is_gdrive_id(rtext)
+            or is_mega_link(rtext)
+            or ("http://" in rtext or "https://" in rtext or "magnet:" in rtext)
+        )
+
+    if not file_ and not has_link:
+        return
+
+    if auto_leech:
+        await leech(client, message)
+    if auto_mirror:
+        await mirror(client, message)
+    if auto_ddl:
+        await uphoster(client, message)
 
 
 async def leech(client, message):

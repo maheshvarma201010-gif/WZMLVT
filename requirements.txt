@@ -19,7 +19,6 @@ language-data
 jinja2
 lxml
 markdown
-mega.py
 natsort
 par2cmdline-turbo
 pillow

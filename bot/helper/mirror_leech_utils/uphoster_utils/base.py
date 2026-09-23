@@ -68,22 +68,34 @@ class BaseUpload:
         raise NotImplementedError
 
     async def upload(self):
-        try:
-            LOGGER.info(f"{self.SERVICE_NAME} Uploading: {self._path}")
-            self._updater = SetInterval(self.update_interval, self.progress)
-            await self._validate_token()
-            await self._upload_process()
-        except Exception as err:
-            if isinstance(err, RetryError):
-                LOGGER.info(f"Total Attempts: {err.last_attempt.attempt_number}")
-                err = err.last_attempt.exception()
-            err = str(err).replace(">", "").replace("<", "")
-            LOGGER.error(err)
-            await self.listener.on_upload_error(err)
-            self._is_errored = True
-        finally:
-            if self._updater:
-                self._updater.cancel()
+        max_attempts = 3
+        for attempt in range(1, max_attempts + 1):
+            if self.listener.is_cancelled:
+                return
+            try:
+                LOGGER.info(f"{self.SERVICE_NAME} Uploading (Attempt {attempt}/{max_attempts}): {self._path}")
+                self._updater = SetInterval(self.update_interval, self.progress)
+                await self._validate_token()
+                await self._upload_process()
+                break
+            except Exception as err:
+                if isinstance(err, RetryError):
+                    LOGGER.info(f"Total Attempts: {err.last_attempt.attempt_number}")
+                    err = err.last_attempt.exception()
+                err_msg = str(err).replace(">", "").replace("<", "")
+                LOGGER.error(f"{self.SERVICE_NAME} attempt {attempt} failed: {err_msg}")
+                if attempt < max_attempts and not self.listener.is_cancelled:
+                    from asyncio import sleep as asleep
+                    self.last_uploaded = 0
+                    self._processed_bytes = 0
+                    await asleep(2)
+                    continue
+                await self.listener.on_upload_error(err_msg)
+                self._is_errored = True
+            finally:
+                if self._updater:
+                    self._updater.cancel()
+                    self._updater = None
 
     async def cancel_task(self):
         self.listener.is_cancelled = True

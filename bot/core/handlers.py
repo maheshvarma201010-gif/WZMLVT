@@ -443,6 +443,12 @@ async def add_handlers():
     TgClient.bot.add_handler(
         CallbackQueryHandler(confirm_drive_clean_cb, filters=regex("^gdccat"))
     )
+    TgClient.bot.add_handler(
+        MessageHandler(
+            auto_task_handler,
+            filters=CustomFilters.authorized,
+        )
+    )
     if Config.SET_COMMANDS:
         global BOT_COMMANDS
 

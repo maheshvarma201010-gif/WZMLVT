@@ -774,6 +774,18 @@ class TaskListener(TaskConfig):
         await start_from_queued()
 
     async def on_download_error(self, error, button=None, is_limit=False):
+        if not self.is_cancelled and not is_limit and getattr(self, "_retry_count", 0) < 2:
+            self._retry_count = getattr(self, "_retry_count", 0) + 1
+            LOGGER.warning(
+                f"Download failed for {self.name or self.link}: {error}. Retrying attempt {self._retry_count}/2 silently..."
+            )
+            await clean_download(self.dir)
+            if self.up_dir:
+                await clean_download(self.up_dir)
+            await sleep(2)
+            bot_loop.create_task(self.new_event())
+            return
+
         if hasattr(self, "task_key") and self.task_key:
             await clear_task_state(self.task_key)
         async with task_dict_lock:
