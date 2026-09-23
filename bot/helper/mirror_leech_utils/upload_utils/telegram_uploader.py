@@ -93,7 +93,11 @@ class TelegramUploader:
                 self._listener.user_dict.get(key) or getattr(Config, key, default),
             )
 
-        if self._thumb != "none" and not await aiopath.exists(self._thumb):
+        user_thumb = self._listener.thumb or self._listener.user_dict.get("THUMBNAIL") or f"thumbnails/{self._listener.user_id}.jpg"
+        if user_thumb and user_thumb != "none" and await aiopath.exists(user_thumb):
+            self._thumb = user_thumb
+            self._listener.thumb = user_thumb
+        else:
             self._thumb = None
 
         # Check for user configured bot tokens

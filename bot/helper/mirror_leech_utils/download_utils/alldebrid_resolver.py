@@ -1,4 +1,4 @@
-from asyncio import Semaphore, gather, get_event_loop, sleep
+from asyncio import Semaphore, gather, get_running_loop, sleep
 from re import I as re_I, match as re_match
 from urllib.parse import parse_qs, quote, urlparse
 
@@ -387,7 +387,11 @@ async def _wait_and_resolve(
     try:
         no_seed_since = 0
         last_downloaded = 0
-        loop = get_event_loop()
+        try:
+            loop = get_running_loop()
+        except Exception:
+            from bot import bot_loop
+            loop = bot_loop
         start_time = loop.time()
 
         while True:

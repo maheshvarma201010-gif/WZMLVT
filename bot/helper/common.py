@@ -1776,6 +1776,8 @@ class TaskConfig:
 
         if custom_name:
             out_base = custom_name
+        elif self.extract and getattr(self, "name", ""):
+            out_base = self.name
         else:
             main_f = v_files[0] if v_files else (a_files[0] if a_files else all_files[0])
             out_base = ospath.basename(main_f)

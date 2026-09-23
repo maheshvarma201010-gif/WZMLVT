@@ -339,7 +339,8 @@ async def confirm_restart(_, query):
             except Exception:
                 pass
 
-            get_event_loop().create_task(_background_cleanup())
+            from bot import bot_loop
+            bot_loop.create_task(_background_cleanup())
 
             osexecl(executable, executable, "-m", "bot")
     else:
