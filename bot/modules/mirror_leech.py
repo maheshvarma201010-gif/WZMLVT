@@ -383,11 +383,13 @@ class Mirror(TaskListener):
                 m_on = "✓ ON" if t_info.get("merge") else "OFF"
                 tr_on = "✓ ON" if t_info.get("trim") else "OFF"
                 ex_on = "✓ ON" if t_info.get("extract") else "OFF"
+                tm_on = "✓ ON" if t_info.get("reorder") else "OFF"
 
                 buttons = ButtonMaker()
                 buttons.data_button(f"Merge: {m_on}", f"htmerge merge {mid}")
                 buttons.data_button(f"Trim: {tr_on}", f"htmerge trim {mid}")
                 buttons.data_button(f"Extract: {ex_on}", f"htmerge extract {mid}")
+                buttons.data_button(f"Track Manager: {tm_on}", f"htmerge trackmgr {mid}")
                 buttons.data_button("Done", f"htmerge done {mid}", position="footer")
                 return buttons
 
@@ -413,6 +415,10 @@ class Mirror(TaskListener):
             self.manual_reorder = saved_ht.get("reorder", False)
             self.reorder_aud = saved_ht.get("reorder_aud", [])
             self.reorder_sub = saved_ht.get("reorder_sub", [])
+            self.aud_select = saved_ht.get("aud_select", None)
+            self.sub_select = saved_ht.get("sub_select", None)
+            self.aud_order = saved_ht.get("aud_order", None)
+            self.sub_order = saved_ht.get("sub_order", None)
             self.manual_trim = saved_ht.get("trim", False)
             self.trim_range = saved_ht.get("trim_range", "")
             self.manual_extract = saved_ht.get("extract", False)
@@ -671,6 +677,7 @@ async def ht_merge_callback(client, query):
         buttons.data_button(f"Merge: {'✓ ON' if t_info.get('merge') else 'OFF'}", f"htmerge merge {mid}")
         buttons.data_button(f"Trim: {'✓ ON' if t_info.get('trim') else 'OFF'}", f"htmerge trim {mid}")
         buttons.data_button(f"Extract: {'✓ ON' if t_info.get('extract') else 'OFF'}", f"htmerge extract {mid}")
+        buttons.data_button(f"Track Manager: {'✓ ON' if t_info.get('reorder') else 'OFF'}", f"htmerge trackmgr {mid}")
         buttons.data_button("Done", f"htmerge done {mid}", position="footer")
         return buttons
 
@@ -680,8 +687,126 @@ async def ht_merge_callback(client, query):
             f"<b>Task Received with -ht flag.</b>\nChoose pre-upload options:\n\n"
             f"• <b>Merge:</b> {'✓ ON' if t_info.get('merge') else 'OFF'}\n"
             f"• <b>Trim:</b> {'✓ ON' if t_info.get('trim') else 'OFF'} ({t_info.get('trim_range') or 'Not Set'})\n"
-            f"• <b>Extract:</b> {'✓ ON' if t_info.get('extract') else 'OFF'} ({', '.join(t_info.get('extract_types', [])) or 'Not Set'})"
+            f"• <b>Extract:</b> {'✓ ON' if t_info.get('extract') else 'OFF'} ({', '.join(t_info.get('extract_types', [])) or 'Not Set'})\n"
+            f"• <b>Track Manager:</b> {'✓ ON' if t_info.get('reorder') else 'OFF'}"
         )
+
+    def render_trackmgr_menu(mid):
+        t_info = ht_tasks.get(mid, {})
+        aud_tracks = t_info.get("tm_aud_tracks")
+        sub_tracks = t_info.get("tm_sub_tracks")
+
+        if aud_tracks is None or sub_tracks is None:
+            from os import walk
+            import json
+            from subprocess import run as srun, PIPE
+
+            task_dir = f"{DOWNLOAD_DIR}{mid}"
+            found_media = None
+            if ospath.exists(task_dir):
+                for root, _, files in walk(task_dir):
+                    for file_ in files:
+                        fp = ospath.join(root, file_)
+                        ext = ospath.splitext(fp)[1].lower()
+                        if ext in (".mkv", ".mp4", ".webm", ".avi", ".mov", ".flv", ".m4v", ".ts", ".3gp"):
+                            found_media = fp
+                            break
+                    if found_media:
+                        break
+
+            if found_media:
+                try:
+                    res = srun(["ffprobe", "-hide_banner", "-loglevel", "error", "-print_format", "json", "-show_streams", found_media], stdout=PIPE, stderr=PIPE)
+                    if res.returncode == 0:
+                        raw_streams = json.loads(res.stdout).get("streams", [])
+                        prob_aud = []
+                        prob_sub = []
+                        for st in raw_streams:
+                            st_type = st.get("codec_type")
+                            idx = st.get("index", 0)
+                            lang = st.get("tags", {}).get("language") or st.get("tags", {}).get("title") or "und"
+                            codec = st.get("codec_name", "audio")
+                            if st_type == "audio":
+                                prob_aud.append({"idx": idx, "orig_idx": idx, "lang": lang, "codec": codec, "selected": True})
+                            elif st_type == "subtitle":
+                                prob_sub.append({"idx": idx, "orig_idx": idx, "lang": lang, "codec": codec, "selected": True})
+                        if prob_aud or prob_sub:
+                            aud_tracks = prob_aud
+                            sub_tracks = prob_sub
+                except Exception:
+                    pass
+
+            if aud_tracks is None:
+                aud_tracks = [
+                    {"idx": 0, "orig_idx": 0, "lang": "eng", "codec": "audio", "selected": True},
+                    {"idx": 1, "orig_idx": 1, "lang": "hin", "codec": "audio", "selected": True},
+                ]
+            if sub_tracks is None:
+                sub_tracks = [
+                    {"idx": 0, "orig_idx": 0, "lang": "eng", "codec": "sub", "selected": True},
+                    {"idx": 1, "orig_idx": 1, "lang": "hin", "codec": "sub", "selected": True},
+                ]
+
+            t_info["tm_aud_tracks"] = aud_tracks
+            t_info["tm_sub_tracks"] = sub_tracks
+
+        buttons = ButtonMaker()
+        buttons.data_button("Select All", f"htmerge tm_select_all {mid}")
+        buttons.data_button("Remove Unselected", f"htmerge tm_rem_unselected {mid}")
+        buttons.data_button("Keep All", f"htmerge tm_keep_all {mid}")
+
+        buttons.data_button("--- AUDIO TRACKS ---", f"htmerge dummy {mid}")
+        for i, tr in enumerate(aud_tracks):
+            st = "✓" if tr.get("selected", True) else "x"
+            lang = tr.get("lang", "und")
+            codec = tr.get("codec", "audio")
+            buttons.data_button(f"[{st}] Aud {i+1}: {lang} ({codec})", f"htmerge tm_toggle_aud_{i} {mid}")
+            buttons.data_button("🔼", f"htmerge tm_up_aud_{i} {mid}")
+            buttons.data_button("🔽", f"htmerge tm_down_aud_{i} {mid}")
+
+        buttons.data_button("--- SUBTITLE TRACKS ---", f"htmerge dummy {mid}")
+        for j, tr in enumerate(sub_tracks):
+            st = "✓" if tr.get("selected", True) else "x"
+            lang = tr.get("lang", "und")
+            codec = tr.get("codec", "sub")
+            buttons.data_button(f"[{st}] Sub {j+1}: {lang} ({codec})", f"htmerge tm_toggle_sub_{j} {mid}")
+            buttons.data_button("🔼", f"htmerge tm_up_sub_{j} {mid}")
+            buttons.data_button("🔽", f"htmerge tm_down_sub_{j} {mid}")
+
+        buttons.data_button("Done", f"htmerge back {mid}", position="footer")
+        return buttons
+
+    def sync_tm_to_task_info(mid):
+        t_info = ht_tasks.get(mid, {})
+        aud_tracks = t_info.get("tm_aud_tracks", [])
+        sub_tracks = t_info.get("tm_sub_tracks", [])
+
+        aud_order = [tr.get("orig_idx", i) for i, tr in enumerate(aud_tracks)]
+        sub_order = [tr.get("orig_idx", j) for j, tr in enumerate(sub_tracks)]
+
+        aud_select = [i for i, tr in enumerate(aud_tracks) if tr.get("selected", True)]
+        sub_select = [j for j, tr in enumerate(sub_tracks) if tr.get("selected", True)]
+
+        t_info["aud_order"] = aud_order
+        t_info["sub_order"] = sub_order
+        t_info["aud_select"] = aud_select if len(aud_select) < len(aud_tracks) else None
+        t_info["sub_select"] = sub_select if len(sub_select) < len(sub_tracks) else None
+
+        aud_swaps = []
+        for new_pos, tr in enumerate(aud_tracks, start=1):
+            orig_pos = tr.get("orig_idx", new_pos - 1) + 1
+            if orig_pos != new_pos:
+                aud_swaps.append([orig_pos, new_pos])
+
+        sub_swaps = []
+        for new_pos, tr in enumerate(sub_tracks, start=1):
+            orig_pos = tr.get("orig_idx", new_pos - 1) + 1
+            if orig_pos != new_pos:
+                sub_swaps.append([orig_pos, new_pos])
+
+        t_info["reorder_aud"] = aud_swaps
+        t_info["reorder_sub"] = sub_swaps
+        t_info["reorder"] = True
 
     if data[1] in ["merge"]:
         key = data[1]
@@ -804,6 +929,82 @@ async def ht_merge_callback(client, query):
 
         caption = f"<b>📦 Select Extraction Types:</b>\nActive: {', '.join(selected_ext) or 'None'}"
         await edit_message(query.message, caption, buttons.build_menu(2))
+    elif data[1] == "dummy":
+        await query.answer()
+    elif data[1] == "trackmgr":
+        await query.answer()
+        task_info["reorder"] = True
+        await edit_message(query.message, "<b>🎵 Track Manager:</b>\nSelect, reorder, or filter audio and subtitle tracks:", render_trackmgr_menu(mid).build_menu(3))
+    elif data[1] == "tm_select_all":
+        await query.answer("Selected all tracks")
+        for tr in task_info.get("tm_aud_tracks", []):
+            tr["selected"] = True
+        for tr in task_info.get("tm_sub_tracks", []):
+            tr["selected"] = True
+        sync_tm_to_task_info(mid)
+        await edit_message(query.message, "<b>🎵 Track Manager:</b>\nSelect, reorder, or filter audio and subtitle tracks:", render_trackmgr_menu(mid).build_menu(3))
+    elif data[1] == "tm_rem_unselected":
+        await query.answer("Removed unselected tracks")
+        task_info["tm_aud_tracks"] = [tr for tr in task_info.get("tm_aud_tracks", []) if tr.get("selected", True)]
+        task_info["tm_sub_tracks"] = [tr for tr in task_info.get("tm_sub_tracks", []) if tr.get("selected", True)]
+        sync_tm_to_task_info(mid)
+        await edit_message(query.message, "<b>🎵 Track Manager:</b>\nSelect, reorder, or filter audio and subtitle tracks:", render_trackmgr_menu(mid).build_menu(3))
+    elif data[1] == "tm_keep_all":
+        await query.answer("Keeping all tracks")
+        for tr in task_info.get("tm_aud_tracks", []):
+            tr["selected"] = True
+        for tr in task_info.get("tm_sub_tracks", []):
+            tr["selected"] = True
+        sync_tm_to_task_info(mid)
+        await edit_message(query.message, "<b>🎵 Track Manager:</b>\nSelect, reorder, or filter audio and subtitle tracks:", render_trackmgr_menu(mid).build_menu(3))
+    elif data[1].startswith("tm_toggle_aud_"):
+        await query.answer()
+        idx = int(data[1].replace("tm_toggle_aud_", ""))
+        tracks = task_info.get("tm_aud_tracks", [])
+        if 0 <= idx < len(tracks):
+            tracks[idx]["selected"] = not tracks[idx].get("selected", True)
+        sync_tm_to_task_info(mid)
+        await edit_message(query.message, "<b>🎵 Track Manager:</b>\nSelect, reorder, or filter audio and subtitle tracks:", render_trackmgr_menu(mid).build_menu(3))
+    elif data[1].startswith("tm_toggle_sub_"):
+        await query.answer()
+        idx = int(data[1].replace("tm_toggle_sub_", ""))
+        tracks = task_info.get("tm_sub_tracks", [])
+        if 0 <= idx < len(tracks):
+            tracks[idx]["selected"] = not tracks[idx].get("selected", True)
+        sync_tm_to_task_info(mid)
+        await edit_message(query.message, "<b>🎵 Track Manager:</b>\nSelect, reorder, or filter audio and subtitle tracks:", render_trackmgr_menu(mid).build_menu(3))
+    elif data[1].startswith("tm_up_aud_"):
+        await query.answer()
+        idx = int(data[1].replace("tm_up_aud_", ""))
+        tracks = task_info.get("tm_aud_tracks", [])
+        if idx > 0 and idx < len(tracks):
+            tracks[idx], tracks[idx-1] = tracks[idx-1], tracks[idx]
+        sync_tm_to_task_info(mid)
+        await edit_message(query.message, "<b>🎵 Track Manager:</b>\nSelect, reorder, or filter audio and subtitle tracks:", render_trackmgr_menu(mid).build_menu(3))
+    elif data[1].startswith("tm_down_aud_"):
+        await query.answer()
+        idx = int(data[1].replace("tm_down_aud_", ""))
+        tracks = task_info.get("tm_aud_tracks", [])
+        if idx >= 0 and idx < len(tracks) - 1:
+            tracks[idx], tracks[idx+1] = tracks[idx+1], tracks[idx]
+        sync_tm_to_task_info(mid)
+        await edit_message(query.message, "<b>🎵 Track Manager:</b>\nSelect, reorder, or filter audio and subtitle tracks:", render_trackmgr_menu(mid).build_menu(3))
+    elif data[1].startswith("tm_up_sub_"):
+        await query.answer()
+        idx = int(data[1].replace("tm_up_sub_", ""))
+        tracks = task_info.get("tm_sub_tracks", [])
+        if idx > 0 and idx < len(tracks):
+            tracks[idx], tracks[idx-1] = tracks[idx-1], tracks[idx]
+        sync_tm_to_task_info(mid)
+        await edit_message(query.message, "<b>🎵 Track Manager:</b>\nSelect, reorder, or filter audio and subtitle tracks:", render_trackmgr_menu(mid).build_menu(3))
+    elif data[1].startswith("tm_down_sub_"):
+        await query.answer()
+        idx = int(data[1].replace("tm_down_sub_", ""))
+        tracks = task_info.get("tm_sub_tracks", [])
+        if idx >= 0 and idx < len(tracks) - 1:
+            tracks[idx], tracks[idx+1] = tracks[idx+1], tracks[idx]
+        sync_tm_to_task_info(mid)
+        await edit_message(query.message, "<b>🎵 Track Manager:</b>\nSelect, reorder, or filter audio and subtitle tracks:", render_trackmgr_menu(mid).build_menu(3))
     elif data[1] == "back":
         await query.answer()
         await edit_message(query.message, render_ht_text(mid), render_ht_menu(mid).build_menu(2))

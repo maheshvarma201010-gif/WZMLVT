@@ -1241,7 +1241,7 @@ class FFMpeg:
             return out_path
         return None
 
-    async def reorder_tracks(self, f_path, aud_swaps, sub_swaps):
+    async def reorder_tracks(self, f_path, aud_swaps, sub_swaps, aud_select=None, sub_select=None):
         streams = await self.get_streams(f_path)
         if not streams:
             return None
@@ -1291,6 +1291,11 @@ class FFMpeg:
                     if found_idx != -1 and 0 <= target_pos < len(sub_streams):
                         matched_st = sub_streams.pop(found_idx)
                         sub_streams.insert(target_pos, matched_st)
+
+        if aud_select is not None:
+            audio_streams = [a for idx, a in enumerate(audio_streams) if idx in aud_select or a.get("index") in aud_select]
+        if sub_select is not None:
+            sub_streams = [s for idx, s in enumerate(sub_streams) if idx in sub_select or s.get("index") in sub_select]
 
         cmd = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", f_path]
         for v in video_streams:
