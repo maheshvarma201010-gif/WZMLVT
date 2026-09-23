@@ -10,6 +10,7 @@ from aiofiles.os import listdir, remove, path as aiopath
 from niquests import utils as rutils
 
 from ... import (
+    bot_loop,
     intervals,
     task_dict,
     task_dict_lock,

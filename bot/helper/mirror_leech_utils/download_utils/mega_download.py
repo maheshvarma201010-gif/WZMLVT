@@ -107,8 +107,11 @@ async def _release_link(link: str):
 
 
 def _mega_py_download_sync(listener, path, email, password):
-    from mega import Mega
-    mega = Mega()
+    try:
+        from mega import Mega
+        mega = Mega()
+    except Exception as e:
+        raise ImportError(f"Mega module import failed: {e}")
     m = mega.login(email, password) if email and password else mega.login()
     downloaded_path = m.download_url(listener.link, dest_path=path)
     return downloaded_path
@@ -171,7 +174,12 @@ async def add_mega_download(listener, path):
 
     if MegaApi is None:
         try:
-            from mega import Mega
+            try:
+                from mega import Mega
+            except (ImportError, SyntaxError, Exception):
+                Mega = None
+            if Mega is None:
+                raise ImportError("MEGA SDK / mega module is not available on this system.")
             await _download_mega_py(listener, path, mega_email, mega_password)
         except Exception as e:
             await listener.on_download_error(f"Mega download failed: {e}")
