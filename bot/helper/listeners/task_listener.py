@@ -849,7 +849,9 @@ class TaskListener(TaskConfig):
         if self.up_dir:
             await clean_download(self.up_dir)
         if self.thumb and await aiopath.exists(self.thumb):
-            await remove(self.thumb)
+            user_perm_thumb = self.user_dict.get("THUMBNAIL") or f"thumbnails/{self.user_id}.jpg"
+            if self.thumb != user_perm_thumb and self.thumb != f"thumbnails/{self.user_id}.jpg":
+                await remove(self.thumb)
 
     async def on_upload_error(self, error):
         if hasattr(self, "task_key") and self.task_key:
@@ -890,4 +892,6 @@ class TaskListener(TaskConfig):
         if self.up_dir:
             await clean_download(self.up_dir)
         if self.thumb and await aiopath.exists(self.thumb):
-            await remove(self.thumb)
+            user_perm_thumb = self.user_dict.get("THUMBNAIL") or f"thumbnails/{self.user_id}.jpg"
+            if self.thumb != user_perm_thumb and self.thumb != f"thumbnails/{self.user_id}.jpg":
+                await remove(self.thumb)

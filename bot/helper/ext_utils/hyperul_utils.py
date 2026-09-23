@@ -193,10 +193,12 @@ class HypertgUpload(HypertgTransfer):
             raise
         finally:
             if user_thumb is None and thumb is not None and await aiopath.exists(thumb):
-                try:
-                    await remove(thumb)
-                except Exception:
-                    pass
+                user_perm_thumb = self._listener.user_dict.get("THUMBNAIL") or f"thumbnails/{self._listener.user_id}.jpg"
+                if thumb != user_perm_thumb and thumb != f"thumbnails/{self._listener.user_id}.jpg":
+                    try:
+                        await remove(thumb)
+                    except Exception:
+                        pass
 
     async def _send_with_retry(self, send_func, **kwargs):
         while True:

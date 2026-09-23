@@ -1760,10 +1760,8 @@ class TaskConfig:
         if custom_name:
             out_base = custom_name
         else:
-            out_base = self.name
-            if not out_base or out_base == "None":
-                main_f = v_files[0] if v_files else (a_files[0] if a_files else all_files[0])
-                out_base = ospath.basename(main_f)
+            main_f = v_files[0] if v_files else (a_files[0] if a_files else all_files[0])
+            out_base = ospath.basename(main_f)
 
         for non_vid_ext in [".zip", ".7z", ".rar", ".tar", ".gz", ".xz", ".pdf", ".txt", ".bin", ".tmp", ".001", ".part1"]:
             if out_base.lower().endswith(non_vid_ext):
@@ -1776,6 +1774,7 @@ class TaskConfig:
         else:
             out_filename = out_base
 
+        self.name = out_filename
         output_file = ospath.join(work_dir, out_filename)
 
         ffmpeg = FFMpeg(self)

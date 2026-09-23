@@ -463,6 +463,9 @@ class Mirror(TaskListener):
             ).new_event()
             return
 
+        if not reply_to:
+            reply_to = self.message
+
         if reply_to:
             file_ = (
                 reply_to.document
@@ -479,7 +482,8 @@ class Mirror(TaskListener):
 
             if file_ is None:
                 if reply_text := reply_to.text:
-                    self.link = reply_text.split("\n", 1)[0].strip()
+                    if not self.link:
+                        self.link = reply_text.split("\n", 1)[0].strip()
                 else:
                     reply_to = None
             elif reply_to.document and (

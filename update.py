@@ -171,6 +171,7 @@ def _run_update(upstream_repo, upstream_branch, version):
 
 def _update_packages():
     scall("uv pip install -U -r requirements.txt", shell=True)
+    scall("uv pip install --no-deps mega.py>=1.0.8", shell=True)
     _LOGGER.info("Successfully Updated all the Packages!")
 
 

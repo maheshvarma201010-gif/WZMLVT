@@ -2528,7 +2528,12 @@ async def chthumb_command(client, message):
                 or reply_to.reply_to_message.document
             ):
                 img_msg = reply_to.reply_to_message
-                await img_msg.download(file_name=thumb_path)
+                created = await create_thumb(img_msg, user_id)
+                if not created or not await aiopath.exists(created):
+                    await send_message(
+                        message, "<blockquote>Failed to process provided image for thumbnail!</blockquote>"
+                    )
+                    return
             else:
                 await send_message(
                     message,
@@ -2599,7 +2604,12 @@ async def chthumb_command(client, message):
 
     if img_source is not None:
         if img_source is not True:
-            await img_source.download(file_name=thumb_path)
+            created = await create_thumb(img_source, user_id)
+            if not created or not await aiopath.exists(created):
+                await send_message(
+                    message, "<blockquote>Failed to process provided image for thumbnail!</blockquote>"
+                )
+                return
 
         update_user_ldata(user_id, "THUMBNAIL", thumb_path)
         await database.update_user_doc(user_id, "THUMBNAIL", thumb_path)
