@@ -539,26 +539,18 @@ class Mirror(TaskListener):
 
         if self.is_leech and (not self.thumb or not await aiopath.exists(self.thumb)):
             from ..helper.ext_utils.media_utils import create_thumb
+            reply_msg = getattr(self.message, "reply_to_message", None)
             if self.message.photo or (self.message.document and self.message.document.mime_type and self.message.document.mime_type.startswith("image/")):
                 self.thumb = await create_thumb(self.message, self.user_id)
-            elif self.message.reply_to_message and (
-                self.message.reply_to_message.photo
+            elif reply_msg and (
+                reply_msg.photo
                 or (
-                    self.message.reply_to_message.document
-                    and self.message.reply_to_message.document.mime_type
-                    and self.message.reply_to_message.document.mime_type.startswith("image/")
+                    reply_msg.document
+                    and reply_msg.document.mime_type
+                    and reply_msg.document.mime_type.startswith("image/")
                 )
             ):
-                self.thumb = await create_thumb(self.message.reply_to_message, self.user_id)
-            elif reply_to and (
-                reply_to.photo
-                or (
-                    reply_to.document
-                    and reply_to.document.mime_type
-                    and reply_to.document.mime_type.startswith("image/")
-                )
-            ):
-                self.thumb = await create_thumb(reply_to, self.user_id)
+                self.thumb = await create_thumb(reply_msg, self.user_id)
 
         self._set_mode_engine()
 
