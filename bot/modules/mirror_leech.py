@@ -129,8 +129,11 @@ class Mirror(TaskListener):
                 self.message, "<blockquote>The Mirror command is currently disabled.</blockquote>"
             )
             return
-        text = self.message.text.split("\n")
+        msg_text = self.message.text or self.message.caption or ""
+        text = msg_text.split("\n")
         input_list = text[0].split(" ")
+        if input_list and not input_list[0].startswith("/"):
+            input_list.insert(0, "/auto")
 
         check_msg, check_button = await pre_task_check(self.message)
         if check_msg:
@@ -845,6 +848,43 @@ async def nzb_mirror(client, message):
     if nzb_id:
         mirror_task.nzb_id = nzb_id
     bot_loop.create_task(mirror_task.new_event())
+
+
+async def auto_task_handler(client, message):
+    if not message.from_user:
+        return
+    user_id = message.from_user.id
+    u_dict = user_data.get(user_id, {})
+
+    auto_leech = u_dict.get("AUTO_LEECH", False)
+    auto_mirror = u_dict.get("AUTO_MIRROR", False)
+    auto_uphoster = u_dict.get("AUTO_UPHOSTER", False)
+
+    if not (auto_leech or auto_mirror or auto_uphoster):
+        return
+
+    text = (message.text or message.caption or "").strip()
+    if text.startswith("/"):
+        return
+
+    has_media = bool(
+        message.document
+        or message.video
+        or message.audio
+        or message.photo
+        or message.voice
+        or message.video_note
+    )
+
+    if not has_media and not text:
+        return
+
+    if auto_leech:
+        bot_loop.create_task(Mirror(client, message, is_leech=True).new_event())
+    if auto_mirror:
+        bot_loop.create_task(Mirror(client, message).new_event())
+    if auto_uphoster:
+        bot_loop.create_task(Mirror(client, message, is_uphoster=True).new_event())
 
 
 async def leech(client, message):

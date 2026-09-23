@@ -20,7 +20,7 @@ try:
         MegaTransfer,
         MegaUploadOptions,
     )
-except ImportError:
+except Exception:
     MegaApi = MegaError = MegaRequest = MegaTransfer = MegaUploadOptions = None
     class MegaListener:
         pass

@@ -623,6 +623,12 @@ async def get_user_settings(from_user, stype="main"):
             f"userset {user_id} tog LEECH_SEQUENCE {'f' if sequence_enabled else 't'} leech",
         )
 
+        auto_leech = user_dict.get("AUTO_LEECH", False)
+        buttons.data_button(
+            f"Auto Leech: {'ON' if auto_leech else 'OFF'}",
+            f"userset {user_id} tog AUTO_LEECH {'f' if auto_leech else 't'} leech",
+        )
+
         buttons.data_button("◀️ Back", f"userset {user_id} back", "footer")
         buttons.data_button(
             "❌ Close", f"userset {user_id} close", "footer", style=ButtonStyle.DANGER
@@ -813,6 +819,11 @@ Configure custom video encoding, compression, and watermark overlays for uploads
         buttons.data_button("PixelDrain Tools", f"userset {user_id} pixeldrain")
         buttons.data_button("DevUploads Tools", f"userset {user_id} devuploads")
         buttons.data_button("VikingFile Tools", f"userset {user_id} vikingfile")
+        auto_uphoster = user_dict.get("AUTO_UPHOSTER", False)
+        buttons.data_button(
+            f"Auto DDL: {'ON' if auto_uphoster else 'OFF'}",
+            f"userset {user_id} tog AUTO_UPHOSTER {'f' if auto_uphoster else 't'} uphoster",
+        )
         buttons.data_button("◀️ Back", f"userset {user_id} back", "footer")
         buttons.data_button(
             "❌ Close", f"userset {user_id} close", "footer", style=ButtonStyle.DANGER
@@ -1158,6 +1169,11 @@ Configure custom video encoding, compression, and watermark overlays for uploads
                 f"userset {user_id} tog drive_cat_mode {'f' if dc_enabled else 't'}",
                 "header",
             )
+        auto_mirror = user_dict.get("AUTO_MIRROR", False)
+        buttons.data_button(
+            f"Auto Mirror: {'ON' if auto_mirror else 'OFF'}",
+            f"userset {user_id} tog AUTO_MIRROR {'f' if auto_mirror else 't'} mirror",
+        )
         buttons.data_button("◀️ Back", f"userset {user_id} back", "footer")
         buttons.data_button(
             "❌ Close", f"userset {user_id} close", "footer", style=ButtonStyle.DANGER

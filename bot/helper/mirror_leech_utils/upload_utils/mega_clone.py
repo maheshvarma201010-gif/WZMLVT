@@ -5,7 +5,7 @@ from secrets import token_hex
 from aiofiles.os import makedirs
 try:
     from mega import MegaApi
-except ImportError:
+except Exception:
     MegaApi = None
 
 from .... import LOGGER, task_dict, task_dict_lock
