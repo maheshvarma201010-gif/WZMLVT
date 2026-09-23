@@ -58,6 +58,7 @@ class BotCommands:
         "Memory": ["memory", "mem"],
         "ChThumb": "chthumb",
         "RequestFF": ["requestff", "reqff"],
+        "AddBot": ["addbot", "ab"],
     }
 
     @classmethod

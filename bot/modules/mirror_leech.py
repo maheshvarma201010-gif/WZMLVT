@@ -1014,6 +1014,46 @@ async def ht_merge_callback(client, query):
             fut.set_result(True)
 
 
+class TrackManagerStatus:
+    def __init__(self, listener, gid):
+        self.listener = listener
+        self._gid = gid
+        from ..helper.ext_utils.status_utils import EngineStatus
+        self.engine = EngineStatus().STATUS_FFMPEG
+
+    def speed(self):
+        return "0B/s"
+
+    def processed_bytes(self):
+        return "0B"
+
+    def progress(self):
+        return "0%"
+
+    def gid(self):
+        return self._gid
+
+    def name(self):
+        return self.listener.name
+
+    def size(self):
+        return get_readable_file_size(self.listener.size)
+
+    def eta(self):
+        return "-"
+
+    def status(self):
+        from ..helper.ext_utils.status_utils import MirrorStatus
+        return MirrorStatus.STATUS_TRACK_MGR
+
+    def task(self):
+        return self
+
+    async def cancel_task(self):
+        self.listener.is_cancelled = True
+        await self.listener.on_upload_error("Track Manager stopped by user!")
+
+
 async def prompt_track_manager(listener, media_file):
     from asyncio import wait_for
     from ..helper.ext_utils.media_utils import FFMpeg
@@ -1086,6 +1126,10 @@ async def prompt_track_manager(listener, media_file):
         buttons.data_button("Done", f"htmerge tm_done {mid}", position="footer")
         return buttons
 
+    tm_status = TrackManagerStatus(listener, f"tm_{mid}")
+    async with task_dict_lock:
+        task_dict[mid] = tm_status
+
     prompt_msg = await send_message(
         listener.message,
         f"<b>🎵 Track Manager ({ospath.basename(media_file)}):</b>\nSelect, reorder, or filter audio and subtitle tracks before upload:",
@@ -1096,6 +1140,10 @@ async def prompt_track_manager(listener, media_file):
         await wait_for(event_done, timeout=120)
     except Exception:
         pass
+    finally:
+        async with task_dict_lock:
+            if mid in task_dict and task_dict[mid] == tm_status:
+                del task_dict[mid]
 
     sync_tm_to_task_info(mid)
     saved_ht = ht_tasks.get(mid, {})

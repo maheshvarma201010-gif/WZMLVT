@@ -42,6 +42,7 @@ class MirrorStatus:
     STATUS_YT = "YouTube Uploading"
     STATUS_METADATA = "Applying Metadata"
     STATUS_SEEDR = "Seedr Downloading"
+    STATUS_TRACK_MGR = "Track Managering"
     STATUS_COMPLETED = "Completed"
 
 

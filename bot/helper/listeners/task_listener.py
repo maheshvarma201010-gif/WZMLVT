@@ -632,6 +632,29 @@ class TaskListener(TaskConfig):
 
             targets = [self.user_id]
 
+            if self.leech_dest and self.leech_dest != self.user_id:
+                d_chat, _ = parse_dest(self.leech_dest) if not isinstance(self.leech_dest, int) else (self.leech_dest, None)
+                if d_chat and d_chat not in targets:
+                    targets.append(d_chat)
+
+            if self.up_dest and self.up_dest not in targets:
+                u_chat, _ = parse_dest(self.up_dest) if not isinstance(self.up_dest, int) else (self.up_dest, None)
+                if u_chat and u_chat not in targets:
+                    targets.append(u_chat)
+
+            if hasattr(self, "key_dump_dests") and self.key_dump_dests:
+                for k_dest in self.key_dump_dests:
+                    if k_dest:
+                        k_chat, _ = parse_dest(k_dest) if not isinstance(k_dest, int) else (k_dest, None)
+                        if k_chat and k_chat not in targets:
+                            targets.append(k_chat)
+
+            univ_dump = self.user_dict.get("LEECH_DUMP_CHAT") or Config.LEECH_LOG_CHAT or ""
+            if univ_dump:
+                un_chat, _ = parse_dest(univ_dump) if not isinstance(univ_dump, int) else (univ_dump, None)
+                if un_chat and un_chat not in targets:
+                    targets.append(un_chat)
+
             for dm_target in targets:
                 if not files:
                     await send_message(dm_target, msg)

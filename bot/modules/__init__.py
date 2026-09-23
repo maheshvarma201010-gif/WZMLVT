@@ -57,6 +57,7 @@ from .users_settings import (
 )
 from .request_ff import request_ff, reqff_callback
 from .ytdlp import ytdl, ytdl_leech
+from .addbot import addbot_command, addbot_callback
 
 __all__ = [
     "memory_stats",
@@ -138,4 +139,6 @@ __all__ = [
     "reqff_callback",
     "ytdl",
     "ytdl_leech",
+    "addbot_command",
+    "addbot_callback",
 ]

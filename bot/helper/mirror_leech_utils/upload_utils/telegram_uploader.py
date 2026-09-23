@@ -72,6 +72,7 @@ class TelegramUploader:
         self._sent_msg = None
         self._user_session = self._listener.transmission_mode in ("user", "both")
         self._hu: HypertgUpload | None = None
+        self.clients = {}
         self._error = ""
         self._upload_seq = []
         self._msg_to_seq = {}
@@ -95,6 +96,19 @@ class TelegramUploader:
 
         if self._thumb != "none" and not await aiopath.exists(self._thumb):
             self._thumb = None
+
+        user_dict = self._listener.user_dict
+        addbots = user_dict.get("ADD_BOTS", [])
+        if addbots:
+            from ....modules.addbot import get_user_addbot_clients
+            user_clients = await get_user_addbot_clients(self._listener.user_id)
+            for idx, cl in enumerate(user_clients, start=1):
+                self.clients[-idx] = cl
+
+        if TgClient.helper_bots:
+            for idx, hbot in TgClient.helper_bots.items():
+                if idx not in self.clients:
+                    self.clients[idx] = hbot
 
     async def _msg_to_reply(self):
         if self._user_session and TgClient.user is None:
@@ -386,6 +400,13 @@ class TelegramUploader:
                     k_chat, k_thread = parse_dest(k_dest) if not isinstance(k_dest, int) else (k_dest, None)
                     if k_chat and (k_chat, k_thread) not in destinations:
                         destinations.append((k_chat, k_thread))
+
+        # Universal dump setting
+        univ_dump = self._listener.user_dict.get("LEECH_DUMP_CHAT") or Config.LEECH_LOG_CHAT or ""
+        if univ_dump:
+            u_chat, u_thread = parse_dest(univ_dump) if not isinstance(univ_dump, int) else (univ_dump, None)
+            if u_chat and (u_chat, u_thread) not in destinations:
+                destinations.append((u_chat, u_thread))
 
         for entry in self._upload_seq:
             if entry is None:
