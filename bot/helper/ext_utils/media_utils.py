@@ -1243,7 +1243,7 @@ class FFMpeg:
             return out_path
         return None
 
-    async def reorder_tracks(self, f_path, aud_swaps, sub_swaps, aud_select=None, sub_select=None):
+    async def reorder_tracks(self, f_path, aud_swaps, sub_swaps, aud_select=None, sub_select=None, aud_order=None, sub_order=None):
         streams = await self.get_streams(f_path)
         if not streams:
             return None
@@ -1252,47 +1252,37 @@ class FFMpeg:
         sub_streams = [s for s in streams if s.get("codec_type") == "subtitle"]
         video_streams = [s for s in streams if s.get("codec_type") == "video"]
 
-        for swap in aud_swaps:
-            if len(swap) == 2:
-                p1, p2 = swap[0], swap[1]
-                if isinstance(p1, int) and isinstance(p2, int):
-                    i1, i2 = p1 - 1, p2 - 1
+        if aud_order and len(aud_order) <= len(audio_streams):
+            new_aud = []
+            for idx in aud_order:
+                if 0 <= idx < len(audio_streams):
+                    new_aud.append(audio_streams[idx])
+            for a in audio_streams:
+                if a not in new_aud:
+                    new_aud.append(a)
+            audio_streams = new_aud
+        elif aud_swaps:
+            for swap in aud_swaps:
+                if len(swap) == 2 and isinstance(swap[0], int) and isinstance(swap[1], int):
+                    i1, i2 = swap[0] - 1, swap[1] - 1
                     if 0 <= i1 < len(audio_streams) and 0 <= i2 < len(audio_streams):
                         audio_streams[i1], audio_streams[i2] = audio_streams[i2], audio_streams[i1]
-                elif isinstance(p1, int) and isinstance(p2, str):
-                    target_pos = p1 - 1
-                    lang_query = p2.lower()
-                    found_idx = -1
-                    for idx, st in enumerate(audio_streams):
-                        st_lang = st.get("tags", {}).get("language", "").lower()
-                        st_title = st.get("tags", {}).get("title", "").lower()
-                        if lang_query in st_lang or lang_query in st_title:
-                            found_idx = idx
-                            break
-                    if found_idx != -1 and 0 <= target_pos < len(audio_streams):
-                        matched_st = audio_streams.pop(found_idx)
-                        audio_streams.insert(target_pos, matched_st)
 
-        for swap in sub_swaps:
-            if len(swap) == 2:
-                p1, p2 = swap[0], swap[1]
-                if isinstance(p1, int) and isinstance(p2, int):
-                    i1, i2 = p1 - 1, p2 - 1
+        if sub_order and len(sub_order) <= len(sub_streams):
+            new_sub = []
+            for idx in sub_order:
+                if 0 <= idx < len(sub_streams):
+                    new_sub.append(sub_streams[idx])
+            for s in sub_streams:
+                if s not in new_sub:
+                    new_sub.append(s)
+            sub_streams = new_sub
+        elif sub_swaps:
+            for swap in sub_swaps:
+                if len(swap) == 2 and isinstance(swap[0], int) and isinstance(swap[1], int):
+                    i1, i2 = swap[0] - 1, swap[1] - 1
                     if 0 <= i1 < len(sub_streams) and 0 <= i2 < len(sub_streams):
                         sub_streams[i1], sub_streams[i2] = sub_streams[i2], sub_streams[i1]
-                elif isinstance(p1, int) and isinstance(p2, str):
-                    target_pos = p1 - 1
-                    lang_query = p2.lower()
-                    found_idx = -1
-                    for idx, st in enumerate(sub_streams):
-                        st_lang = st.get("tags", {}).get("language", "").lower()
-                        st_title = st.get("tags", {}).get("title", "").lower()
-                        if lang_query in st_lang or lang_query in st_title:
-                            found_idx = idx
-                            break
-                    if found_idx != -1 and 0 <= target_pos < len(sub_streams):
-                        matched_st = sub_streams.pop(found_idx)
-                        sub_streams.insert(target_pos, matched_st)
 
         if aud_select is not None:
             audio_streams = [a for idx, a in enumerate(audio_streams) if idx in aud_select or a.get("index") in aud_select]

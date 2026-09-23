@@ -737,15 +737,9 @@ async def ht_merge_callback(client, query):
                     pass
 
             if aud_tracks is None:
-                aud_tracks = [
-                    {"idx": 0, "orig_idx": 0, "lang": "eng", "codec": "audio", "selected": True},
-                    {"idx": 1, "orig_idx": 1, "lang": "hin", "codec": "audio", "selected": True},
-                ]
+                aud_tracks = []
             if sub_tracks is None:
-                sub_tracks = [
-                    {"idx": 0, "orig_idx": 0, "lang": "eng", "codec": "sub", "selected": True},
-                    {"idx": 1, "orig_idx": 1, "lang": "hin", "codec": "sub", "selected": True},
-                ]
+                sub_tracks = []
 
             t_info["tm_aud_tracks"] = aud_tracks
             t_info["tm_sub_tracks"] = sub_tracks
@@ -932,9 +926,9 @@ async def ht_merge_callback(client, query):
     elif data[1] == "dummy":
         await query.answer()
     elif data[1] == "trackmgr":
-        await query.answer()
-        task_info["reorder"] = True
-        await edit_message(query.message, "<b>🎵 Track Manager:</b>\nSelect, reorder, or filter audio and subtitle tracks:", render_trackmgr_menu(mid).build_menu(3))
+        task_info["reorder"] = not task_info.get("reorder", False)
+        await query.answer(f"Track Manager turned {'ON' if task_info['reorder'] else 'OFF'}")
+        await edit_message(query.message, render_ht_text(mid), render_ht_menu(mid).build_menu(2))
     elif data[1] == "tm_select_all":
         await query.answer("Selected all tracks")
         for tr in task_info.get("tm_aud_tracks", []):
@@ -1059,23 +1053,28 @@ async def prompt_track_manager(listener, media_file):
         buttons.data_button("Remove Unselected", f"htmerge tm_rem_unselected {mid}")
         buttons.data_button("Keep All", f"htmerge tm_keep_all {mid}")
 
-        buttons.data_button("--- AUDIO TRACKS ---", f"htmerge dummy {mid}", position="header")
-        for i, tr in enumerate(a_tr):
-            st = "✓" if tr.get("selected", True) else "x"
-            lang = tr.get("lang", "und")
-            codec = tr.get("codec", "audio")
-            buttons.data_button(f"[{st}] Aud {i+1}: {lang} ({codec})", f"htmerge tm_toggle_aud_{i} {mid}")
-            buttons.data_button("🔼", f"htmerge tm_up_aud_{i} {mid}")
-            buttons.data_button("🔽", f"htmerge tm_down_aud_{i} {mid}")
+        if not aud_tracks and not sub_tracks:
+            buttons.data_button("No Audio/Subtitle Tracks Found", f"htmerge dummy {mid}", position="header")
+        else:
+            if aud_tracks:
+                buttons.data_button("--- AUDIO TRACKS ---", f"htmerge dummy {mid}", position="header")
+                for i, tr in enumerate(aud_tracks):
+                    st = "✓" if tr.get("selected", True) else "x"
+                    lang = tr.get("lang", "und")
+                    codec = tr.get("codec", "audio")
+                    buttons.data_button(f"[{st}] Aud {i+1}: {lang} ({codec})", f"htmerge tm_toggle_aud_{i} {mid}")
+                    buttons.data_button("🔼", f"htmerge tm_up_aud_{i} {mid}")
+                    buttons.data_button("🔽", f"htmerge tm_down_aud_{i} {mid}")
 
-        buttons.data_button("--- SUBTITLE TRACKS ---", f"htmerge dummy {mid}", position="header")
-        for j, tr in enumerate(s_tr):
-            st = "✓" if tr.get("selected", True) else "x"
-            lang = tr.get("lang", "und")
-            codec = tr.get("codec", "sub")
-            buttons.data_button(f"[{st}] Sub {j+1}: {lang} ({codec})", f"htmerge tm_toggle_sub_{j} {mid}")
-            buttons.data_button("🔼", f"htmerge tm_up_sub_{j} {mid}")
-            buttons.data_button("🔽", f"htmerge tm_down_sub_{j} {mid}")
+            if sub_tracks:
+                buttons.data_button("--- SUBTITLE TRACKS ---", f"htmerge dummy {mid}", position="header")
+                for j, tr in enumerate(sub_tracks):
+                    st = "✓" if tr.get("selected", True) else "x"
+                    lang = tr.get("lang", "und")
+                    codec = tr.get("codec", "sub")
+                    buttons.data_button(f"[{st}] Sub {j+1}: {lang} ({codec})", f"htmerge tm_toggle_sub_{j} {mid}")
+                    buttons.data_button("🔼", f"htmerge tm_up_sub_{j} {mid}")
+                    buttons.data_button("🔽", f"htmerge tm_down_sub_{j} {mid}")
 
         buttons.data_button("Done", f"htmerge tm_done {mid}", position="footer")
         return buttons
