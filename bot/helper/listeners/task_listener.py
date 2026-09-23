@@ -275,14 +275,6 @@ class TaskListener(TaskConfig):
             self.size = await get_path_size(up_dir)
             self.clear()
 
-        if getattr(self, "manual_reorder", False):
-            up_path = await self.proceed_reorder(up_path, gid)
-            if self.is_cancelled or not up_path:
-                return
-            self.is_file = await aiopath.isfile(up_path)
-            self.name = up_path.replace(f"{up_dir}/", "").split("/", 1)[0]
-            self.size = await get_path_size(up_dir)
-            self.clear()
 
         if getattr(self, "manual_trim", False):
             up_path = await self.proceed_trim(up_path, gid)
@@ -293,6 +285,7 @@ class TaskListener(TaskConfig):
             self.size = await get_path_size(up_dir)
             self.clear()
 
+
         if getattr(self, "manual_extract", False):
             up_path = await self.proceed_extract_content(up_path, gid)
             if self.is_cancelled or not up_path:
@@ -301,7 +294,6 @@ class TaskListener(TaskConfig):
             self.name = up_path.replace(f"{up_dir}/", "").split("/", 1)[0]
             self.size = await get_path_size(up_dir)
             self.clear()
-
 
         if (
             getattr(self, "ht_flag", False)
@@ -368,6 +360,7 @@ class TaskListener(TaskConfig):
             self.size = await get_path_size(up_dir)
             self.clear()
 
+
         if enable_watermark:
             try:
                 up_path = await self.proceed_watermark(up_path, gid)
@@ -391,6 +384,39 @@ class TaskListener(TaskConfig):
             self.name = up_path.replace(f"{up_dir}/", "").split("/", 1)[0]
             self.size = await get_path_size(up_dir)
             self.clear()
+
+        if (
+            getattr(self, "ht_flag", False)
+            or getattr(self, "manual_reorder", False)
+            or getattr(self, "auto_merge", False)
+            or getattr(self, "manual_merge", False)
+            or self.extract
+        ):
+            from ...modules.mirror_leech import prompt_track_manager
+            target_media = up_path
+            if not self.is_file and await aiopath.isdir(up_path):
+                for root, _, files in await sync_to_async(walk, up_path, topdown=False):
+                    for file_ in files:
+                        fp = ospath.join(root, file_)
+                        ext = ospath.splitext(fp)[1].lower()
+                        if ext in (".mkv", ".mp4", ".webm", ".avi", ".mov", ".flv", ".m4v", ".ts", ".3gp"):
+                            target_media = fp
+                            break
+                    if target_media != up_path:
+                        break
+            if target_media and await aiopath.isfile(target_media):
+                try:
+                    await prompt_track_manager(self, target_media)
+                except Exception as e:
+                    LOGGER.error(f"Track Manager prompt error: {e}")
+
+        up_path = await self.proceed_reorder(up_path, gid)
+        if self.is_cancelled or not up_path:
+            return
+        self.is_file = await aiopath.isfile(up_path)
+        self.name = up_path.replace(f"{up_dir}/", "").split("/", 1)[0]
+        self.size = await get_path_size(up_dir)
+        self.clear()
 
         if self.ffmpeg_cmds:
             up_path = await self.proceed_ffmpeg(

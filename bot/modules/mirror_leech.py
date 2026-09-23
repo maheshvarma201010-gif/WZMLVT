@@ -1092,11 +1092,18 @@ async def prompt_track_manager(listener, media_file):
         buttons.data_button("Done", f"htmerge tm_done {mid}", position="footer")
         return buttons
 
-    prompt_msg = await send_message(
-        listener.message,
-        f"<b>🎵 Track Manager ({ospath.basename(media_file)}):</b>\nSelect, reorder, or filter audio and subtitle tracks before upload:",
-        render_trackmgr_menu(mid).build_menu(3),
-    )
+    try:
+        prompt_msg = await send_message(
+            listener.user_id,
+            f"<b>🎵 Track Manager ({ospath.basename(media_file)}):</b>\nSelect, reorder, or filter audio and subtitle tracks before upload:",
+            render_trackmgr_menu(mid).build_menu(3),
+        )
+    except Exception:
+        prompt_msg = await send_message(
+            listener.message,
+            f"<b>🎵 Track Manager ({ospath.basename(media_file)}):</b>\nSelect, reorder, or filter audio and subtitle tracks before upload:",
+            render_trackmgr_menu(mid).build_menu(3),
+        )
 
     try:
         await wait_for(event_done, timeout=120)
