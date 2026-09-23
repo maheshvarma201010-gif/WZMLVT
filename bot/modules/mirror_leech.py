@@ -661,6 +661,37 @@ class Mirror(TaskListener):
             await add_aria2_download(self, path, headers, ratio, seed_time)
 
 
+def sync_tm_to_task_info(mid):
+    t_info = ht_tasks.get(mid, {})
+    aud_tracks = t_info.get("tm_aud_tracks", [])
+    sub_tracks = t_info.get("tm_sub_tracks", [])
+
+    aud_order = [tr.get("orig_idx", i) for i, tr in enumerate(aud_tracks) if tr.get("selected", True)]
+    sub_order = [tr.get("orig_idx", j) for j, tr in enumerate(sub_tracks) if tr.get("selected", True)]
+
+    aud_select = [tr.get("orig_idx", i) for i, tr in enumerate(aud_tracks) if tr.get("selected", True)]
+    sub_select = [tr.get("orig_idx", j) for j, tr in enumerate(sub_tracks) if tr.get("selected", True)]
+
+    init_aud = t_info.get("initial_aud_count", len(aud_tracks))
+    init_sub = t_info.get("initial_sub_count", len(sub_tracks))
+
+    if len(aud_order) != init_aud or aud_order != list(range(init_aud)):
+        t_info["aud_order"] = aud_order
+        t_info["aud_select"] = aud_select
+    else:
+        t_info["aud_order"] = None
+        t_info["aud_select"] = None
+
+    if len(sub_order) != init_sub or sub_order != list(range(init_sub)):
+        t_info["sub_order"] = sub_order
+        t_info["sub_select"] = sub_select
+    else:
+        t_info["sub_order"] = None
+        t_info["sub_select"] = None
+
+    t_info["reorder"] = True
+
+
 @new_task
 async def ht_merge_callback(client, query):
     data = query.data.split()
@@ -721,15 +752,18 @@ async def ht_merge_callback(client, query):
                         raw_streams = json.loads(res.stdout).get("streams", [])
                         prob_aud = []
                         prob_sub = []
+                        a_idx, s_idx = 0, 0
                         for st in raw_streams:
                             st_type = st.get("codec_type")
                             idx = st.get("index", 0)
                             lang = st.get("tags", {}).get("language") or st.get("tags", {}).get("title") or "und"
                             codec = st.get("codec_name", "audio")
                             if st_type == "audio":
-                                prob_aud.append({"idx": idx, "orig_idx": idx, "lang": lang, "codec": codec, "selected": True})
+                                prob_aud.append({"idx": a_idx, "orig_idx": a_idx, "global_idx": idx, "lang": lang, "codec": codec, "selected": True})
+                                a_idx += 1
                             elif st_type == "subtitle":
-                                prob_sub.append({"idx": idx, "orig_idx": idx, "lang": lang, "codec": codec, "selected": True})
+                                prob_sub.append({"idx": s_idx, "orig_idx": s_idx, "global_idx": idx, "lang": lang, "codec": codec, "selected": True})
+                                s_idx += 1
                         if prob_aud or prob_sub:
                             aud_tracks = prob_aud
                             sub_tracks = prob_sub
@@ -751,7 +785,7 @@ async def ht_merge_callback(client, query):
         buttons.data_button("Remove Unselected", f"htmerge tm_rem_unselected {mid}")
         buttons.data_button("Keep All", f"htmerge tm_keep_all {mid}")
 
-        buttons.data_button("--- AUDIO TRACKS ---", f"htmerge dummy {mid}")
+        buttons.data_button("--- AUDIO TRACKS ---", f"htmerge dummy {mid}", position="header")
         for i, tr in enumerate(aud_tracks):
             st = "✓" if tr.get("selected", True) else "x"
             lang = tr.get("lang", "und")
@@ -760,7 +794,7 @@ async def ht_merge_callback(client, query):
             buttons.data_button("🔼", f"htmerge tm_up_aud_{i} {mid}")
             buttons.data_button("🔽", f"htmerge tm_down_aud_{i} {mid}")
 
-        buttons.data_button("--- SUBTITLE TRACKS ---", f"htmerge dummy {mid}")
+        buttons.data_button("--- SUBTITLE TRACKS ---", f"htmerge dummy {mid}", position="header")
         for j, tr in enumerate(sub_tracks):
             st = "✓" if tr.get("selected", True) else "x"
             lang = tr.get("lang", "und")
@@ -769,31 +803,8 @@ async def ht_merge_callback(client, query):
             buttons.data_button("🔼", f"htmerge tm_up_sub_{j} {mid}")
             buttons.data_button("🔽", f"htmerge tm_down_sub_{j} {mid}")
 
-        buttons.data_button("Done", f"htmerge back {mid}", position="footer")
+        buttons.data_button("Done", f"htmerge tm_done {mid}", position="footer")
         return buttons
-
-    def sync_tm_to_task_info(mid):
-        t_info = ht_tasks.get(mid, {})
-        aud_tracks = t_info.get("tm_aud_tracks", [])
-        sub_tracks = t_info.get("tm_sub_tracks", [])
-
-        aud_order = [tr.get("orig_idx", i) for i, tr in enumerate(aud_tracks) if tr.get("selected", True)]
-        sub_order = [tr.get("orig_idx", j) for j, tr in enumerate(sub_tracks) if tr.get("selected", True)]
-
-        init_aud = t_info.get("initial_aud_count", len(aud_tracks))
-        init_sub = t_info.get("initial_sub_count", len(sub_tracks))
-
-        if len(aud_order) != init_aud or aud_order != list(range(init_aud)):
-            t_info["aud_order"] = aud_order
-        else:
-            t_info["aud_order"] = None
-
-        if len(sub_order) != init_sub or sub_order != list(range(init_sub)):
-            t_info["sub_order"] = sub_order
-        else:
-            t_info["sub_order"] = None
-
-        t_info["reorder"] = True
 
     if data[1] in ["merge"]:
         key = data[1]
@@ -1013,15 +1024,18 @@ async def prompt_track_manager(listener, media_file):
 
     aud_tracks = []
     sub_tracks = []
+    a_idx, s_idx = 0, 0
     for st in streams:
         st_type = st.get("codec_type")
         idx = st.get("index", 0)
         lang = st.get("tags", {}).get("language") or st.get("tags", {}).get("title") or "und"
         codec = st.get("codec_name", "audio")
         if st_type == "audio":
-            aud_tracks.append({"idx": idx, "orig_idx": idx, "lang": lang, "codec": codec, "selected": True})
+            aud_tracks.append({"idx": a_idx, "orig_idx": a_idx, "global_idx": idx, "lang": lang, "codec": codec, "selected": True})
+            a_idx += 1
         elif st_type == "subtitle":
-            sub_tracks.append({"idx": idx, "orig_idx": idx, "lang": lang, "codec": codec, "selected": True})
+            sub_tracks.append({"idx": s_idx, "orig_idx": s_idx, "global_idx": idx, "lang": lang, "codec": codec, "selected": True})
+            s_idx += 1
 
     if not aud_tracks and not sub_tracks:
         return

@@ -1270,15 +1270,14 @@ class FFMpeg:
         sub_streams = [s for s in streams if s.get("codec_type") == "subtitle"]
         video_streams = [s for s in streams if s.get("codec_type") == "video"]
 
-        if aud_order and len(aud_order) <= len(audio_streams):
+        if aud_order is not None:
             new_aud = []
             for idx in aud_order:
                 if 0 <= idx < len(audio_streams):
                     new_aud.append(audio_streams[idx])
-            for a in audio_streams:
-                if a not in new_aud:
-                    new_aud.append(a)
             audio_streams = new_aud
+        elif aud_select is not None:
+            audio_streams = [a for idx, a in enumerate(audio_streams) if idx in aud_select]
         elif aud_swaps:
             for swap in aud_swaps:
                 if len(swap) == 2 and isinstance(swap[0], int) and isinstance(swap[1], int):
@@ -1286,26 +1285,20 @@ class FFMpeg:
                     if 0 <= i1 < len(audio_streams) and 0 <= i2 < len(audio_streams):
                         audio_streams[i1], audio_streams[i2] = audio_streams[i2], audio_streams[i1]
 
-        if sub_order and len(sub_order) <= len(sub_streams):
+        if sub_order is not None:
             new_sub = []
             for idx in sub_order:
                 if 0 <= idx < len(sub_streams):
                     new_sub.append(sub_streams[idx])
-            for s in sub_streams:
-                if s not in new_sub:
-                    new_sub.append(s)
             sub_streams = new_sub
+        elif sub_select is not None:
+            sub_streams = [s for idx, s in enumerate(sub_streams) if idx in sub_select]
         elif sub_swaps:
             for swap in sub_swaps:
                 if len(swap) == 2 and isinstance(swap[0], int) and isinstance(swap[1], int):
                     i1, i2 = swap[0] - 1, swap[1] - 1
                     if 0 <= i1 < len(sub_streams) and 0 <= i2 < len(sub_streams):
                         sub_streams[i1], sub_streams[i2] = sub_streams[i2], sub_streams[i1]
-
-        if aud_select is not None:
-            audio_streams = [a for idx, a in enumerate(audio_streams) if idx in aud_select or a.get("index") in aud_select]
-        if sub_select is not None:
-            sub_streams = [s for idx, s in enumerate(sub_streams) if idx in sub_select or s.get("index") in sub_select]
 
         cmd = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", f_path]
         for v in video_streams:
