@@ -807,14 +807,14 @@ class TaskConfig:
 
         if not self.thumb:
             user_thumb = self.user_dict.get("THUMBNAIL") or f"thumbnails/{self.user_id}.jpg"
-            if await aiopath.exists(user_thumb):
+            if user_thumb and (await aiopath.exists(user_thumb) or user_thumb.startswith("http") or is_telegram_link(user_thumb)):
                 self.thumb = user_thumb
 
         if self.thumb and self.thumb != "none":
             if is_telegram_link(self.thumb):
                 msg = (await get_tg_link_message(self.thumb))[0]
                 self.thumb = (
-                    await create_thumb(msg) if msg.photo or msg.document else ""
+                    await create_thumb(msg, self.user_id) if msg and (msg.photo or msg.document) else ""
                 )
             elif self.thumb.startswith("http"):
                 self.thumb = await download_image_thumb(self.thumb)

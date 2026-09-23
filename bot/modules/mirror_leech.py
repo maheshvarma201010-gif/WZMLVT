@@ -537,6 +537,21 @@ class Mirror(TaskListener):
             await delete_links(self.message)
             return
 
+        if self.is_leech and (not self.thumb or not await aiopath.exists(self.thumb)):
+            from ..helper.ext_utils.media_utils import create_thumb
+            reply_msg = getattr(self.message, "reply_to_message", None)
+            if self.message.photo or (self.message.document and self.message.document.mime_type and self.message.document.mime_type.startswith("image/")):
+                self.thumb = await create_thumb(self.message, self.user_id)
+            elif reply_msg and (
+                reply_msg.photo
+                or (
+                    reply_msg.document
+                    and reply_msg.document.mime_type
+                    and reply_msg.document.mime_type.startswith("image/")
+                )
+            ):
+                self.thumb = await create_thumb(reply_msg, self.user_id)
+
         self._set_mode_engine()
 
         if self.is_alldebrid and (
