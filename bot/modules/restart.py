@@ -82,8 +82,40 @@ async def _send_msg(cid, msg):
         LOGGER.error(e)
 
 
+async def notify_owner_and_sudos(event_type="Started"):
+    from .. import sudo_users
+    recipients = set()
+    if Config.OWNER_ID:
+        try:
+            recipients.add(int(Config.OWNER_ID))
+        except (ValueError, TypeError):
+            pass
+    for uid in sudo_users:
+        try:
+            recipients.add(int(uid))
+        except (ValueError, TypeError):
+            pass
+
+    if not recipients:
+        return
+
+    now = datetime.now(timezone(Config.TIMEZONE))
+    text = (
+        f"<b>🤖 Bot Notification: {event_type}!</b>\n\n"
+        f"<blockquote>• <b>Date:</b> {now.strftime('%d/%m/%Y')}\n"
+        f"• <b>Time:</b> {now.strftime('%I:%M:%S %p')}\n"
+        f"• <b>TimeZone:</b> {Config.TIMEZONE}\n"
+        f"• <b>Branch:</b> {Config.UPSTREAM_BRANCH}\n"
+        f"• <b>Version:</b> {get_version()}</blockquote>"
+    )
+
+    for uid in recipients:
+        await _send_msg(uid, text)
+
+
 async def restart_notification():
-    if await aiopath.isfile(".restartmsg"):
+    is_restarted = await aiopath.isfile(".restartmsg")
+    if is_restarted:
         try:
             with open(".restartmsg") as f:
                 chat_id, msg_id = map(int, f)
@@ -104,7 +136,7 @@ async def restart_notification():
             finally:
                 await database.drop_incomplete_tasks()
 
-    if await aiopath.isfile(".restartmsg"):
+    if is_restarted:
         try:
             await TgClient.bot.edit_message_text(
                 chat_id=chat_id,
@@ -115,6 +147,9 @@ async def restart_notification():
         except Exception as e:
             LOGGER.error(e)
         await remove(".restartmsg")
+        await notify_owner_and_sudos("Restarted Successfully")
+    else:
+        await notify_owner_and_sudos("Started Successfully")
 
 
 async def _notify_tasks(notifier_dict, restart_chat_id, now):
@@ -202,6 +237,7 @@ async def confirm_restart(_, query):
         intervals["stopAll"] = True
         if data[2] == "soft":
             restart_msg = await send_message(reply_to, "<b>Reloading bot modules... Please wait.</b>")
+            await notify_owner_and_sudos("Soft Reloading")
             await _runtime_reload()
             intervals["stopAll"] = False
             try:
@@ -213,8 +249,10 @@ async def confirm_restart(_, query):
                 )
             except Exception as e:
                 LOGGER.error(e)
+            await notify_owner_and_sudos("Soft Reload Completed")
         else:
             restart_message = await send_message(reply_to, "<b>Restarting bot process... Please wait.</b>")
+            await notify_owner_and_sudos("Going to Shut Down / Restart")
 
             if qb := intervals["qb"]:
                 qb.cancel()
