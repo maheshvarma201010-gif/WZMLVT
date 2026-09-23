@@ -2523,11 +2523,20 @@ async def chthumb_command(client, message):
         await makedirs("thumbnails", exist_ok=True)
 
         if not thumb_url:
-            if reply_to.reply_to_message and (
-                reply_to.reply_to_message.photo
-                or reply_to.reply_to_message.document
-            ):
-                img_msg = reply_to.reply_to_message
+            img_msg = (
+                reply_to.reply_to_message
+                if reply_to.reply_to_message
+                and (
+                    reply_to.reply_to_message.photo
+                    or reply_to.reply_to_message.document
+                )
+                else reply_to
+                if (reply_to.photo or reply_to.document)
+                else message
+                if (message.photo or message.document)
+                else None
+            )
+            if img_msg:
                 created = await create_thumb(img_msg, user_id)
                 if not created or not await aiopath.exists(created):
                     await send_message(

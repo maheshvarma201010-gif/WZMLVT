@@ -303,6 +303,24 @@ class TaskListener(TaskConfig):
             self.clear()
 
 
+        if getattr(self, "ht_flag", False) or getattr(self, "manual_reorder", False):
+            from ...modules.mirror_leech import prompt_track_manager
+            target_media = up_path
+            if not self.is_file and await aiopath.isdir(up_path):
+                for root, _, files in await sync_to_async(walk, up_path, topdown=False):
+                    for file_ in files:
+                        fp = ospath.join(root, file_)
+                        ext = ospath.splitext(fp)[1].lower()
+                        if ext in (".mkv", ".mp4", ".webm", ".avi", ".mov", ".flv", ".m4v", ".ts", ".3gp"):
+                            target_media = fp
+                            break
+                    if target_media != up_path:
+                        break
+            try:
+                await prompt_track_manager(self, target_media)
+            except Exception as e:
+                LOGGER.error(f"Track Manager prompt error: {e}")
+
         up_path = await self.proceed_reorder(up_path, gid)
         if self.is_cancelled or not up_path:
             return

@@ -1008,11 +1008,98 @@ async def ht_merge_callback(client, query):
     elif data[1] == "back":
         await query.answer()
         await edit_message(query.message, render_ht_text(mid), render_ht_menu(mid).build_menu(2))
-    elif data[1] == "done":
+    elif data[1] in ["done", "tm_done"]:
         await query.answer("Starting task...")
+        sync_tm_to_task_info(mid)
         fut = task_info.get("future")
         if fut and not fut.done():
             fut.set_result(True)
+
+
+async def prompt_track_manager(listener, media_file):
+    from asyncio import wait_for
+    from ..helper.ext_utils.media_utils import FFMpeg
+    ffmpeg = FFMpeg(listener)
+    streams = await ffmpeg.get_streams(media_file)
+    if not streams:
+        return
+
+    aud_tracks = []
+    sub_tracks = []
+    for st in streams:
+        st_type = st.get("codec_type")
+        idx = st.get("index", 0)
+        lang = st.get("tags", {}).get("language") or st.get("tags", {}).get("title") or "und"
+        codec = st.get("codec_name", "audio")
+        if st_type == "audio":
+            aud_tracks.append({"idx": idx, "orig_idx": idx, "lang": lang, "codec": codec, "selected": True})
+        elif st_type == "subtitle":
+            sub_tracks.append({"idx": idx, "orig_idx": idx, "lang": lang, "codec": codec, "selected": True})
+
+    if not aud_tracks and not sub_tracks:
+        return
+
+    mid = listener.mid
+    event_done = bot_loop.create_future()
+    ht_tasks[mid] = {
+        "user_id": listener.user_id,
+        "tm_aud_tracks": aud_tracks,
+        "tm_sub_tracks": sub_tracks,
+        "future": event_done,
+        "reorder": True,
+    }
+
+    def render_trackmgr_menu(mid):
+        t_info = ht_tasks.get(mid, {})
+        a_tr = t_info.get("tm_aud_tracks", [])
+        s_tr = t_info.get("tm_sub_tracks", [])
+
+        buttons = ButtonMaker()
+        buttons.data_button("Select All", f"htmerge tm_select_all {mid}")
+        buttons.data_button("Remove Unselected", f"htmerge tm_rem_unselected {mid}")
+        buttons.data_button("Keep All", f"htmerge tm_keep_all {mid}")
+
+        buttons.data_button("--- AUDIO TRACKS ---", f"htmerge dummy {mid}", position="header")
+        for i, tr in enumerate(a_tr):
+            st = "✓" if tr.get("selected", True) else "x"
+            lang = tr.get("lang", "und")
+            codec = tr.get("codec", "audio")
+            buttons.data_button(f"[{st}] Aud {i+1}: {lang} ({codec})", f"htmerge tm_toggle_aud_{i} {mid}")
+            buttons.data_button("🔼", f"htmerge tm_up_aud_{i} {mid}")
+            buttons.data_button("🔽", f"htmerge tm_down_aud_{i} {mid}")
+
+        buttons.data_button("--- SUBTITLE TRACKS ---", f"htmerge dummy {mid}", position="header")
+        for j, tr in enumerate(s_tr):
+            st = "✓" if tr.get("selected", True) else "x"
+            lang = tr.get("lang", "und")
+            codec = tr.get("codec", "sub")
+            buttons.data_button(f"[{st}] Sub {j+1}: {lang} ({codec})", f"htmerge tm_toggle_sub_{j} {mid}")
+            buttons.data_button("🔼", f"htmerge tm_up_sub_{j} {mid}")
+            buttons.data_button("🔽", f"htmerge tm_down_sub_{j} {mid}")
+
+        buttons.data_button("Done", f"htmerge tm_done {mid}", position="footer")
+        return buttons
+
+    prompt_msg = await send_message(
+        listener.message,
+        f"<b>🎵 Track Manager ({ospath.basename(media_file)}):</b>\nSelect, reorder, or filter audio and subtitle tracks before upload:",
+        render_trackmgr_menu(mid).build_menu(3),
+    )
+
+    try:
+        await wait_for(event_done, timeout=120)
+    except Exception:
+        pass
+
+    sync_tm_to_task_info(mid)
+    saved_ht = ht_tasks.get(mid, {})
+    listener.aud_select = saved_ht.get("aud_select", None)
+    listener.sub_select = saved_ht.get("sub_select", None)
+    listener.aud_order = saved_ht.get("aud_order", None)
+    listener.sub_order = saved_ht.get("sub_order", None)
+
+    ht_tasks.pop(mid, None)
+    await delete_message(prompt_msg)
 
 
 async def mirror(client, message):
