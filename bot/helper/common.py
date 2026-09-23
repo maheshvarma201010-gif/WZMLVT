@@ -1621,8 +1621,10 @@ class TaskConfig:
         sub_swaps = getattr(self, "reorder_sub", [])
         aud_select = getattr(self, "aud_select", None)
         sub_select = getattr(self, "sub_select", None)
+        aud_order = getattr(self, "aud_order", None)
+        sub_order = getattr(self, "sub_order", None)
 
-        if aud_swaps or sub_swaps or aud_select is not None or sub_select is not None:
+        if aud_swaps or sub_swaps or aud_select is not None or sub_select is not None or aud_order is not None or sub_order is not None:
             for f_path in all_files:
                 if self.is_cancelled:
                     return False
@@ -1638,7 +1640,15 @@ class TaskConfig:
 
                 async with task_dict_lock:
                     task_dict[self.mid] = FFmpegStatus(self, ffmpeg, gid, "Reorder Streams")
-                await ffmpeg.reorder_tracks(f_path, aud_swaps, sub_swaps, aud_select=aud_select, sub_select=sub_select)
+                await ffmpeg.reorder_tracks(
+                    f_path,
+                    aud_swaps,
+                    sub_swaps,
+                    aud_select=aud_select,
+                    sub_select=sub_select,
+                    aud_order=aud_order,
+                    sub_order=sub_order,
+                )
 
         return dl_path
 

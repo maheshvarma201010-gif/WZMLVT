@@ -50,12 +50,30 @@ async def create_thumb(msg, _id=""):
     else:
         path = "thumbnails"
     await makedirs(path, exist_ok=True)
+    output = ospath.join(path, f"{_id}.jpg")
+
+    if isinstance(msg, str):
+        if msg.startswith(("http://", "https://")):
+            dl = await download_image_thumb(msg)
+            if dl and await aiopath.exists(dl):
+                await move(dl, output)
+                return output
+            return ""
+        elif await aiopath.exists(msg):
+            try:
+                await sync_to_async(_convert_image, msg, output)
+                return output
+            except Exception as e:
+                LOGGER.error(f"Failed to convert image path thumb: {e}")
+                return ""
+        return ""
+
     try:
         photo_dir = await msg.download()
     except Exception as e:
         LOGGER.error(f"Failed to download photo: {e}")
         return ""
-    output = ospath.join(path, f"{_id}.jpg")
+
     try:
         await sync_to_async(_convert_image, photo_dir, output)
     except Exception as e:

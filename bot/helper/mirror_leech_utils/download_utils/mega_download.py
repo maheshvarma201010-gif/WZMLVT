@@ -123,11 +123,11 @@ def _mega_py_download_sync(listener, path, email, password):
         if "/folder/" in url:
             m = re.search(r"/folder/([^#]+)#(.*)", url)
             if m:
-                return f"F!{m.group(1)}!{m.group(2)}"
+                return f"{m.group(1)}!{m.group(2)}"
         if "/#F!" in url:
             m = re.search(r"/#F!(.*)", url)
             if m:
-                return f"F!{m.group(1)}"
+                return m.group(1)
         if "/#!" in url:
             m = re.search(r"/#!(.*)", url)
             if m:

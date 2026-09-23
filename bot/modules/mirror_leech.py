@@ -743,6 +743,8 @@ async def ht_merge_callback(client, query):
 
             t_info["tm_aud_tracks"] = aud_tracks
             t_info["tm_sub_tracks"] = sub_tracks
+            t_info["initial_aud_count"] = len(aud_tracks)
+            t_info["initial_sub_count"] = len(sub_tracks)
 
         buttons = ButtonMaker()
         buttons.data_button("Select All", f"htmerge tm_select_all {mid}")
@@ -775,31 +777,22 @@ async def ht_merge_callback(client, query):
         aud_tracks = t_info.get("tm_aud_tracks", [])
         sub_tracks = t_info.get("tm_sub_tracks", [])
 
-        aud_order = [tr.get("orig_idx", i) for i, tr in enumerate(aud_tracks)]
-        sub_order = [tr.get("orig_idx", j) for j, tr in enumerate(sub_tracks)]
+        aud_order = [tr.get("orig_idx", i) for i, tr in enumerate(aud_tracks) if tr.get("selected", True)]
+        sub_order = [tr.get("orig_idx", j) for j, tr in enumerate(sub_tracks) if tr.get("selected", True)]
 
-        aud_select = [i for i, tr in enumerate(aud_tracks) if tr.get("selected", True)]
-        sub_select = [j for j, tr in enumerate(sub_tracks) if tr.get("selected", True)]
+        init_aud = t_info.get("initial_aud_count", len(aud_tracks))
+        init_sub = t_info.get("initial_sub_count", len(sub_tracks))
 
-        t_info["aud_order"] = aud_order
-        t_info["sub_order"] = sub_order
-        t_info["aud_select"] = aud_select if len(aud_select) < len(aud_tracks) else None
-        t_info["sub_select"] = sub_select if len(sub_select) < len(sub_tracks) else None
+        if len(aud_order) != init_aud or aud_order != list(range(init_aud)):
+            t_info["aud_order"] = aud_order
+        else:
+            t_info["aud_order"] = None
 
-        aud_swaps = []
-        for new_pos, tr in enumerate(aud_tracks, start=1):
-            orig_pos = tr.get("orig_idx", new_pos - 1) + 1
-            if orig_pos != new_pos:
-                aud_swaps.append([orig_pos, new_pos])
+        if len(sub_order) != init_sub or sub_order != list(range(init_sub)):
+            t_info["sub_order"] = sub_order
+        else:
+            t_info["sub_order"] = None
 
-        sub_swaps = []
-        for new_pos, tr in enumerate(sub_tracks, start=1):
-            orig_pos = tr.get("orig_idx", new_pos - 1) + 1
-            if orig_pos != new_pos:
-                sub_swaps.append([orig_pos, new_pos])
-
-        t_info["reorder_aud"] = aud_swaps
-        t_info["reorder_sub"] = sub_swaps
         t_info["reorder"] = True
 
     if data[1] in ["merge"]:
@@ -1039,14 +1032,14 @@ async def prompt_track_manager(listener, media_file):
         "user_id": listener.user_id,
         "tm_aud_tracks": aud_tracks,
         "tm_sub_tracks": sub_tracks,
+        "initial_aud_count": len(aud_tracks),
+        "initial_sub_count": len(sub_tracks),
         "future": event_done,
         "reorder": True,
     }
 
     def render_trackmgr_menu(mid):
         t_info = ht_tasks.get(mid, {})
-        a_tr = t_info.get("tm_aud_tracks", [])
-        s_tr = t_info.get("tm_sub_tracks", [])
 
         buttons = ButtonMaker()
         buttons.data_button("Select All", f"htmerge tm_select_all {mid}")
