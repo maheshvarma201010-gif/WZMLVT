@@ -34,7 +34,7 @@ pyyaml
 qbittorrent-api
 niquests
 speedtest-cli
-tenacity>=8.2.0
+tenacity>=9.0.0
 uvicorn
 uvloop
 xattr
