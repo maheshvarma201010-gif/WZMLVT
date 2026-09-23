@@ -28,7 +28,7 @@ from ..ext_utils.task_manager import clear_task_state
 from ...core.tg_client import TgClient
 from ...core.config_manager import Config
 from ...core.torrent_manager import TorrentManager
-from ..ext_utils.bot_utils import sync_to_async
+from ..ext_utils.bot_utils import parse_dest, sync_to_async
 from ..ext_utils.links_utils import encode_slink
 from ..ext_utils.db_handler import database
 from ..ext_utils.files_utils import (
@@ -70,6 +70,7 @@ from ..telegram_helper.message_utils import (
 class TaskListener(TaskConfig):
     def __init__(self):
         super().__init__()
+        self.download_retry_count = 0
 
     async def clean(self):
         with suppress(Exception):
@@ -774,6 +775,17 @@ class TaskListener(TaskConfig):
         await start_from_queued()
 
     async def on_download_error(self, error, button=None, is_limit=False):
+        if not is_limit and self.download_retry_count < 2 and not self.is_cancelled:
+            self.download_retry_count += 1
+            LOGGER.warning(
+                f"Silent download retry {self.download_retry_count}/2 for task {self.name or self.mid}: {error}"
+            )
+            await clean_download(self.dir)
+            if hasattr(self, "new_event") and callable(self.new_event):
+                await sleep(2)
+                bot_loop.create_task(self.new_event())
+                return
+
         if hasattr(self, "task_key") and self.task_key:
             await clear_task_state(self.task_key)
         async with task_dict_lock:

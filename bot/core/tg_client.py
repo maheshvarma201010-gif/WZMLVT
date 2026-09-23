@@ -5,6 +5,7 @@ from pyrogram.errors import FloodWait
 from asyncio import Lock, gather, sleep
 from hashlib import sha256
 from inspect import signature
+from re import split as re_split
 
 from .. import LOGGER, bot_loop
 from .config_manager import Config
@@ -135,6 +136,7 @@ class TgClient:
         if not Config.HELPER_TOKENS:
             return
         LOGGER.info("Generating helper client from HELPER_TOKENS")
+        tokens = [t.strip() for t in re_split(r"[\s,]+", Config.HELPER_TOKENS) if t.strip()]
         bot_proxies = cls._parse_proxies(Config.HELPER_BOT_PROXIES)
         async with cls._hlock:
             await gather(
@@ -146,7 +148,7 @@ class TgClient:
                         if bot_proxies and no - 1 < len(bot_proxies)
                         else None,
                     )
-                    for no, b_token in enumerate(Config.HELPER_TOKENS.split(), start=1)
+                    for no, b_token in enumerate(tokens, start=1)
                 )
             )
 
@@ -195,13 +197,12 @@ class TgClient:
         if not Config.STREAM_TOKENS:
             return
         LOGGER.info("Generating stream client from STREAM_TOKENS")
+        tokens = [t.strip() for t in re_split(r"[\s,]+", Config.STREAM_TOKENS) if t.strip()]
         async with cls._slock:
             await gather(
                 *(
                     cls.start_sclient(no, b_token)
-                    for no, b_token in enumerate(
-                        Config.STREAM_TOKENS.split(), start=1
-                    )
+                    for no, b_token in enumerate(tokens, start=1)
                 )
             )
 
@@ -254,6 +255,7 @@ class TgClient:
         if not Config.HELPER_STRINGS:
             return
         LOGGER.info("Generating helper client from HELPER_STRINGS")
+        sessions = [s.strip() for s in re_split(r"[\s,]+", Config.HELPER_STRINGS) if s.strip()]
         user_proxies = cls._parse_proxies(Config.HELPER_USER_PROXIES)
         async with cls._ulock:
             await gather(
@@ -265,9 +267,7 @@ class TgClient:
                         if user_proxies and no - 1 < len(user_proxies)
                         else None,
                     )
-                    for no, session_string in enumerate(
-                        Config.HELPER_STRINGS.split(), start=1
-                    )
+                    for no, session_string in enumerate(sessions, start=1)
                 )
             )
 
