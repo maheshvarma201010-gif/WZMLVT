@@ -20,12 +20,18 @@ from ..status_utils.yt_dlp_status import YtDlpStatus
 LOGGER = getLogger(__name__)
 
 
-def get_cookie_file(user_dict):
+def get_cookie_file(user_dict, user_id=None):
     if not user_dict.get("USE_DEFAULT_COOKIE", False):
         usr_cookie = user_dict.get("USER_COOKIE_FILE", "")
         if usr_cookie and ospath.exists(usr_cookie):
             return usr_cookie
-    return "cookies.txt"
+        if user_id:
+            uid_cookie = f"cookies/{user_id}/cookies.txt"
+            if ospath.exists(uid_cookie):
+                return uid_cookie
+    if ospath.exists("cookies.txt"):
+        return "cookies.txt"
+    return ""
 
 
 class MyLogger:
@@ -87,8 +93,13 @@ class YoutubeDLHelper:
                 "file_access": lambda n: 3,
                 "extractor": lambda n: 3,
             },
+            "extractor_args": {
+                "youtube": {
+                    "player_client": ["ios", "web", "mweb", "tv"],
+                }
+            },
         }
-        cookie_to_use = get_cookie_file(self._listener.user_dict)
+        cookie_to_use = get_cookie_file(self._listener.user_dict, self._listener.user_id)
         self.opts["cookiefile"] = cookie_to_use
         LOGGER.info(
             f"Using cookies.txt file: {cookie_to_use} | User ID : {self._listener.user_id}"

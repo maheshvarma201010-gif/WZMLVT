@@ -477,7 +477,7 @@ class YtDlp(TaskListener):
 
         self._set_mode_engine()
 
-        cookie_to_use = get_cookie_file(self.user_dict)
+        cookie_to_use = get_cookie_file(self.user_dict, self.user_id)
         LOGGER.info(
             f"Using cookies.txt file: {cookie_to_use} | User ID : {self.user_id}"
         )
