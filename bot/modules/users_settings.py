@@ -1962,6 +1962,20 @@ async def edit_user_settings(client, query):
     elif data[2] == "setevent":
         await query.answer()
     elif data[2] in [
+        "enc_com_wm",
+        "encode_menu",
+        "compress_menu",
+        "watermark_menu",
+    ]:
+        from ..helper.telegram_helper.filters import CustomFilters
+        if not await CustomFilters.sudo(client, query):
+            return await query.answer(
+                "Not allowed! This feature is restricted to Owner/Sudo users only.",
+                show_alert=True,
+            )
+        await query.answer()
+        await update_user_settings(query, data[2])
+    elif data[2] in [
         "general",
         "mirror",
         "leech",
@@ -1977,10 +1991,6 @@ async def edit_user_settings(client, query):
         "advanced",
         "gdrive",
         "rclone",
-        "enc_com_wm",
-        "encode_menu",
-        "compress_menu",
-        "watermark_menu",
     ]:
         await query.answer()
         await update_user_settings(query, data[2])
@@ -2123,6 +2133,13 @@ async def edit_user_settings(client, query):
         start = int(data[3]) if len(data) > 3 and data[3].isdigit() else 0
         await get_menu("FFMPEG_CMDS", message, user_id, start=start)
     elif data[2] == "tog":
+        if data[3] in ["ENABLE_ENCODE", "ENABLE_COMPRESS", "ENABLE_WATERMARK"]:
+            from ..helper.telegram_helper.filters import CustomFilters
+            if not await CustomFilters.sudo(client, query):
+                return await query.answer(
+                    "Not allowed! This feature is restricted to Owner/Sudo users only.",
+                    show_alert=True,
+                )
         await query.answer()
         update_user_ldata(user_id, data[3], data[4] == "t")
         if len(data) > 5:
