@@ -3,11 +3,11 @@ from tempfile import mkdtemp
 
 try:
     from mega import MegaApi, MegaError, MegaListener, MegaRequest
-except ImportError:
+except (ImportError, SyntaxError, Exception):
     try:
         from mega import Mega as PyMega
         MegaApi = MegaError = MegaRequest = None
-    except ImportError:
+    except (ImportError, SyntaxError, Exception):
         PyMega = MegaApi = MegaError = MegaRequest = None
     class MegaListener:
         pass

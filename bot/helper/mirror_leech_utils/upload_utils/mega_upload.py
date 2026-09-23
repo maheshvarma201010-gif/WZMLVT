@@ -12,7 +12,7 @@ from secrets import token_hex
 from aiofiles.os import makedirs, path as aiopath
 try:
     from mega import MegaApi, MegaCancelToken
-except ImportError:
+except (ImportError, SyntaxError, Exception):
     MegaApi = MegaCancelToken = None
 
 from .... import LOGGER, task_dict, task_dict_lock
