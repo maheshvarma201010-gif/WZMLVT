@@ -94,6 +94,16 @@ class HypertgUpload(HypertgTransfer):
             key = "documents"
             if is_video and thumb is None:
                 thumb = await get_video_thumbnail(file_path, None)
+            if thumb and thumb != "none" and await aiopath.exists(thumb):
+                doc_thumb = f"{thumb}_320.jpg"
+                try:
+                    with Image.open(thumb) as img:
+                        img = img.convert("RGB")
+                        img.thumbnail((320, 320), Image.Resampling.LANCZOS if hasattr(Image, "Resampling") else Image.LANCZOS)
+                        img.save(doc_thumb, "JPEG", quality=90)
+                    thumb = doc_thumb
+                except Exception as e:
+                    LOGGER.warning(f"Document thumbnail formatting error: {e}")
         elif is_video:
             key = "videos"
             duration = (await get_media_info(file_path))[0]

@@ -38,7 +38,9 @@ def get_md5_hash(up_path):
 
 def _convert_image(src, dst):
     with Image.open(src) as im:
-        im.convert("RGB").save(dst, "JPEG", quality=95)
+        im = im.convert("RGB")
+        im.thumbnail((1280, 1280), Image.Resampling.LANCZOS if hasattr(Image, "Resampling") else Image.LANCZOS)
+        im.save(dst, "JPEG", quality=90)
 
 
 async def create_thumb(msg, _id=""):

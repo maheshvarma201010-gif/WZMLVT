@@ -805,6 +805,11 @@ class TaskConfig:
                     and getattr(Config, "AUTO_MERGE", False)
                 )
 
+            if not self.thumb:
+                user_thumb = self.user_dict.get("THUMBNAIL") or f"thumbnails/{self.user_id}.jpg"
+                if await aiopath.exists(user_thumb):
+                    self.thumb = user_thumb
+
             if self.thumb and self.thumb != "none":
                 if is_telegram_link(self.thumb):
                     msg = (await get_tg_link_message(self.thumb))[0]

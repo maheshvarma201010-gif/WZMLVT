@@ -56,7 +56,7 @@ class TelegramUploader:
         self._path = path
         self._start_time = time()
         self._total_files = 0
-        self._thumb = self._listener.thumb or f"thumbnails/{listener.user_id}.jpg"
+        self._thumb = self._listener.thumb or listener.user_dict.get("THUMBNAIL") or f"thumbnails/{listener.user_id}.jpg"
         self._msgs_dict = {}
         self._corrupted = 0
         self._is_corrupted = False
