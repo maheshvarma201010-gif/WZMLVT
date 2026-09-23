@@ -2590,12 +2590,16 @@ async def chthumb_command(client, message):
             await edit_message(status_msg, f"<b>Failed to update cover:</b> {escape(str(e))}")
         return
 
-    # Case 2: Reply to photo, image URL, or image document -> prompt for video
+    # Case 2: Set thumbnail from photo reply, image document reply, image URL, or photo attached to /chthumb
     thumb_path = f"thumbnails/{user_id}.jpg"
     await makedirs("thumbnails", exist_ok=True)
 
     img_source = None
-    if reply_to:
+    if message.photo or (
+        message.document and message.document.mime_type and message.document.mime_type.startswith("image/")
+    ):
+        img_source = message
+    elif reply_to:
         if reply_to.photo or (
             reply_to.document and reply_to.document.mime_type and reply_to.document.mime_type.startswith("image/")
         ):
@@ -2627,13 +2631,13 @@ async def chthumb_command(client, message):
         _PENDING_CHTHUMB[user_id] = thumb_path
         await send_message(
             message,
-            "<b>🖼️ Thumbnail saved!</b>\n\nNow send or reply with a <b>video</b> to apply this thumbnail/cover.",
+            "<b>🖼️ Thumbnail saved successfully!</b>\nIt will automatically be applied to all your uploaded Telegram documents and videos.",
         )
         return
 
     await send_message(
         message,
-        "<blockquote>Reply to a video with <code>/chthumb &lt;image_url&gt;</code> or reply to an image/photo with <code>/chthumb</code>.</blockquote>",
+        "<blockquote>Set thumbnail using <code>/chthumb &lt;image_url&gt;</code>, or reply to an image/photo with <code>/chthumb</code>, or send a photo with caption <code>/chthumb</code>.</blockquote>",
     )
 
 
