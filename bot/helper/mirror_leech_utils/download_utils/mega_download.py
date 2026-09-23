@@ -117,23 +117,23 @@ def _mega_py_download_sync(listener, path, email, password):
     def _patched_parse_url(self, url):
         url = url.strip().replace(" ", "")
         if "/file/" in url:
-            m = re.search(r"/file/([^#]+)#(.*)", url)
+            m = re.search(r"/file/([^#?]+)#([^?]+)", url)
             if m:
                 return f"{m.group(1)}!{m.group(2)}"
         if "/folder/" in url:
-            m = re.search(r"/folder/([^#]+)#(.*)", url)
+            m = re.search(r"/folder/([^#?]+)#([^?]+)", url)
             if m:
                 return f"{m.group(1)}!{m.group(2)}"
         if "/#F!" in url:
-            m = re.search(r"/#F!(.*)", url)
+            m = re.search(r"/#F!([^?]+)", url)
             if m:
                 return m.group(1)
         if "/#!" in url:
-            m = re.search(r"/#!(.*)", url)
+            m = re.search(r"/#!([^?]+)", url)
             if m:
                 return m.group(1)
         if "!" in url:
-            m = re.search(r"!(.*)", url)
+            m = re.search(r"!?([a-zA-Z0-9_-]+![a-zA-Z0-9_-]+)", url)
             if m:
                 return m.group(1)
         raise ValueError(f"Invalid Mega URL format: {url}")

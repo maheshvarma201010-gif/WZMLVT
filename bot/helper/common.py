@@ -1256,10 +1256,11 @@ class TaskConfig:
         if self.is_file:
             up_dir, name = dl_path.rsplit("/", 1)
             new_name = perform_swap(name, self.name_swap)
-            if not new_name:
+            if not new_name or new_name == name:
                 return dl_path
             new_path = ospath.join(up_dir, new_name)
             await move(dl_path, new_path)
+            self.name = new_name
             return new_path
         else:
             for dirpath, _, files in await sync_to_async(walk, dl_path, topdown=False):

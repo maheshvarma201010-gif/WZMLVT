@@ -94,9 +94,20 @@ class TelegramUploader:
             )
 
         user_thumb = self._listener.thumb or self._listener.user_dict.get("THUMBNAIL") or f"thumbnails/{self._listener.user_id}.jpg"
-        if user_thumb and user_thumb != "none" and await aiopath.exists(user_thumb):
-            self._thumb = user_thumb
-            self._listener.thumb = user_thumb
+        if user_thumb and user_thumb != "none":
+            if await aiopath.exists(user_thumb):
+                self._thumb = user_thumb
+                self._listener.thumb = user_thumb
+            elif isinstance(user_thumb, str) and user_thumb.startswith(("http://", "https://")):
+                from ...ext_utils.media_utils import download_image_thumb
+                downloaded = await download_image_thumb(user_thumb)
+                if downloaded and await aiopath.exists(downloaded):
+                    self._thumb = downloaded
+                    self._listener.thumb = downloaded
+                else:
+                    self._thumb = None
+            else:
+                self._thumb = None
         else:
             self._thumb = None
 
@@ -248,8 +259,12 @@ class TelegramUploader:
 
         old_path = ospath.join(dirpath, pre_file_)
         new_path = ospath.join(dirpath, file_)
-        if old_path != new_path:
-            await rename(old_path, new_path)
+        if old_path != new_path and not await aiopath.exists(new_path):
+            try:
+                await rename(old_path, new_path)
+            except Exception as e:
+                LOGGER.warning(f"Failed to rename {old_path} to {new_path}: {e}")
+                new_path = old_path
 
         return new_path, cap_mono
 

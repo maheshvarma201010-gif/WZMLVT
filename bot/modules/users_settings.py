@@ -1322,13 +1322,12 @@ Configure custom video encoding, compression, and watermark overlays for uploads
             f"userset {user_id} tog ENABLE_FFMPEG_CMDS {'f' if enable_ffc else 't'}",
             position="header",
         )
-        if enable_ffc:
-            buttons.data_button(
-                "FFmpeg Cmds", f"userset {user_id} menu FFMPEG_CMDS", "header"
-            )
-            buttons.data_button(
-                "DUMP", f"userset {user_id} menu FFMPEG_DUMP", "header"
-            )
+        buttons.data_button(
+            "FFmpeg Cmds", f"userset {user_id} menu FFMPEG_CMDS", "header"
+        )
+        buttons.data_button(
+            "DUMP", f"userset {user_id} menu FFMPEG_DUMP", "header"
+        )
 
         avail_keys = list(Config.FFMPEG_CMDS.keys()) if isinstance(Config.FFMPEG_CMDS, dict) else []
         if avail_keys:
