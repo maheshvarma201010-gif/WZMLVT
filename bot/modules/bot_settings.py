@@ -416,6 +416,7 @@ async def get_buttons(key=None, edit_type=None, edit_mode=False):
         msg = "<b>⚙️ Global Bot Settings Dashboard</b>\n\n<blockquote>Select a category to configure global bot settings.</blockquote>"
     elif key == "ffmpegcmds":
         buttons.data_button("Add/Edit FFmpeg Cmds", "botset editff edit")
+        buttons.data_button("Delete Specific Preset", "botset delff open")
         buttons.data_button("Reset FFmpeg Cmds", "botset resetff")
         buttons.data_button("Back", "botset back")
         buttons.data_button("Close", "botset close", style=ButtonStyle.DANGER)
@@ -440,6 +441,13 @@ async def get_buttons(key=None, edit_type=None, edit_mode=False):
                 )
         if edit_mode:
             msg += "\n\n<blockquote>Send dict format: <code>{'tel': ['cmd1', 'cmd2']}</code> or single entry format: <code>KEY: command</code>\n⏱️ <b>Time Left:</b> <code>60 sec</code></blockquote>"
+    elif key == "delff":
+        buttons.data_button("Back", "botset ffmpegcmds", position="footer")
+        buttons.data_button("Close", "botset close", position="footer", style=ButtonStyle.DANGER)
+        ff_items = list(Config.FFMPEG_CMDS.keys()) if Config.FFMPEG_CMDS and isinstance(Config.FFMPEG_CMDS, dict) else []
+        for k in ff_items:
+            buttons.data_button(f"🗑️ Delete '{k}'", f"botset delff do {k}")
+        msg = f"<b>🎬 Select FFmpeg Preset Key to Delete:</b>\n\n<blockquote>Available keys: <code>{', '.join(ff_items) or 'None'}</code></blockquote>"
     elif key == "dumpcmds":
         buttons.data_button("Add/Edit DUMP", "botset editdump edit")
         buttons.data_button("Reset DUMP", "botset resetdump")
@@ -1790,6 +1798,21 @@ async def edit_bot_settings(client, query):
         )
         rfunc = partial(update_buttons, message, key)
         await event_handler(client, query, pfunc, rfunc)
+    elif data[1] == "delff":
+        if len(data) > 2 and data[2] == "open":
+            await query.answer()
+            await update_buttons(message, "delff")
+        elif len(data) > 3 and data[2] == "do":
+            preset_key = data[3]
+            current_ff = dict(Config.FFMPEG_CMDS or {})
+            if preset_key in current_ff:
+                current_ff.pop(preset_key, None)
+                Config.set("FFMPEG_CMDS", current_ff)
+                await database.update_config({"FFMPEG_CMDS": current_ff})
+                await query.answer(f"Preset '{preset_key}' deleted!", show_alert=True)
+            else:
+                await query.answer(f"Preset '{preset_key}' not found!", show_alert=True)
+            await update_buttons(message, "ffmpegcmds")
     elif data[1] in ("resetff", "resetdump"):
         await query.answer()
         target_var = "FFMPEG_CMDS" if data[1] == "resetff" else "FFMPEG_DUMP"

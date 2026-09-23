@@ -55,6 +55,7 @@ from .users_settings import (
     send_user_settings,
     chthumb_command,
 )
+from .request_ff import request_ff, reqff_callback
 from .ytdlp import ytdl, ytdl_leech
 
 __all__ = [
@@ -133,6 +134,8 @@ __all__ = [
     "edit_user_settings",
     "send_user_settings",
     "chthumb_command",
+    "request_ff",
+    "reqff_callback",
     "ytdl",
     "ytdl_leech",
 ]

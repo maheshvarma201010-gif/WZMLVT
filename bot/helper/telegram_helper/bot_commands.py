@@ -57,6 +57,7 @@ class BotCommands:
         "Plugins": "plugins",
         "Memory": ["memory", "mem"],
         "ChThumb": "chthumb",
+        "RequestFF": ["requestff", "reqff"],
     }
 
     @classmethod

@@ -449,6 +449,16 @@ async def add_handlers():
             filters=CustomFilters.authorized,
         )
     )
+    TgClient.bot.add_handler(
+        MessageHandler(
+            request_ff,
+            filters=command(BotCommands.RequestFFCommand, case_sensitive=True)
+            & CustomFilters.authorized,
+        )
+    )
+    TgClient.bot.add_handler(
+        CallbackQueryHandler(reqff_callback, filters=regex("^reqff"))
+    )
     if Config.SET_COMMANDS:
         global BOT_COMMANDS
 
