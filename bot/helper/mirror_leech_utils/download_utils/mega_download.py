@@ -107,12 +107,49 @@ async def _release_link(link: str):
 
 
 def _mega_py_download_sync(listener, path, email, password):
+    import re
     try:
         from mega import Mega
         mega = Mega()
     except Exception as e:
         raise ImportError(f"Mega module import failed: {e}")
-    m = mega.login(email, password) if email and password else mega.login()
+
+    def _patched_parse_url(self, url):
+        url = url.strip().replace(" ", "")
+        if "/file/" in url:
+            m = re.search(r"/file/([^#]+)#(.*)", url)
+            if m:
+                return f"{m.group(1)}!{m.group(2)}"
+        if "/folder/" in url:
+            m = re.search(r"/folder/([^#]+)#(.*)", url)
+            if m:
+                return f"{m.group(1)}!{m.group(2)}"
+        if "/#F!" in url:
+            m = re.search(r"/#F!(.*)", url)
+            if m:
+                return m.group(1)
+        if "/#!" in url:
+            m = re.search(r"/#!(.*)", url)
+            if m:
+                return m.group(1)
+        if "!" in url:
+            m = re.search(r"!(.*)", url)
+            if m:
+                return m.group(1)
+        raise ValueError(f"Invalid Mega URL format: {url}")
+
+    Mega._parse_url = _patched_parse_url
+
+    m = None
+    if email and password:
+        try:
+            m = mega.login(email, password)
+        except Exception as e:
+            LOGGER.warning(f"Mega user login failed, falling back to anonymous: {e}")
+            m = None
+    if m is None:
+        m = mega.login()
+
     downloaded_path = m.download_url(listener.link, dest_path=path)
     return downloaded_path
 

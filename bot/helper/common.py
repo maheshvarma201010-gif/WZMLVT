@@ -805,6 +805,11 @@ class TaskConfig:
                     and getattr(Config, "AUTO_MERGE", False)
                 )
 
+            if not self.thumb:
+                user_thumb = self.user_dict.get("THUMBNAIL") or f"thumbnails/{self.user_id}.jpg"
+                if await aiopath.exists(user_thumb):
+                    self.thumb = user_thumb
+
             if self.thumb and self.thumb != "none":
                 if is_telegram_link(self.thumb):
                     msg = (await get_tg_link_message(self.thumb))[0]
@@ -1614,8 +1619,12 @@ class TaskConfig:
         ffmpeg = FFMpeg(self)
         aud_swaps = getattr(self, "reorder_aud", [])
         sub_swaps = getattr(self, "reorder_sub", [])
+        aud_select = getattr(self, "aud_select", None)
+        sub_select = getattr(self, "sub_select", None)
+        aud_order = getattr(self, "aud_order", None)
+        sub_order = getattr(self, "sub_order", None)
 
-        if aud_swaps or sub_swaps:
+        if aud_swaps or sub_swaps or aud_select is not None or sub_select is not None or aud_order is not None or sub_order is not None:
             for f_path in all_files:
                 if self.is_cancelled:
                     return False
@@ -1631,7 +1640,15 @@ class TaskConfig:
 
                 async with task_dict_lock:
                     task_dict[self.mid] = FFmpegStatus(self, ffmpeg, gid, "Reorder Streams")
-                await ffmpeg.reorder_tracks(f_path, aud_swaps, sub_swaps)
+                await ffmpeg.reorder_tracks(
+                    f_path,
+                    aud_swaps,
+                    sub_swaps,
+                    aud_select=aud_select,
+                    sub_select=sub_select,
+                    aud_order=aud_order,
+                    sub_order=sub_order,
+                )
 
         return dl_path
 
@@ -1760,10 +1777,8 @@ class TaskConfig:
         if custom_name:
             out_base = custom_name
         else:
-            out_base = self.name
-            if not out_base or out_base == "None":
-                main_f = v_files[0] if v_files else (a_files[0] if a_files else all_files[0])
-                out_base = ospath.basename(main_f)
+            main_f = v_files[0] if v_files else (a_files[0] if a_files else all_files[0])
+            out_base = ospath.basename(main_f)
 
         for non_vid_ext in [".zip", ".7z", ".rar", ".tar", ".gz", ".xz", ".pdf", ".txt", ".bin", ".tmp", ".001", ".part1"]:
             if out_base.lower().endswith(non_vid_ext):
@@ -1776,6 +1791,7 @@ class TaskConfig:
         else:
             out_filename = out_base
 
+        self.name = out_filename
         output_file = ospath.join(work_dir, out_filename)
 
         ffmpeg = FFMpeg(self)
@@ -1784,6 +1800,9 @@ class TaskConfig:
 
         a_langs = []
         for af in a_files:
+            if self.extract:
+                a_langs.append("eng")
+                continue
             prompt_str = f"<b>🗣️ Track Language:</b>\nPlease send the language name for audio track: <code>{ospath.basename(af)}</code>\n⏱️ <i>Timeout: 30s</i>"
             prompt_msg = await send_message(self.user_id, prompt_str)
             lang = "eng"
@@ -1817,6 +1836,9 @@ class TaskConfig:
 
         s_langs = []
         for sf in s_files:
+            if self.extract:
+                s_langs.append("eng")
+                continue
             prompt_str = f"<b>📝 Track Language:</b>\nPlease send the language name for subtitle track: <code>{ospath.basename(sf)}</code>\n⏱️ <i>Timeout: 30s</i>"
             prompt_msg = await send_message(self.user_id, prompt_str)
             lang = "eng"

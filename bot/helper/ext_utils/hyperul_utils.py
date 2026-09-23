@@ -54,31 +54,10 @@ class HypertgUpload(HypertgTransfer):
 
         is_video, is_audio, is_image = await get_document_type(file_path)
 
-        thumb = user_thumb if user_thumb and user_thumb != "none" else None
-
-        if not is_image and thumb is None:
-            file_name = ospath.splitext(self._up_file)[0]
-            base_path = getattr(self._obj, "_path", "")
-            thumb_path = f"{base_path}/yt-dlp-thumb/{file_name}.jpg"
-            if await aiopath.isfile(thumb_path):
-                thumb = thumb_path
-            elif await aiopath.isfile(thumb_path.replace("/yt-dlp-thumb", "")):
-                thumb = thumb_path.replace("/yt-dlp-thumb", "")
-            elif is_audio and not is_video:
-                thumb = await get_audio_thumbnail(file_path)
-
-        if not is_image and thumb is None and user_thumb is None:
-            user_dict = self._listener.user_dict
-            if user_dict.get("AUTO_THUMBNAIL") or (
-                "AUTO_THUMBNAIL" not in user_dict and Config.AUTO_THUMBNAIL
-            ):
-                try:
-                    thumb = await get_auto_thumbnail(
-                        self._up_file or self._listener.name,
-                        force_document or self._listener.as_doc,
-                    )
-                except Exception as e:
-                    LOGGER.warning(f"Auto thumbnail failed: {e}")
+        if user_thumb and user_thumb != "none" and await aiopath.exists(user_thumb):
+            thumb = user_thumb
+        else:
+            thumb = None
 
         duration = 0
         width = 480
@@ -92,20 +71,20 @@ class HypertgUpload(HypertgTransfer):
             or (not is_video and not is_audio and not is_image)
         ):
             key = "documents"
-            if is_video and thumb is None:
-                thumb = await get_video_thumbnail(file_path, None)
+            if thumb and thumb != "none" and await aiopath.exists(thumb):
+                doc_thumb = f"{thumb}_320.jpg"
+                try:
+                    with Image.open(thumb) as img:
+                        img = img.convert("RGB")
+                        img.thumbnail((320, 320), Image.Resampling.LANCZOS if hasattr(Image, "Resampling") else Image.LANCZOS)
+                        img.save(doc_thumb, "JPEG", quality=90)
+                    thumb = doc_thumb
+                except Exception as e:
+                    LOGGER.warning(f"Document thumbnail formatting error: {e}")
         elif is_video:
             key = "videos"
             duration = (await get_media_info(file_path))[0]
-            if thumb is None and self._listener.thumbnail_layout:
-                thumb = await get_multiple_frames_thumbnail(
-                    file_path,
-                    self._listener.thumbnail_layout,
-                    self._listener.screen_shots,
-                )
-            if thumb is None:
-                thumb = await get_video_thumbnail(file_path, duration)
-            if thumb is not None and thumb != "none":
+            if thumb is not None and thumb != "none" and await aiopath.exists(thumb):
                 with Image.open(thumb) as img:
                     width, height = img.size
         elif is_audio:
@@ -192,11 +171,18 @@ class HypertgUpload(HypertgTransfer):
             LOGGER.error(f"HypertgUL fail {self._up_file}: {type(e).__name__}: {e}")
             raise
         finally:
-            if user_thumb is None and thumb is not None and await aiopath.exists(thumb):
+            if thumb and thumb.endswith("_320.jpg") and await aiopath.exists(thumb):
                 try:
                     await remove(thumb)
                 except Exception:
                     pass
+            elif user_thumb is None and thumb is not None and await aiopath.exists(thumb):
+                user_perm_thumb = self._listener.user_dict.get("THUMBNAIL") or f"thumbnails/{self._listener.user_id}.jpg"
+                if thumb != user_perm_thumb and thumb != f"thumbnails/{self._listener.user_id}.jpg":
+                    try:
+                        await remove(thumb)
+                    except Exception:
+                        pass
 
     async def _send_with_retry(self, send_func, **kwargs):
         while True:

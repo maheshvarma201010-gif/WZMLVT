@@ -3,7 +3,7 @@ from html import escape
 from time import time
 from mimetypes import guess_type
 from contextlib import suppress
-from os import path as ospath
+from os import path as ospath, walk
 from pyrogram.enums import ButtonStyle
 
 from aiofiles.os import listdir, remove, path as aiopath
@@ -302,6 +302,24 @@ class TaskListener(TaskConfig):
             self.size = await get_path_size(up_dir)
             self.clear()
 
+
+        if getattr(self, "ht_flag", False) or getattr(self, "manual_reorder", False):
+            from ...modules.mirror_leech import prompt_track_manager
+            target_media = up_path
+            if not self.is_file and await aiopath.isdir(up_path):
+                for root, _, files in await sync_to_async(walk, up_path, topdown=False):
+                    for file_ in files:
+                        fp = ospath.join(root, file_)
+                        ext = ospath.splitext(fp)[1].lower()
+                        if ext in (".mkv", ".mp4", ".webm", ".avi", ".mov", ".flv", ".m4v", ".ts", ".3gp"):
+                            target_media = fp
+                            break
+                    if target_media != up_path:
+                        break
+            try:
+                await prompt_track_manager(self, target_media)
+            except Exception as e:
+                LOGGER.error(f"Track Manager prompt error: {e}")
 
         up_path = await self.proceed_reorder(up_path, gid)
         if self.is_cancelled or not up_path:
@@ -614,6 +632,29 @@ class TaskListener(TaskConfig):
 
             targets = [self.user_id]
 
+            if self.leech_dest and self.leech_dest != self.user_id:
+                d_chat, _ = parse_dest(self.leech_dest) if not isinstance(self.leech_dest, int) else (self.leech_dest, None)
+                if d_chat and d_chat not in targets:
+                    targets.append(d_chat)
+
+            if self.up_dest and self.up_dest not in targets:
+                u_chat, _ = parse_dest(self.up_dest) if not isinstance(self.up_dest, int) else (self.up_dest, None)
+                if u_chat and u_chat not in targets:
+                    targets.append(u_chat)
+
+            if hasattr(self, "key_dump_dests") and self.key_dump_dests:
+                for k_dest in self.key_dump_dests:
+                    if k_dest:
+                        k_chat, _ = parse_dest(k_dest) if not isinstance(k_dest, int) else (k_dest, None)
+                        if k_chat and k_chat not in targets:
+                            targets.append(k_chat)
+
+            univ_dump = self.user_dict.get("LEECH_DUMP_CHAT") or Config.LEECH_LOG_CHAT or ""
+            if univ_dump:
+                un_chat, _ = parse_dest(univ_dump) if not isinstance(univ_dump, int) else (univ_dump, None)
+                if un_chat and un_chat not in targets:
+                    targets.append(un_chat)
+
             for dm_target in targets:
                 if not files:
                     await send_message(dm_target, msg)
@@ -849,7 +890,9 @@ class TaskListener(TaskConfig):
         if self.up_dir:
             await clean_download(self.up_dir)
         if self.thumb and await aiopath.exists(self.thumb):
-            await remove(self.thumb)
+            user_perm_thumb = self.user_dict.get("THUMBNAIL") or f"thumbnails/{self.user_id}.jpg"
+            if self.thumb != user_perm_thumb and self.thumb != f"thumbnails/{self.user_id}.jpg":
+                await remove(self.thumb)
 
     async def on_upload_error(self, error):
         if hasattr(self, "task_key") and self.task_key:
@@ -890,4 +933,6 @@ class TaskListener(TaskConfig):
         if self.up_dir:
             await clean_download(self.up_dir)
         if self.thumb and await aiopath.exists(self.thumb):
-            await remove(self.thumb)
+            user_perm_thumb = self.user_dict.get("THUMBNAIL") or f"thumbnails/{self.user_id}.jpg"
+            if self.thumb != user_perm_thumb and self.thumb != f"thumbnails/{self.user_id}.jpg":
+                await remove(self.thumb)
