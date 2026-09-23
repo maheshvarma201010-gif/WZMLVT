@@ -99,7 +99,11 @@ async def notify_owner_and_sudos(event_type="Started"):
     if not recipients:
         return
 
-    now = datetime.now(timezone(Config.TIMEZONE))
+    try:
+        now = datetime.now(timezone(Config.TIMEZONE))
+    except Exception:
+        now = datetime.now()
+
     text = (
         f"<b>🤖 Bot Notification: {event_type}!</b>\n\n"
         f"<blockquote>• <b>Date:</b> {now.strftime('%d/%m/%Y')}\n"

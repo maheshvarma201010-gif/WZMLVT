@@ -437,6 +437,7 @@ async def get_user_settings(from_user, stype="main"):
                 "AUTO_LEECH",
                 "AUTO_MIRROR",
                 "AUTO_DDL",
+                "SAVE_FILES",
             ]
         ):
             buttons.data_button(
@@ -802,6 +803,12 @@ Configure custom video encoding, compression, and watermark overlays for uploads
             f"userset {user_id} tog AUTO_MERGE {'f' if auto_merge else 't'} vtools",
         )
 
+        save_files = user_dict.get("SAVE_FILES", False)
+        buttons.data_button(
+            f"Keep Original Files: {'✓ ON' if save_files else 'OFF'}",
+            f"userset {user_id} tog SAVE_FILES {'f' if save_files else 't'} vtools",
+        )
+
         buttons.data_button("◀️ Back", f"userset {user_id} back", "footer")
         buttons.data_button(
             "❌ Close", f"userset {user_id} close", "footer", style=ButtonStyle.DANGER
@@ -811,7 +818,8 @@ Configure custom video encoding, compression, and watermark overlays for uploads
         text = f"""<b>🎬 Video Processing Tools</b>
 
 <blockquote>• <b>User:</b> {user_name}
-• <b>Auto Video Merge:</b> <b>{'Enabled' if auto_merge else 'Disabled'}</b></blockquote>"""
+• <b>Auto Video Merge:</b> <b>{'Enabled' if auto_merge else 'Disabled'}</b>
+• <b>Keep Original Files on Merge:</b> <b>{'Enabled' if save_files else 'Disabled'}</b></blockquote>"""
 
     elif stype == "uphoster":
         uphoster_service = user_dict.get("UPHOSTER_SERVICE", "gofile")
@@ -2200,7 +2208,7 @@ async def edit_user_settings(client, query):
                 back_to = "gofile"
             elif data[3] == "SEEDR_DELETE_FOLDER":
                 back_to = "seedr"
-            elif data[3] == "AUTO_MERGE":
+            elif data[3] in ["AUTO_MERGE", "SAVE_FILES"]:
                 back_to = "vtools"
             elif data[3] == "SET_ALL_METADATA_ENABLE":
                 back_to = "ffset"

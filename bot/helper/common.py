@@ -1853,22 +1853,28 @@ class TaskConfig:
         res = await ffmpeg.merge_tracks(v_files, a_files, s_files, output_file, gid, a_langs=a_langs, s_langs=s_langs)
 
         if res and await aiopath.exists(output_file):
-            merged_sources = v_files + a_files + s_files
-            for sf in merged_sources:
-                if sf != output_file:
-                    with suppress(Exception):
-                        await remove(sf)
+            save_files = self.user_dict.get("SAVE_FILES", False) or getattr(Config, "SAVE_FILES", False)
+            if not save_files:
+                merged_sources = v_files + a_files + s_files
+                for sf in merged_sources:
+                    if sf != output_file:
+                        with suppress(Exception):
+                            await remove(sf)
 
-            if work_dir != dl_path:
-                for root, dirs, files in await sync_to_async(walk, work_dir, topdown=False):
-                    for d in dirs:
-                        dp = ospath.join(root, d)
-                        if not await listdir(dp):
-                            with suppress(Exception):
-                                await rmtree(dp)
+                if work_dir != dl_path:
+                    for root, dirs, files in await sync_to_async(walk, work_dir, topdown=False):
+                        for d in dirs:
+                            dp = ospath.join(root, d)
+                            if not await listdir(dp):
+                                with suppress(Exception):
+                                    await rmtree(dp)
 
-            self.is_file = True
-            return output_file
+                self.is_file = True
+                return output_file
+            else:
+                self.is_file = False
+                self.name = ospath.basename(work_dir)
+                return work_dir
 
         return dl_path
 
