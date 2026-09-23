@@ -303,7 +303,7 @@ class TaskListener(TaskConfig):
             self.clear()
 
 
-        if getattr(self, "ht_flag", False) or getattr(self, "manual_reorder", False):
+        if getattr(self, "ht_flag", False) or getattr(self, "manual_reorder", False) or self.extract:
             from ...modules.mirror_leech import prompt_track_manager
             target_media = up_path
             if not self.is_file and await aiopath.isdir(up_path):
@@ -316,10 +316,11 @@ class TaskListener(TaskConfig):
                             break
                     if target_media != up_path:
                         break
-            try:
-                await prompt_track_manager(self, target_media)
-            except Exception as e:
-                LOGGER.error(f"Track Manager prompt error: {e}")
+            if target_media and await aiopath.isfile(target_media):
+                try:
+                    await prompt_track_manager(self, target_media)
+                except Exception as e:
+                    LOGGER.error(f"Track Manager prompt error: {e}")
 
         up_path = await self.proceed_reorder(up_path, gid)
         if self.is_cancelled or not up_path:
@@ -512,6 +513,10 @@ class TaskListener(TaskConfig):
             del yt
         elif self.is_leech:
             LOGGER.info(f"Leech Name: {self.name}")
+            if not self.thumb or not await aiopath.exists(self.thumb):
+                user_thumb = self.user_dict.get("THUMBNAIL") or f"thumbnails/{self.user_id}.jpg"
+                if await aiopath.exists(user_thumb):
+                    self.thumb = user_thumb
             tg = TelegramUploader(self, up_dir)
             async with task_dict_lock:
                 task_dict[self.mid] = TelegramStatus(
