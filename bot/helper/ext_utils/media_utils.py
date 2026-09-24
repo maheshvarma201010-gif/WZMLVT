@@ -39,8 +39,38 @@ def get_md5_hash(up_path):
 def _convert_image(src, dst):
     with Image.open(src) as im:
         im = im.convert("RGB")
-        im.thumbnail((1280, 1280), Image.Resampling.LANCZOS if hasattr(Image, "Resampling") else Image.LANCZOS)
-        im.save(dst, "JPEG", quality=90)
+        resample = Image.Resampling.LANCZOS if hasattr(Image, "Resampling") else Image.LANCZOS
+        im.thumbnail((320, 320), resample)
+        quality = 90
+        im.save(dst, "JPEG", quality=quality)
+        while ospath.getsize(dst) > 195 * 1024 and quality > 10:
+            quality -= 10
+            im.save(dst, "JPEG", quality=quality)
+
+
+def format_tg_thumbnail(src_path, dst_path=None):
+    if not src_path or not ospath.exists(src_path):
+        return None
+    if not dst_path:
+        dst_path = f"{src_path}_tg.jpg"
+
+    try:
+        with Image.open(src_path) as img:
+            img = img.convert("RGB")
+            resample = Image.Resampling.LANCZOS if hasattr(Image, "Resampling") else Image.LANCZOS
+            img.thumbnail((320, 320), resample)
+
+            quality = 90
+            img.save(dst_path, "JPEG", quality=quality)
+
+            while ospath.getsize(dst_path) > 195 * 1024 and quality > 10:
+                quality -= 10
+                img.save(dst_path, "JPEG", quality=quality)
+
+        return dst_path
+    except Exception as e:
+        LOGGER.warning(f"Failed to format Telegram thumbnail: {e}")
+        return src_path
 
 
 async def create_thumb(msg, _id=""):

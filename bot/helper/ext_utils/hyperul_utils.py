@@ -17,12 +17,14 @@ from ...core.config_manager import Config
 from ...core.tg_client import TgClient
 from ..telegram_helper.tg_transfer import HypertgTransfer
 from ..ext_utils.media_utils import (
+    format_tg_thumbnail,
     get_audio_thumbnail,
     get_document_type,
     get_media_info,
     get_multiple_frames_thumbnail,
     get_video_thumbnail,
 )
+from ..ext_utils.bot_utils import sync_to_async
 from ..ext_utils.bot_utils import parse_dest
 from ..ext_utils.tmdb_utils import get_auto_thumbnail
 
@@ -149,6 +151,11 @@ class HypertgUpload(HypertgTransfer):
         else:
             key = "photos"
 
+        if thumb and thumb != "none" and await aiopath.exists(str(thumb)):
+            formatted_t = await sync_to_async(format_tg_thumbnail, thumb)
+            if formatted_t and await aiopath.exists(str(formatted_t)):
+                thumb = formatted_t
+
         if thumb == "none":
             thumb = None
 
@@ -227,7 +234,7 @@ class HypertgUpload(HypertgTransfer):
             LOGGER.error(f"HypertgUL fail {self._up_file}: {type(e).__name__}: {e}")
             raise
         finally:
-            if thumb and thumb.endswith("_320.jpg") and await aiopath.exists(thumb):
+            if thumb and (thumb.endswith("_320.jpg") or thumb.endswith("_tg.jpg")) and await aiopath.exists(thumb):
                 try:
                     await remove(thumb)
                 except Exception:
