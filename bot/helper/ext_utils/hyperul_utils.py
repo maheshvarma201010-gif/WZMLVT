@@ -34,8 +34,12 @@ class HypertgUpload(HypertgTransfer):
         super().__init__(obj)
         self._up_file = ""
         self._file_progress = {}
+        is_owner = self._listener and getattr(self._listener, "user_id", None) == Config.OWNER_ID
         if hasattr(obj, "_hu_clients") and obj._hu_clients:
-            self.clients = dict(obj._hu_clients)
+            if is_owner and TgClient.helper_bots:
+                self.clients = {**TgClient.helper_bots, **obj._hu_clients}
+            else:
+                self.clients = dict(obj._hu_clients)
             self.client_ids = list(self.clients.keys())
             self.work_loads = {k: 0 for k in self.client_ids}
             self.num_clients = len(self.clients)

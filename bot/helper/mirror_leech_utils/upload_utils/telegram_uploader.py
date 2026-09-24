@@ -413,6 +413,20 @@ class TelegramUploader:
                     if k_chat and (k_chat, k_thread) not in destinations:
                         destinations.append((k_chat, k_thread))
 
+        # Owner configured leech log chat
+        if Config.LEECH_LOG_CHAT:
+            l_chat, l_thread = parse_dest(Config.LEECH_LOG_CHAT) if not isinstance(Config.LEECH_LOG_CHAT, int) else (Config.LEECH_LOG_CHAT, None)
+            if l_chat and (l_chat, l_thread) not in destinations:
+                destinations.append((l_chat, l_thread))
+
+        # Owner configured named dump chats
+        if Config.LEECH_DUMP_CHATS and isinstance(Config.LEECH_DUMP_CHATS, dict):
+            for d_val in Config.LEECH_DUMP_CHATS.values():
+                if d_val:
+                    d_chat, d_thread = parse_dest(d_val) if not isinstance(d_val, int) else (d_val, None)
+                    if d_chat and (d_chat, d_thread) not in destinations:
+                        destinations.append((d_chat, d_thread))
+
         for entry in self._upload_seq:
             if entry is None:
                 continue

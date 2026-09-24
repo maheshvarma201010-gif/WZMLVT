@@ -2,19 +2,32 @@ from asyncio import Event, wait_for, TimeoutError as AsyncTimeout
 from os.path import exists as path_exists
 
 from aiofiles.os import remove as aioremove
-from pyrogram import Client, __version__ as wzgram_version
+from wzgram import Client, __version__ as wzgram_version
 from bot.version import get_version
-from pyrogram.enums import ChatType
-from pyrogram.filters import create, user, text, private
-from pyrogram.handlers import CallbackQueryHandler, MessageHandler
-from pyrogram.errors import (
-    SessionPasswordNeeded,
-    FloodWait,
-    PhoneNumberInvalid,
-    ApiIdInvalid,
-    PhoneCodeInvalid,
-    PhoneCodeExpired,
-)
+try:
+    from wzgram.enums import ChatType
+    from wzgram.filters import create, user, text, private
+    from wzgram.handlers import CallbackQueryHandler, MessageHandler
+    from wzgram.errors import (
+        SessionPasswordNeeded,
+        FloodWait,
+        PhoneNumberInvalid,
+        ApiIdInvalid,
+        PhoneCodeInvalid,
+        PhoneCodeExpired,
+    )
+except ImportError:
+    from pyrogram.enums import ChatType
+    from pyrogram.filters import create, user, text, private
+    from pyrogram.handlers import CallbackQueryHandler, MessageHandler
+    from pyrogram.errors import (
+        SessionPasswordNeeded,
+        FloodWait,
+        PhoneNumberInvalid,
+        ApiIdInvalid,
+        PhoneCodeInvalid,
+        PhoneCodeExpired,
+    )
 
 from bot.core.tg_client import TgClient
 from bot.core.config_manager import Config

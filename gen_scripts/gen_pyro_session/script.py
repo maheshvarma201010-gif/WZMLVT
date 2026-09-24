@@ -9,11 +9,11 @@ to authenticate as a Telegram user (not bot).
 import sys
 
 try:
-    from pyrogram import Client
+    from wzgram import Client
 except Exception:
-    print("\n[ERROR] Pyrogram not installed!")
+    print("\n[ERROR] WZGram not installed!")
     print("\nInstall required dependencies:")
-    print("  pip install pyrogram tgcrypto")
+    print("  pip install wzgram tgcrypto")
     sys.exit(1)
 
 
