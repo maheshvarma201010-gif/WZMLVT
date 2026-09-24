@@ -109,42 +109,6 @@ class TaskListener(TaskConfig):
                 Config.LINKS_LOG_ID,
                 f"<b>🚀 {mode_name} Task Started</b>\n\n<blockquote>• <b>User:</b> {self.tag} (<code>#ID{self.user_id}</code>)\n• <b>Message Link:</b> <a href='{self.message.link}'>Click Here</a>\n• <b>Source Link:</b> <a href='{self.source_url}'>Click Here</a></blockquote>",
             )
-        start_dump_msg = f"<b>🚀 {mode_name} Task Started</b>\n\n<blockquote>• <b>User:</b> {self.tag} (<code>#ID{self.user_id}</code>)\n• <b>Message Link:</b> <a href='{self.message.link}'>Click Here</a>\n• <b>Source Link:</b> <a href='{self.source_url}'>Click Here</a></blockquote>"
-
-        start_dests = []
-        if self.up_dest:
-            c_chat, c_thread = parse_dest(self.up_dest) if not isinstance(self.up_dest, int) else (self.up_dest, self.chat_thread_id)
-            if isinstance(c_chat, int) or (isinstance(c_chat, str) and (c_chat.startswith("@") or c_chat.lstrip("-").isdigit())):
-                c_chat = int(c_chat) if isinstance(c_chat, str) and c_chat.lstrip("-").isdigit() else c_chat
-                start_dests.append((c_chat, c_thread))
-
-        if self.leech_dest:
-            l_chat, l_thread = parse_dest(self.leech_dest) if not isinstance(self.leech_dest, int) else (self.leech_dest, self.leech_thread_id)
-            if isinstance(l_chat, int) or (isinstance(l_chat, str) and (l_chat.startswith("@") or l_chat.lstrip("-").isdigit())):
-                l_chat = int(l_chat) if isinstance(l_chat, str) and l_chat.lstrip("-").isdigit() else l_chat
-                if (l_chat, l_thread) not in start_dests:
-                    start_dests.append((l_chat, l_thread))
-
-        if hasattr(self, "key_dump_dests") and self.key_dump_dests:
-            for k_dest in self.key_dump_dests:
-                if k_dest:
-                    k_chat, k_thread = parse_dest(k_dest) if not isinstance(k_dest, int) else (k_dest, None)
-                    if isinstance(k_chat, int) or (isinstance(k_chat, str) and (k_chat.startswith("@") or k_chat.lstrip("-").isdigit())):
-                        k_chat = int(k_chat) if isinstance(k_chat, str) and k_chat.lstrip("-").isdigit() else k_chat
-                        if (k_chat, k_thread) not in start_dests:
-                            start_dests.append((k_chat, k_thread))
-
-        universal_dump = self.user_dict.get("LEECH_DUMP_CHAT") or Config.LEECH_LOG_CHAT or ""
-        if universal_dump:
-            u_chat, u_thread = parse_dest(universal_dump) if not isinstance(universal_dump, int) else (universal_dump, None)
-            if isinstance(u_chat, int) or (isinstance(u_chat, str) and (u_chat.startswith("@") or u_chat.lstrip("-").isdigit())):
-                u_chat = int(u_chat) if isinstance(u_chat, str) and u_chat.lstrip("-").isdigit() else u_chat
-                if (u_chat, u_thread) not in start_dests:
-                    start_dests.append((u_chat, u_thread))
-
-        for d_chat, d_thread in start_dests:
-            if d_chat and d_chat != self.message.chat.id:
-                await send_message(d_chat, start_dump_msg, message_thread_id=d_thread)
         if (
             self.is_super_chat
             and (Config.INC_TASK_NOTIFY or Config.INC_TASK_RESUME)

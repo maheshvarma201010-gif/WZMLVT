@@ -69,11 +69,12 @@ class TelegramDownloadHelper:
         self._dump_chat = (
             self._listener.up_dest if self._listener.is_leech else None
         ) or Config.LEECH_LOG_CHAT
+        is_owner = self._listener and getattr(self._listener, "user_id", None) == Config.OWNER_ID
         self._hyper_dl = (
             Config.USE_HYPER
             and self._dump_chat
             and (
-                (tm in ("bot", "both") and len(TgClient.helper_bots) != 0)
+                (tm in ("bot", "both") and is_owner and len(TgClient.helper_bots) != 0)
                 or (
                     tm in ("user", "both")
                     and (len(TgClient.helper_users) != 0 or TgClient.user is not None)

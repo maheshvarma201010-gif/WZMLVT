@@ -150,8 +150,9 @@ class HypertgTransfer:
             self._cancel = Event()
             self._tasks = []
             return
-        self.clients = dict(TgClient.helper_bots)
-        self.work_loads = get_global_work_loads()
+        is_owner = self._listener and getattr(self._listener, "user_id", None) == Config.OWNER_ID
+        self.clients = dict(TgClient.helper_bots) if is_owner else {}
+        self.work_loads = get_global_work_loads() if is_owner else {}
         self.client_ids = list(self.clients.keys())
         if TgClient.helper_users:
             for no, client in TgClient.helper_users.items():

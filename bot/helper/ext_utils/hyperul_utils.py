@@ -10,6 +10,7 @@ except ImportError:
     FloodPremiumWait = FloodWait
 
 from os import path as ospath
+from secrets import token_hex
 from aiofiles.os import path as aiopath, remove
 
 from ... import LOGGER
@@ -34,8 +35,12 @@ class HypertgUpload(HypertgTransfer):
         super().__init__(obj)
         self._up_file = ""
         self._file_progress = {}
+        is_owner = self._listener and getattr(self._listener, "user_id", None) == Config.OWNER_ID
         if hasattr(obj, "_hu_clients") and obj._hu_clients:
-            self.clients = dict(obj._hu_clients)
+            if is_owner and TgClient.helper_bots:
+                self.clients = {**TgClient.helper_bots, **obj._hu_clients}
+            else:
+                self.clients = dict(obj._hu_clients)
             self.client_ids = list(self.clients.keys())
             self.work_loads = {k: 0 for k in self.client_ids}
             self.num_clients = len(self.clients)
@@ -152,7 +157,8 @@ class HypertgUpload(HypertgTransfer):
             key = "photos"
 
         if thumb and thumb != "none" and await aiopath.exists(str(thumb)):
-            formatted_t = await sync_to_async(format_tg_thumbnail, thumb)
+            fresh_dst = f"thumbnails/up_{token_hex(4)}.jpg"
+            formatted_t = await sync_to_async(format_tg_thumbnail, thumb, fresh_dst)
             if formatted_t and await aiopath.exists(str(formatted_t)):
                 thumb = formatted_t
 
@@ -234,12 +240,7 @@ class HypertgUpload(HypertgTransfer):
             LOGGER.error(f"HypertgUL fail {self._up_file}: {type(e).__name__}: {e}")
             raise
         finally:
-            if thumb and (thumb.endswith("_320.jpg") or thumb.endswith("_tg.jpg")) and await aiopath.exists(thumb):
-                try:
-                    await remove(thumb)
-                except Exception:
-                    pass
-            elif user_thumb is None and thumb is not None and await aiopath.exists(thumb):
+            if thumb and ("_320.jpg" in thumb or "_tg.jpg" in thumb or "up_" in thumb) and await aiopath.exists(thumb):
                 user_perm_thumb = self._listener.user_dict.get("THUMBNAIL") or f"thumbnails/{self._listener.user_id}.jpg"
                 if thumb != user_perm_thumb and thumb != f"thumbnails/{self._listener.user_id}.jpg":
                     try:
@@ -325,7 +326,7 @@ class HypertgUpload(HypertgTransfer):
             }
             if cap_mono:
                 kwargs["caption"] = cap_mono
-            if reply_to_message_id:
+            if reply_to_message_id and key != "documents":
                 kwargs["reply_to_message_id"] = reply_to_message_id
             elif thread_id:
                 kwargs["message_thread_id"] = thread_id
@@ -391,7 +392,7 @@ class HypertgUpload(HypertgTransfer):
         }
         if cap_mono:
             kwargs["caption"] = cap_mono
-        if reply_to_message_id:
+        if reply_to_message_id and key != "documents":
             kwargs["reply_to_message_id"] = reply_to_message_id
         elif thread_id:
             kwargs["message_thread_id"] = thread_id

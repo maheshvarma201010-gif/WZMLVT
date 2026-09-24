@@ -497,13 +497,13 @@ class TaskConfig:
                     if resolved_dest and resolved_dest not in self.key_dump_dests:
                         self.key_dump_dests.append(resolved_dest)
 
-            universal_dump = self.user_dict.get("LEECH_DUMP_CHAT") or Config.LEECH_LOG_CHAT or ""
-            if self.key_dump_dests:
-                self.dump_dest = self.key_dump_dests[0]
-                if universal_dump and universal_dump not in self.key_dump_dests:
-                    self.key_dump_dests.append(universal_dump)
-            elif not self.dump_dest:
-                self.dump_dest = universal_dump
+        universal_dump = self.user_dict.get("LEECH_DUMP_CHAT") or Config.LEECH_LOG_CHAT or ""
+        if self.key_dump_dests:
+            self.dump_dest = self.key_dump_dests[0]
+            if universal_dump and universal_dump not in self.key_dump_dests:
+                self.key_dump_dests.append(universal_dump)
+        elif not self.dump_dest:
+            self.dump_dest = universal_dump
 
         self.metadata_title = self.user_dict.get("METADATA")
 
