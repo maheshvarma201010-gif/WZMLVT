@@ -10,6 +10,7 @@ except ImportError:
     FloodPremiumWait = FloodWait
 
 from os import path as ospath
+from secrets import token_hex
 from aiofiles.os import path as aiopath, remove
 
 from ... import LOGGER
@@ -156,7 +157,8 @@ class HypertgUpload(HypertgTransfer):
             key = "photos"
 
         if thumb and thumb != "none" and await aiopath.exists(str(thumb)):
-            formatted_t = await sync_to_async(format_tg_thumbnail, thumb)
+            fresh_dst = f"thumbnails/up_{token_hex(4)}.jpg"
+            formatted_t = await sync_to_async(format_tg_thumbnail, thumb, fresh_dst)
             if formatted_t and await aiopath.exists(str(formatted_t)):
                 thumb = formatted_t
 
@@ -238,12 +240,7 @@ class HypertgUpload(HypertgTransfer):
             LOGGER.error(f"HypertgUL fail {self._up_file}: {type(e).__name__}: {e}")
             raise
         finally:
-            if thumb and (thumb.endswith("_320.jpg") or thumb.endswith("_tg.jpg")) and await aiopath.exists(thumb):
-                try:
-                    await remove(thumb)
-                except Exception:
-                    pass
-            elif user_thumb is None and thumb is not None and await aiopath.exists(thumb):
+            if thumb and ("_320.jpg" in thumb or "_tg.jpg" in thumb or "up_" in thumb) and await aiopath.exists(thumb):
                 user_perm_thumb = self._listener.user_dict.get("THUMBNAIL") or f"thumbnails/{self._listener.user_id}.jpg"
                 if thumb != user_perm_thumb and thumb != f"thumbnails/{self._listener.user_id}.jpg":
                     try:
