@@ -63,9 +63,11 @@ class HypertgUpload(HypertgTransfer):
         is_video, is_audio, is_image = await get_document_type(file_path)
 
         user_perm = self._listener.user_dict.get("THUMBNAIL") or f"thumbnails/{self._listener.user_id}.jpg"
-        if user_thumb and user_thumb != "none" and await aiopath.exists(user_thumb):
+        if user_thumb and user_thumb != "none" and await aiopath.exists(str(user_thumb)):
             thumb = user_thumb
-        elif await aiopath.exists(user_perm):
+        elif self._listener.thumb and self._listener.thumb != "none" and await aiopath.exists(str(self._listener.thumb)):
+            thumb = self._listener.thumb
+        elif await aiopath.exists(str(user_perm)):
             thumb = user_perm
         else:
             thumb = None
@@ -82,7 +84,19 @@ class HypertgUpload(HypertgTransfer):
             or (not is_video and not is_audio and not is_image)
         ):
             key = "documents"
-            if thumb and thumb != "none" and await aiopath.exists(thumb):
+            if not thumb or not await aiopath.exists(str(thumb)):
+                if is_video:
+                    duration = (await get_media_info(file_path))[0]
+                    if self._listener.thumbnail_layout:
+                        grid_t = await get_multiple_frames_thumbnail(file_path, self._listener.thumbnail_layout, False)
+                        if grid_t and await aiopath.exists(grid_t):
+                            thumb = grid_t
+                    if not thumb or not await aiopath.exists(str(thumb)):
+                        auto_t = await get_video_thumbnail(file_path, duration)
+                        if auto_t and await aiopath.exists(auto_t):
+                            thumb = auto_t
+
+            if thumb and thumb != "none" and await aiopath.exists(str(thumb)):
                 doc_thumb = f"{thumb}_320.jpg"
                 try:
                     with Image.open(thumb) as img:
@@ -95,7 +109,12 @@ class HypertgUpload(HypertgTransfer):
         elif is_video:
             key = "videos"
             duration = (await get_media_info(file_path))[0]
-            if thumb is not None and thumb != "none" and await aiopath.exists(thumb):
+            if self._listener.thumbnail_layout:
+                grid_t = await get_multiple_frames_thumbnail(file_path, self._listener.thumbnail_layout, False)
+                if grid_t and await aiopath.exists(grid_t):
+                    thumb = grid_t
+
+            if thumb is not None and thumb != "none" and await aiopath.exists(str(thumb)):
                 try:
                     with Image.open(thumb) as img:
                         width, height = img.size
@@ -229,17 +248,29 @@ class HypertgUpload(HypertgTransfer):
                 return await self._send_with_retry(client.send_photo, **kwargs)
             else:
                 return await self._send_with_retry(client.send_document, **kwargs)
-        except PhotoInvalidDimensions:
-            kwargs.pop("thumb", None)
-            kwargs.pop("video_cover", None)
-            if key == "videos":
-                return await self._send_with_retry(client.send_video, **kwargs)
-            elif key == "audios":
-                return await self._send_with_retry(client.send_audio, **kwargs)
-            elif key == "photos":
-                return await self._send_with_retry(client.send_photo, **kwargs)
-            else:
-                return await self._send_with_retry(client.send_document, **kwargs)
+        except (PhotoInvalidDimensions, Exception) as e:
+            err_str = str(e).upper()
+            if (
+                isinstance(e, PhotoInvalidDimensions)
+                or "PHOTO_INVALID_DIMENSIONS" in err_str
+                or "WIDTH_INVALID" in err_str
+                or "HEIGHT_INVALID" in err_str
+                or "MEDIA_EMPTY" in err_str
+            ):
+                LOGGER.warning(f"Thumbnail invalid dimensions ({e}), retrying upload without thumbnail...")
+                kwargs.pop("thumb", None)
+                kwargs.pop("video_cover", None)
+                kwargs.pop("width", None)
+                kwargs.pop("height", None)
+                if key == "videos":
+                    return await self._send_with_retry(client.send_video, **kwargs)
+                elif key == "audios":
+                    return await self._send_with_retry(client.send_audio, **kwargs)
+                elif key == "photos":
+                    return await self._send_with_retry(client.send_photo, **kwargs)
+                else:
+                    return await self._send_with_retry(client.send_document, **kwargs)
+            raise
 
     async def _hyper_send(
         self,
