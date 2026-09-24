@@ -17,12 +17,14 @@ from ...core.config_manager import Config
 from ...core.tg_client import TgClient
 from ..telegram_helper.tg_transfer import HypertgTransfer
 from ..ext_utils.media_utils import (
+    format_tg_thumbnail,
     get_audio_thumbnail,
     get_document_type,
     get_media_info,
     get_multiple_frames_thumbnail,
     get_video_thumbnail,
 )
+from ..ext_utils.bot_utils import sync_to_async
 from ..ext_utils.bot_utils import parse_dest
 from ..ext_utils.tmdb_utils import get_auto_thumbnail
 
@@ -40,6 +42,33 @@ class HypertgUpload(HypertgTransfer):
             from ..telegram_helper.tg_transfer import MtprotoPool
             self._pool = MtprotoPool(self.clients)
             self._use_user_bots = True
+
+    def _auto_thumb_enabled(self):
+        return self._listener.user_dict.get("AUTO_THUMBNAIL", False) or (
+            "AUTO_THUMBNAIL" not in self._listener.user_dict and getattr(Config, "AUTO_THUMBNAIL", False)
+        )
+
+    async def _get_auto_thumb(self, file_path, is_video=False, duration=0, is_audio=False):
+        if not self._auto_thumb_enabled():
+            return None
+
+        # 1. Try TMDb poster lookup
+        auto_t = await get_auto_thumbnail(file_path)
+        if auto_t and await aiopath.exists(str(auto_t)):
+            return auto_t
+
+        # 2. Local fallback if TMDb fails
+        if self._listener.thumbnail_layout and is_video:
+            grid_t = await get_multiple_frames_thumbnail(file_path, self._listener.thumbnail_layout, False)
+            if grid_t and await aiopath.exists(str(grid_t)):
+                return grid_t
+
+        if is_video:
+            return await get_video_thumbnail(file_path, duration)
+        elif is_audio:
+            return await get_audio_thumbnail(file_path)
+
+        return None
 
     async def _progress(self, current, total, file_path):
         if self._listener.is_cancelled:
@@ -63,12 +92,15 @@ class HypertgUpload(HypertgTransfer):
         is_video, is_audio, is_image = await get_document_type(file_path)
 
         user_perm = self._listener.user_dict.get("THUMBNAIL") or f"thumbnails/{self._listener.user_id}.jpg"
-        if user_thumb and user_thumb != "none" and await aiopath.exists(user_thumb):
-            thumb = user_thumb
-        elif await aiopath.exists(user_perm):
-            thumb = user_perm
-        else:
-            thumb = None
+        user_custom_thumb = None
+        if user_thumb and user_thumb != "none" and await aiopath.exists(str(user_thumb)):
+            user_custom_thumb = user_thumb
+        elif self._listener.thumb and self._listener.thumb != "none" and await aiopath.exists(str(self._listener.thumb)):
+            user_custom_thumb = self._listener.thumb
+        elif await aiopath.exists(str(user_perm)):
+            user_custom_thumb = user_perm
+
+        thumb = user_custom_thumb
 
         duration = 0
         width = 480
@@ -82,7 +114,13 @@ class HypertgUpload(HypertgTransfer):
             or (not is_video and not is_audio and not is_image)
         ):
             key = "documents"
-            if thumb and thumb != "none" and await aiopath.exists(thumb):
+            if is_video:
+                duration = (await get_media_info(file_path))[0]
+
+            if not thumb or not await aiopath.exists(str(thumb)):
+                thumb = await self._get_auto_thumb(file_path, is_video=is_video, duration=duration, is_audio=is_audio)
+
+            if thumb and thumb != "none" and await aiopath.exists(str(thumb)):
                 doc_thumb = f"{thumb}_320.jpg"
                 try:
                     with Image.open(thumb) as img:
@@ -95,30 +133,28 @@ class HypertgUpload(HypertgTransfer):
         elif is_video:
             key = "videos"
             duration = (await get_media_info(file_path))[0]
-            if thumb is not None and thumb != "none" and await aiopath.exists(thumb):
+            if not thumb or not await aiopath.exists(str(thumb)):
+                thumb = await self._get_auto_thumb(file_path, is_video=True, duration=duration)
+
+            if thumb and thumb != "none" and await aiopath.exists(str(thumb)):
                 try:
                     with Image.open(thumb) as img:
+                        img = img.convert("RGB")
                         width, height = img.size
                 except Exception:
                     pass
-            else:
-                auto_t = await get_video_thumbnail(file_path, duration)
-                if auto_t and await aiopath.exists(auto_t):
-                    thumb = auto_t
-                    try:
-                        with Image.open(thumb) as img:
-                            width, height = img.size
-                    except Exception:
-                        pass
         elif is_audio:
             key = "audios"
             duration, artist, title = await get_media_info(file_path)
-            if not thumb or not await aiopath.exists(thumb):
-                auto_a = await get_audio_thumbnail(file_path)
-                if auto_a and await aiopath.exists(auto_a):
-                    thumb = auto_a
+            if not thumb or not await aiopath.exists(str(thumb)):
+                thumb = await self._get_auto_thumb(file_path, is_audio=True)
         else:
             key = "photos"
+
+        if thumb and thumb != "none" and await aiopath.exists(str(thumb)):
+            formatted_t = await sync_to_async(format_tg_thumbnail, thumb)
+            if formatted_t and await aiopath.exists(str(formatted_t)):
+                thumb = formatted_t
 
         if thumb == "none":
             thumb = None
@@ -198,7 +234,7 @@ class HypertgUpload(HypertgTransfer):
             LOGGER.error(f"HypertgUL fail {self._up_file}: {type(e).__name__}: {e}")
             raise
         finally:
-            if thumb and thumb.endswith("_320.jpg") and await aiopath.exists(thumb):
+            if thumb and (thumb.endswith("_320.jpg") or thumb.endswith("_tg.jpg")) and await aiopath.exists(thumb):
                 try:
                     await remove(thumb)
                 except Exception:
@@ -229,17 +265,29 @@ class HypertgUpload(HypertgTransfer):
                 return await self._send_with_retry(client.send_photo, **kwargs)
             else:
                 return await self._send_with_retry(client.send_document, **kwargs)
-        except PhotoInvalidDimensions:
-            kwargs.pop("thumb", None)
-            kwargs.pop("video_cover", None)
-            if key == "videos":
-                return await self._send_with_retry(client.send_video, **kwargs)
-            elif key == "audios":
-                return await self._send_with_retry(client.send_audio, **kwargs)
-            elif key == "photos":
-                return await self._send_with_retry(client.send_photo, **kwargs)
-            else:
-                return await self._send_with_retry(client.send_document, **kwargs)
+        except (PhotoInvalidDimensions, Exception) as e:
+            err_str = str(e).upper()
+            if (
+                isinstance(e, PhotoInvalidDimensions)
+                or "PHOTO_INVALID_DIMENSIONS" in err_str
+                or "WIDTH_INVALID" in err_str
+                or "HEIGHT_INVALID" in err_str
+                or "MEDIA_EMPTY" in err_str
+            ):
+                LOGGER.warning(f"Thumbnail invalid dimensions ({e}), retrying upload without thumbnail...")
+                kwargs.pop("thumb", None)
+                kwargs.pop("video_cover", None)
+                kwargs.pop("width", None)
+                kwargs.pop("height", None)
+                if key == "videos":
+                    return await self._send_with_retry(client.send_video, **kwargs)
+                elif key == "audios":
+                    return await self._send_with_retry(client.send_audio, **kwargs)
+                elif key == "photos":
+                    return await self._send_with_retry(client.send_photo, **kwargs)
+                else:
+                    return await self._send_with_retry(client.send_document, **kwargs)
+            raise
 
     async def _hyper_send(
         self,
