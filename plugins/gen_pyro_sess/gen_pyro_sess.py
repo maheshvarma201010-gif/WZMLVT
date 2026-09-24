@@ -2,9 +2,9 @@ from asyncio import Event, wait_for, TimeoutError as AsyncTimeout
 from os.path import exists as path_exists
 
 from aiofiles.os import remove as aioremove
-from wzgram import Client, __version__ as wzgram_version
 from bot.version import get_version
 try:
+    from wzgram import Client, __version__ as wzgram_version
     from wzgram.enums import ChatType
     from wzgram.filters import create, user, text, private
     from wzgram.handlers import CallbackQueryHandler, MessageHandler
@@ -17,6 +17,7 @@ try:
         PhoneCodeExpired,
     )
 except ImportError:
+    from pyrogram import Client, __version__ as wzgram_version
     from pyrogram.enums import ChatType
     from pyrogram.filters import create, user, text, private
     from pyrogram.handlers import CallbackQueryHandler, MessageHandler

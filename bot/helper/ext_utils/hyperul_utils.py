@@ -326,7 +326,7 @@ class HypertgUpload(HypertgTransfer):
             }
             if cap_mono:
                 kwargs["caption"] = cap_mono
-            if reply_to_message_id:
+            if reply_to_message_id and key != "documents":
                 kwargs["reply_to_message_id"] = reply_to_message_id
             elif thread_id:
                 kwargs["message_thread_id"] = thread_id
@@ -392,7 +392,7 @@ class HypertgUpload(HypertgTransfer):
         }
         if cap_mono:
             kwargs["caption"] = cap_mono
-        if reply_to_message_id:
+        if reply_to_message_id and key != "documents":
             kwargs["reply_to_message_id"] = reply_to_message_id
         elif thread_id:
             kwargs["message_thread_id"] = thread_id
